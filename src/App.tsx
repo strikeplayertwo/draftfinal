@@ -1,9 +1,9 @@
 //aaaaieee
-import { useEffect, useState, useRef } from 'react';
-import {flushSync} from 'react-dom';
+import { useEffect, useState, useRef, use } from 'react';
+import { flushSync } from 'react-dom';
 import { extractFENsFromGames } from '../tools/generate-fens';
 import { Chessboard, PieceDropHandlerArgs, PieceHandlerArgs, SquareHandlerArgs } from "react-chessboard";
-import {Chess, Piece, Move, Square} from 'chess.js';
+import { Chess, Piece, Move, Square } from 'chess.js';
 //import {buildSquareStyles} from './utils/styleHelpers';
 //import {getGameStatus} from './utils/gameLogic';
 //import moveAudio from './assets/sounds/move.mp3';
@@ -73,7 +73,6 @@ function EvalGraph({ evals }: EvalGraphProps) {
   );
 }
 
-
 function App() {
   const fens = extractFENsFromGames(pgnData,94); //pick random fen and set position to it
   const randomFen: number = Math.floor(Math.random() * fens.length);
@@ -90,7 +89,8 @@ function App() {
   const [bmcounter, setbmcounter] = useState(0);
   const [brilcounter, setbrilcounter] = useState(0);
   const [evalHistory, setEvalHistory] = useState<number[]>([]);
-  
+  const [posHistory, setPosHistory] = useState<string[]>([]);
+  const [realMove, setRealMove] = useState(1);
   //const [activeSquare, setActiveSquare] = useState<string>('');
   //const [activeDragSquare, setActiveDragSquare] = useState<string>('');
   //const [reset, setReset] = useState(false);
@@ -102,6 +102,8 @@ function App() {
 
   const chessGameRef = useRef(new Chess(fens[randomFen]));
   const chessGame = chessGameRef.current;
+  const smallGameRef = useRef(new Chess(chessGame.fen()));
+  const smallGame = smallGameRef.current;
   const [startingEval, setStartingEval] = useState(0);
   const [dif, setDif] = useState(0);
   // track the current position of the chess game in state to trigger a re-render of the chessboard
@@ -139,23 +141,26 @@ function App() {
   useEffect(() => {
     setSquareStyles({});
     setArrows([]);
-    setMovesPlayed(prev => {
-      const next = prev + 1;
-      setGameStatus("Moves played: " + next);
-      return next;
-    });
-    findBestMove();
-    /*if(movesplayed === 0){
-      const starteval = await newEval(chessGame.fen(), 18);
-      setStartingEval(starteval);
-    }*/
+    if(realMove === 1){
+      setPosHistory([chessPosition]);
+      setMovesPlayed(prev => {
+        const next = prev + 1;
+        setGameStatus("Moves played: " + next);
+        return next;
+      });
+    }else{
+      setPosHistory(prev => [...prev, chessPosition]);
+    }
+    console.log(posHistory);
+    smallGame.load(chessPosition);
+    findBestMove(realMove);
   }, [chessPosition]);
 
   async function triggerEnd(finalmessage: string){
     setGameResult(finalmessage);
   }
 
-  async function findBestMove(){
+  async function findBestMove(moveType: number){
     if (movesplayed > -3){
       setLoading(true);
       try {
@@ -171,31 +176,20 @@ function App() {
         const bestMove2 = pv2?.split(" ")?.[0];
         setBestLine(bestMove2);
         
-
         if (oldMove === bestMove2){
-          //console.log("best move! " + oldMove + " " + bestMove2);
-          
-          /*setCurrentStreak(prev => {
-            const next = prev + 1;
-            setStreakMsg("Current Streak: " + next);
-            if (next > highestStreak){
-              setHighestStreak(next);
-            }
-            return next;
-          });*/
           setArrows(
           bestMove
             ? [
                 {
                   startSquare: bestMove.substring(0, 2) as Square,
                   endSquare: bestMove.substring(2, 4) as Square,
-                  color: "rgb(0, 128, 0)", // green = best move
+                  color: "rgb(0, 128, 0)",
                 },
                 ...(bestResponse
                   ? [{
                       startSquare: bestResponse.substring(0, 2) as Square,
                       endSquare: bestResponse.substring(2, 4) as Square,
-                      color: "rgb(0, 128, 0)", // red = best response
+                      color: "rgb(0, 128, 0)",
                     }]
                   : []),
               ]
@@ -215,9 +209,7 @@ function App() {
           });
         }else{
           console.log("not best move: " + oldMove + " " + bestMove2);
-        
-          /*setCurrentStreak(0);
-          setStreakMsg("Current Streak: 0");*/
+
           tryFenGame.load(oldFen);
           let trybool = true;
           try{
@@ -697,8 +689,8 @@ function App() {
   }*/
 
 
-  function getMoveOptions(square: Square) {
-    const moves = chessGame.moves({
+  function getMoveOptions(square: Square, chess = chessGame) {
+    const moves = chess.moves({
       square,
       verbose: true
     });
@@ -712,7 +704,7 @@ function App() {
 
     for (const move of moves) {
       newSquares[move.to] = {
-        background: chessGame.get(move.to) && chessGame.get(move.to)?.color !== chessGame.get(square)?.color?'radial-gradient(circle, rgba(0,0,0,.1) 85%, transparent 85%)'
+        background: chess.get(move.to) && chess.get(move.to)?.color !== chess.get(square)?.color?'radial-gradient(circle, rgba(0,0,0,.1) 85%, transparent 85%)'
         :'radial-gradient(circle, rgba(0,0,0,.1)25%, transparent 25%)',
         borderRadius:'50%'
       }
@@ -760,6 +752,7 @@ function App() {
         promotion: 'q'
       });
       setOldMove(moveFrom + square);
+      setRealMove(1);
       setChessPosition(chessGame.fen()); 
       chooseFen(sendthatfen, moveFrom + square);
       /*console.log("AEval1: " + eval1 + " Eval2: " + eval2);
@@ -851,6 +844,7 @@ function App() {
         });
 
         // update the position state upon successful move to trigger a re-render of the chessboard
+        setRealMove(1);
         setChessPosition(chessGame.fen());
 
         /*evaluateFen(chessGame.fen()).then((score) => setEval1(score));
@@ -893,32 +887,43 @@ function App() {
     square,
     piece
   }: SquareHandlerArgs){
+    console.log("1");
     if (!moveFrom && piece){
-      const hasMoveOptions = getMoveOptions(square as Square);
+      console.log("2");
+      const hasMoveOptions = getMoveOptions(square as Square, smallGame);
       if (hasMoveOptions){
         setMoveFrom(square);
       }
       return;
     }
-    const moves = chessGame.moves({
+    const moves = smallGame.moves({
       square: moveFrom as Square,
       verbose: true
     });
     const foundMove = moves.find(m => m.from === moveFrom && m.to === square);
     if (!foundMove) {
-      const hasMoveOptions = getMoveOptions(square as Square);
+      console.log("3");
+      console.log(smallGame);
+      console.log(moves);
+      console.log(moveFrom);
+      const hasMoveOptions = getMoveOptions(square as Square, smallGame);
       setMoveFrom(hasMoveOptions ? square: '');
       return;
     }
     try {
-      chessGame.move({
+      smallGame.move({
         from: moveFrom,
         to: square,
         promotion: 'q'
       });
-      setChessPosition(chessGame.fen()); 
-    }catch {
-      const hasMoveOptions = getMoveOptions(square as Square);
+      console.log("4");
+      setRealMove(0);
+      setChessPosition(smallGame.fen());
+      console.log("5"); 
+    }catch (e) {
+      console.log(e);
+      console.log("6");
+      const hasMoveOptions = getMoveOptions(square as Square, smallGame);
       if (hasMoveOptions){
         setMoveFrom(square);
       }
