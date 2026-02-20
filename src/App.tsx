@@ -153,25 +153,34 @@ function App() {
     }
     console.log(posHistory);
     smallGame.load(chessPosition);
-    findBestMove(realMove);
+    findBestMove(realMove, chessPosition);
   }, [chessPosition]);
 
   async function triggerEnd(finalmessage: string){
     setGameResult(finalmessage);
   }
 
-  async function findBestMove(moveType: number){
+  async function findBestMove(moveType: number, chessPos: string){
+    let string1 = "";
+    let string2 = "";
+    if (moveType === 1){
+      string1 = chessGame.fen();
+      string2 = oldFen;
+    }else{
+      string1 = chessPos;
+      string2 = posHistory[posHistory.length - 1];
+    }
     if (movesplayed > -3){
       setLoading(true);
       try {
-        const result = await getBestLineFromFen(chessGame.fen(), 18); //gets best line after played move--check if player blundered mate
+        const result = await getBestLineFromFen(string1, 18); //gets best line after played move--check if player blundered mate
         const pv = result.pv;
         console.log("PV: " + pv);
         const bestMove = pv?.split(" ")?.[0];
         const bestResponse = pv?.split(" ")?.[1];
         const nextResponse = pv?.split(" ")?.[2];
 
-        const result2 = await getBestLineFromFen(oldFen, 18); //gets best line before played move--check if player has mate
+        const result2 = await getBestLineFromFen(string2, 18); //gets best line before played move--check if player has mate
         const pv2 = result2.pv;
         const bestMove2 = pv2?.split(" ")?.[0];
         setBestLine(bestMove2);
@@ -301,32 +310,15 @@ function App() {
     }
   }
 
-  /*function evaluateWithWorker(fen: string, depth = 18) {
-  const worker = new Worker("/stockfish.wasm.js");
-
-  worker.onmessage = (e) => {
-    const text = String(e.data);
-
-    // Example info line:
-    // info depth 18 score cp 34 pv e2e4 e7e5 g1f3 ...
-    if (text.includes(" pv ")) {
-      const pvMatch = text.match(/ pv (.+)$/);
-      if (pvMatch) {
-        const pv = pvMatch[1];
-        setBestLine(pv); // 👈 replaces engine.onMessage(...)
-      }
+  async function handleBack() {
+    if(posHistory.length > 1){
+      smallGame.load(posHistory[posHistory.length - 2]);
+      setPosHistory(prev => prev.slice(0, -1));
+    }else{
+      smallGame.load(oldFen);
     }
-
-    if (text.startsWith("bestmove")) {
-      worker.terminate();
-    }
-  };
-
-  worker.postMessage("uci");
-  worker.postMessage("isready");
-  worker.postMessage(`position fen ${fen}`);
-  worker.postMessage(`go depth ${depth}`);
-}*/
+    setChessPosition(smallGame.fen());
+  }
 
   async function handleEvaluate() {
     setLoading(true);
@@ -473,54 +465,29 @@ function App() {
     let streakbonus = 0;
     if (streaker === 1){
       streakbonus = 25;
-      if(doublemessage){
-        stopEffex("🔥 +25 eval");
-      }else{
-        setShowEffex("🔥 +25 eval");
-        stopEffex();
-      }
     }else if (streaker === 2){
       streakbonus = 50;
-      if(doublemessage){
-        stopEffex("🔥🔥 +50 eval");
-      }else{
-        setShowEffex("🔥🔥 +50 eval");
-        stopEffex();
-      }
     }else if (streaker === 3){
       streakbonus = 80;
-      if(doublemessage){
-        stopEffex("🔥🔥🔥 +80 eval");
-      }else{
-        setShowEffex("🔥🔥🔥 +80 eval");
-        stopEffex();
-      }
     }else if (streaker === 4){
       streakbonus = 125;
-      if(doublemessage){
-        stopEffex("🔥🔥🔥🔥 +125 eval");
-      }else{
-        setShowEffex("🔥🔥🔥🔥 +125 eval");
-        stopEffex();
-      }
     }else if (streaker === 5){
       streakbonus = 200;
-      if(doublemessage){
-        stopEffex("🔥🔥🔥🔥🔥 +200 eval");
-      }else{
-        setShowEffex("🔥🔥🔥🔥🔥 +200 eval");
-        stopEffex();
-      }
     }else if (streaker >= 6){
       streakbonus = 300;
+    }
+    let msg = "";
+    for (let i = 0; i < streaker; i++){
+      msg += "🔥";
+    }
+    if(streaker > 0){
       if(doublemessage){
-        stopEffex("🔥🔥🔥🔥🔥🔥 +300 eval");
+        stopEffex(msg + " +" + streakbonus + " eval");
       }else{
-        setShowEffex("🔥🔥🔥🔥🔥🔥 +300 eval");
+        setShowEffex(msg + " +" + streakbonus + " eval");
         stopEffex();
       }
     }
-    //add streak bonus
 
     const evalA = (ourOldEval - bestEval + ourEval + bonus + streakbonus + dif);
     console.log("EvalA: " + evalA + " ourOldEval: " + ourOldEval + " BestEval: " + bestEval + " OurEval: " + ourEval + " Bonus: " + bonus + " StreakBonus: " + streakbonus + " Dif: " + dif);
@@ -540,9 +507,9 @@ function App() {
         }
       }
       if (evalA > 0){
-        triggerEnd("You win! Final result: " + (mate > 0 ? "You mate in " + mate : "You mate in " + (-mate)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (disHighestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter) + ", Starting Eval: " + startingEval);
+        triggerEnd("You win! Final result: " + (mate > 0 ? "You mate in " + mate : "You mate in " + (-mate)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter) + ", Starting Eval: " + startingEval);
       }else{
-        triggerEnd("Game over! Final result: " + (mate > 0 ? "You are mated in " + mate : "You are mated in " + (-mate)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (disHighestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval);
+        triggerEnd("Game over! Final result: " + (mate > 0 ? "You are mated in " + mate : "You are mated in " + (-mate)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval);
       }
       return;
     }
@@ -676,9 +643,9 @@ function App() {
     }
     console.log("Failure");
     if(evalA > 0){
-      triggerEnd("You win! Final stats: Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (disHighestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval + ", Final Eval: " + evalA);
+      triggerEnd("You win! Final stats: Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval + ", Final Eval: " + evalA);
     }else{
-      triggerEnd("Game over! Final stats: Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (disHighestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval + ", Final Eval: " + evalA);
+      triggerEnd("Game over! Final stats: Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval + ", Final Eval: " + evalA);
     }
   }
 
@@ -943,6 +910,7 @@ function App() {
     });
     setMoveFrom('');
     setOptionSquares({});
+    setOldMove(moveFrom + square);
   }
 
   const boardOptions = {
@@ -1013,6 +981,8 @@ function App() {
           {/* result UI */}
         </div>
       </div>
+      <button className="back-button" onClick={handleBack}>Back</button>
+      {/*loading && <p>Loading...</p>*/} 
       </>
       //</DndProvider>
   ); 
