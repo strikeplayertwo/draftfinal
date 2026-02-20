@@ -1,11 +1,14 @@
 import {parse} from 'pgn-parser'
 import {Chess} from "chess.js";
 
+
 function splitPGNGames(pgnText: string): string[] {
   return pgnText
-    .split(/\n\n(?=\[Event )/) // every game starts with [Event]
+    .split(/\r?\n\r?\n(?=\[Event )/)
+    //.split(/\n\n(?=\[Event )/) // every game starts with [Event]
     .filter(g => g.trim().length > 0);
 }
+
 
 export function extractFENsFromGames(pgnText: string, limit = 469) {
   const gamesText = splitPGNGames(pgnText).slice(0, limit);
