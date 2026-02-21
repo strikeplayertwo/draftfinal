@@ -1,11 +1,8 @@
-//aaaaieee
 import { useEffect, useState, useRef, use } from 'react';
 import { flushSync } from 'react-dom';
 import { extractFENsFromGames } from '../tools/generate-fens';
 import { Chessboard, PieceDropHandlerArgs, PieceHandlerArgs, SquareHandlerArgs } from "react-chessboard";
 import { Chess, Piece, Move, Square } from 'chess.js';
-//import {buildSquareStyles} from './utils/styleHelpers';
-//import {getGameStatus} from './utils/gameLogic';
 //import moveAudio from './assets/sounds/move.mp3';
 //import captureAudio from './assets/sounds/capture.mp3';
 import './App.css'
@@ -18,27 +15,13 @@ type Arrow = {
   endSquare: Square;
   color: string;
 };
-
-/*function BoardPopup({ pos }: { pos: string }) {
-  const analysisBoardOptions = {
-    //onPieceDrop,
-    //onSquareClick,
-    position: pos,
-    //squareStyles: optionSquares,
-    id: 'board3',
-  };
-
-  return (
-    <Chessboard
-      options={analysisBoardOptions}
-    />
-  );
-}*/
-
 type EvalGraphProps = {
   evals: number[];
+  bPosHistory: string[];
+  bColors: string[];
+  onJumpToMove: (index: number) => void;
 };
-function EvalGraph({ evals }: EvalGraphProps) {
+function EvalGraph({ evals, bPosHistory, bColors, onJumpToMove }: EvalGraphProps) {
   if (evals.length < 2) return null;
 
   const width = 500;
@@ -69,6 +52,26 @@ function EvalGraph({ evals }: EvalGraphProps) {
         stroke="#00ff88"
         strokeWidth={2}
       />
+      {bPosHistory.map((_, i) => {
+        const x = 
+          bPosHistory.length === 1
+            ? width / 2
+            : (i / (bPosHistory.length - 1)) * width;
+
+        const squareSize = 200 / bPosHistory.length;
+        return (
+          <rect
+            key={i}
+            x={x - squareSize / 2}
+            y={height - 40}
+            width={squareSize}
+            height={squareSize}
+            fill={bColors[i] || "#000"}
+            style={{ cursor: "pointer" }}
+            onClick={() => onJumpToMove(i)}
+          />
+        );
+      })}
     </svg>
   );
 }
@@ -91,17 +94,16 @@ function App() {
   const [evalHistory, setEvalHistory] = useState<number[]>([]);
   const [posHistory, setPosHistory] = useState<string[]>([]);
   const [realMove, setRealMove] = useState(1);
-  //const [activeSquare, setActiveSquare] = useState<string>('');
-  //const [activeDragSquare, setActiveDragSquare] = useState<string>('');
-  //const [reset, setReset] = useState(false);
-  //const dropSquareStyle = {backgroundColor: 'hsla(81, 18%, 50%, 1)'};
-
+  const [showBack2, setShowBack2] = useState(false);
+  const [storeGameResult, setStoreGameResult] = useState("");
   // create a chess game using a ref to always have access to the latest game state within closures and maintain the game state across renders
 
   //**loop to make sure starting eval is between -30 and 30
 
   const chessGameRef = useRef(new Chess(fens[randomFen]));
   const chessGame = chessGameRef.current;
+  const [bPosHistory, setBPosHistory] = useState<string[]>([chessGame.fen()]);
+  const [bColors, setBColors] = useState<string[]>([]);
   const smallGameRef = useRef(new Chess(chessGame.fen()));
   const smallGame = smallGameRef.current;
   const [startingEval, setStartingEval] = useState(0);
@@ -114,12 +116,7 @@ function App() {
   const [oldFen, setOldFen] = useState(chessGame.fen());
   const tryFenRef = useRef(new Chess(oldFen));
   const tryFenGame = tryFenRef.current;
-  //const [evaluation, setEvaluation] = useState<number | null>(null);
-  const [eval1, setEval1] = useState<number>(3.5);
   const [accuracy, setAccuracy] = useState(100);
-  //evaluateFen(fens[randomFen]).then((score) => setEval1(score));
-  //const [eval2, setEval2] = useState<number>(3.6);
-  //const [randFen, setRandFen] = useState("");
   let cSquare = "a1";
   while(chessGame.get(cSquare as Square) === null || chessGame.get(cSquare as Square)?.type !== 'k' || chessGame.get(cSquare as Square)?.color !== chessGame.turn()){
     if(cSquare[1] !== '8'){
@@ -137,7 +134,7 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [bestLine, setBestLine] = useState('');
   const [arrows, setArrows] = useState<Arrow[]>([]);
-  const [oldEval, setOldEval] = useState(-10000);//later-make this eval of starting position?
+  const [oldEval, setOldEval] = useState(-10000);
   useEffect(() => {
     setSquareStyles({});
     setArrows([]);
@@ -153,8 +150,40 @@ function App() {
     }
     console.log(posHistory);
     smallGame.load(chessPosition);
-    findBestMove(realMove, chessPosition);
+    if (realMove !== 2){
+      findBestMove(realMove, chessPosition);
+    }else{
+      let cSquare = "a1";
+      while(smallGame.get(cSquare as Square) === null || smallGame.get(cSquare as Square)?.type !== 'k' || smallGame.get(cSquare as Square)?.color !== smallGame.turn()){
+        if(cSquare[1] !== '8'){
+          cSquare = cSquare[0] + String.fromCharCode(cSquare.charCodeAt(1) + 1);
+        }else{
+          cSquare = String.fromCharCode(cSquare.charCodeAt(0) + 1) + '1';
+        }
+      };
+      setSquareStyles({
+        [cSquare]: {
+          backgroundColor: 'rgba(255,0,0,0.2)'
+        }
+      }); 
+    }
   }, [chessPosition]);
+
+  function handleJumpToMove(index: number) {
+    const fen = bPosHistory[index];
+    if (!fen) return;
+    
+    setRealMove(2);
+    setArrows([]);
+    setShowBack2(true);
+    setStoreGameResult(gameResult);
+    setGameResult("");
+    smallGame.load(fen);
+    setChessPosition(fen);
+
+    // Optional: trim history if jumping backward
+    setPosHistory(prev => prev.slice(0, index + 1));
+  }
 
   async function triggerEnd(finalmessage: string){
     setGameResult(finalmessage);
@@ -311,6 +340,7 @@ function App() {
   }
 
   async function handleBack() {
+    setRealMove(2);
     if(posHistory.length > 1){
       smallGame.load(posHistory[posHistory.length - 2]);
       setPosHistory(prev => prev.slice(0, -1));
@@ -318,18 +348,6 @@ function App() {
       smallGame.load(oldFen);
     }
     setChessPosition(smallGame.fen());
-  }
-
-  async function handleEvaluate() {
-    setLoading(true);
-    try {
-      const score = await evaluateFen(chessGame.fen(), 18);
-      setEval1(score);
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
   }
 
   async function newEval(eFen: string, depth: number) {
@@ -429,7 +447,7 @@ function App() {
         return next;
       });
       streaker++;
-    }else if (ourEval - bestEval >= -30){
+    }else if (ourEval - bestEval >= -30 || ourEval >= bestEval * 0.85 || ourEval * 0.85 >= bestEval){
       console.log("Excellent Move!");
       setCurrentStreak(prev => {
         const next = prev + 1;
@@ -454,6 +472,17 @@ function App() {
     }
 
     const thisaccuracy = Math.round((100 * Math.exp((ourEval - bestEval) / 200)) * 10);
+    if (thisaccuracy > 1000){
+      setBColors(prev => [...prev, "rgb(0, 251, 255)"]);
+    }else if (thisaccuracy === 1000){
+      setBColors(prev => [...prev, "rgb(0, 255, 55)"]);
+    }else if (thisaccuracy > 850){
+      setBColors(prev => [...prev, "rgb(0, 137, 7)"]);
+    }else if (thisaccuracy > 600){
+      setBColors(prev => [...prev, "rgb(255, 174, 0)"]);
+    }else{
+      setBColors(prev => [...prev, "rgb(255, 0, 0)"]);
+    }
     const displayAccuracy = Math.round(((accuracy * (movesplayed) + thisaccuracy) / (movesplayed + 1)));
     if (movesplayed !== 0){
       setAccuracy(displayAccuracy);
@@ -560,6 +589,7 @@ function App() {
           setOldEval(newevalB);
           setDif(difference);
           console.log("Success 1! " + evalA + " " + evalB + " " + newevalB + " " + difference);
+          setBPosHistory(prev => [...prev, newFens]);
           return;
         }
       }else if (((evalA < evalB / 0.6) && (evalA > evalB * 0.6) && (evalA >= 0)) || ((evalA > evalB / 0.6) && (evalA < evalB * 0.6) && (evalA <= 0))){
@@ -586,6 +616,7 @@ function App() {
           const difference = evalA - newevalB;
           setDif(difference);
           console.log("Success 2! " + evalA + " " + evalB + " " + newevalB + " " + difference);
+          setBPosHistory(prev => [...prev, newFens]);
           return;
         }else{
           console.log("Inaccuracy error");
@@ -633,6 +664,7 @@ function App() {
           const difference = evalA - newevalB;
           setDif(difference);
           console.log("Success 3! " + evalA + " " + evalB + " " + newevalB + " " + difference);
+          setBPosHistory(prev => [...prev, chessGame.fen()]);
           return;
         }else{
           console.log("Inaccuracy error on swap");
@@ -722,46 +754,6 @@ function App() {
       setRealMove(1);
       setChessPosition(chessGame.fen()); 
       chooseFen(sendthatfen, moveFrom + square);
-      /*console.log("AEval1: " + eval1 + " Eval2: " + eval2);
-      newEval(chessGame.fen());
-      console.log("BEval1: " + eval1 + " Eval2: " + eval2);
-      const evalA = await newEval(chessGame.fen());
-      setEval2(evalA);
-      console.log("CEval1: " + eval1 + " Eval2: " + eval2);
-      setNewFen(fens[(Math.floor(Math.random() * fens.length))]);
-      console.log("DEval1: " + eval1 + " Eval2: " + eval2);
-      newEval(newFen);
-      console.log("EEval1: " + eval1 + " Eval2: " + eval2);
-      while(Math.abs(eval1 - eval2) > 100){
-        setNewFen(fens[(Math.floor(Math.random() * fens.length))]);
-        console.log("FEval1: " + eval1 + " Eval2: " + eval2);
-        newEval(newFen);
-        console.log("GEval1: " + eval1 + " Eval2: " + eval2);
-      }
-      setBigChessPosition(newFen);
-      console.log("HEval1: " + eval1 + " Eval2: " + eval2);*/
-
-      /*const afterFen = chessGame.fen();
-      if (beforeFen !== afterFen){
-        //evaluateFen(chessGame.fen()).then((score) => setEval1(score));
-        evaluateFen(chessGame.fen())
-        .then(value => setEval1(value))
-        .catch;
-        setRandFen(fens[Math.floor(Math.random() * fens.length)]);
-        evaluateFen(chessGame.fen())
-        .then(value => setEval2(value))
-        .catch;
-        //evaluateFen(randFen).then((score) => setEval2(score));
-        while(Math.abs(eval1 - eval2) > 2){
-          setRandFen(fens[Math.floor(Math.random() * fens.length)]);
-          //evaluateFen(randFen).then((score) => setEval2(score));
-          evaluateFen(chessGame.fen())
-          .then(value => setEval2(value))
-          .catch;
-        }
-        setChessPosition(randFen);
-        console.log("Eval1: " + eval1 + " Eval2: " + eval2);
-      } */
 
     }catch {
       const hasMoveOptions = getMoveOptions(square as Square);
@@ -813,20 +805,6 @@ function App() {
         // update the position state upon successful move to trigger a re-render of the chessboard
         setRealMove(1);
         setChessPosition(chessGame.fen());
-
-        /*evaluateFen(chessGame.fen()).then((score) => setEval1(score));
-        setRandFen(fens[Math.floor(Math.random() * fens.length)]);
-        evaluateFen(randFen).then((score) => setEval2(score));
-        while(Math.abs(eval1 - eval2) > 2){
-          setRandFen(fens[Math.floor(Math.random() * fens.length)]);
-          evaluateFen(randFen).then((score) => setEval2(score));
-        }
-        setChessPosition(randFen);
-        console.log("Eval1: " + eval1 + " Eval2: " + eval2);*/
-        
-        /*evaluateFen(chessGame.fen())
-        .then(value => setEval1(value))
-        .catch;*/
 
         setSquareStyles(prev => {
           const newSquareStyles = {
@@ -932,8 +910,9 @@ function App() {
   return (
     //<DndProvider backend={HTML5Backend}>
     <>
-      <button onClick={handleEvaluate}>Evaluate</button>
-      {loading && <p>Evaluating...</p>} 
+      {/*<button onClick={handleEvaluate}>Evaluate</button>
+      {loading && <p>Evaluating...</p>} */}
+
       <div className="statusText">{gameStatus}</div>
       <div className="statusText">{streakMsg}</div>
       <div className="game-container">
@@ -960,8 +939,6 @@ function App() {
         </div>
           {/* result UI */}
         </div>
-
-
         {/*<div
           className={`overlay ${afterBoard ? "overlay-front" : "overlay-back"}`}
         >
@@ -969,19 +946,19 @@ function App() {
           <BoardPopup pos={pos}/> 
         </div>
         </div>*/}
-
-
         <div
           className={`overlay ${gameResult ? "overlay-front" : "overlay-back"}`}
         >
         <div className="result-box">
           <h2>{gameResult}</h2>
-          <EvalGraph evals={evalHistory} />
+          <EvalGraph evals={evalHistory} bPosHistory={bPosHistory} bColors={bColors} onJumpToMove={handleJumpToMove}/>
         </div>
           {/* result UI */}
         </div>
       </div>
       <button className="back-button" onClick={handleBack}>Back</button>
+      <button className={`back2-button ${showBack2 ? "show" : "hide"}`} onClick={() => {setShowBack2(false); setGameResult(storeGameResult);}}>Back to Graph</button>
+      <button className={`evals-graph ${showBack2 ? "show" : "hide"}`}>Evals: {evalHistory.length}</button>
       {/*loading && <p>Loading...</p>*/} 
       </>
       //</DndProvider>

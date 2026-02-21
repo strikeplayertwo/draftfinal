@@ -14,8 +14,23 @@
 
 .back-button {
   position: relative;
-  right: 400px;
+  right: 314px;
   bottom: 90px;
+  background-color: #000;
+}
+
+.back2-button {
+  position: relative;
+  right: 400px;
+  bottom: 47px;
+  background-color: #000;
+}
+
+.evals-graph {
+  position: relative;
+  right: 482px;
+  bottom: 460px;
+  background-color: #000;
 }
 
 /* boards wrapper */
@@ -63,6 +78,17 @@
 
 /* visible */
 .overlay-front {
+  opacity: 1;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.hide {
+  opacity: 0;
+  z-index: 0;
+}
+
+.show {
   opacity: 1;
   z-index: 10;
   pointer-events: auto;
