@@ -14,23 +14,28 @@
 
 .back-button {
   position: relative;
-  right: 314px;
+  right: 344px;
   bottom: 90px;
   background-color: #000;
 }
 
 .back2-button {
   position: relative;
-  right: 400px;
+  right: 430px;
   bottom: 47px;
   background-color: #000;
 }
 
 .evals-graph {
+  max-width: 280px;
+  padding: 0.4rem 0.7rem;
+  white-space: pre-line;
   position: relative;
-  right: 482px;
-  bottom: 460px;
+  left: 88px;
+  bottom: 520px;
   background-color: #000;
+  font-size: 1rem;
+  font-family: "Times New Roman", Times, serif;
 }
 
 /* boards wrapper */

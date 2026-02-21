@@ -8,6 +8,7 @@ import { Chess, Piece, Move, Square } from 'chess.js';
 import './App.css'
 import { evaluateFen } from "./engine/evaluate";
 import { getBestLineFromFen } from './engine/findBestLine';
+import { getMultiPVFromFen } from './engine/findMultLines';
 //import { K } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js';
 import pgnData from "./assets/twic1326.pgn?raw";
 type Arrow = {
@@ -100,6 +101,7 @@ function App() {
 
   //**loop to make sure starting eval is between -30 and 30
 
+  const [DisplayEval, setDisplayEval] = useState("");
   const chessGameRef = useRef(new Chess(fens[randomFen]));
   const chessGame = chessGameRef.current;
   const [bPosHistory, setBPosHistory] = useState<string[]>([chessGame.fen()]);
@@ -208,6 +210,35 @@ function App() {
         const bestMove = pv?.split(" ")?.[0];
         const bestResponse = pv?.split(" ")?.[1];
         const nextResponse = pv?.split(" ")?.[2];
+        if (showBack2 === true && moveType === 0){
+          const lines = await getMultiPVFromFen(string1, 18, 3);
+          const maxMoves = 6;
+          const formatted = lines
+            .filter(line => line)
+            .map(line => {
+              const shortPv = line.pv
+                .split(" ")
+                .slice(0, maxMoves)
+                .join(" ");
+
+              if (line.mate !== null) {
+                return `#${line.mate} ${shortPv}`;
+              }
+              
+              if (line.cp !== null) {
+                if (string1.split(" ")[1] === "b" && line.cp !== null) {
+                  line.cp = -line.cp;
+                }
+                return `${line.cp > 0 ? "+" : ""}${(line.cp / 100).toFixed(2)} ${shortPv}`;
+              }
+
+              return null;
+            })
+            .filter(Boolean)
+            .join("\n");
+
+          setDisplayEval(formatted);
+        }
 
         const result2 = await getBestLineFromFen(string2, 18); //gets best line before played move--check if player has mate
         const pv2 = result2.pv;
@@ -958,7 +989,7 @@ function App() {
       </div>
       <button className="back-button" onClick={handleBack}>Back</button>
       <button className={`back2-button ${showBack2 ? "show" : "hide"}`} onClick={() => {setShowBack2(false); setGameResult(storeGameResult);}}>Back to Graph</button>
-      <button className={`evals-graph ${showBack2 ? "show" : "hide"}`}>Evals: {evalHistory.length}</button>
+      <div className={`evals-graph ${showBack2 ? "show" : "hide"}`}>{DisplayEval}</div>
       {/*loading && <p>Loading...</p>*/} 
       </>
       //</DndProvider>
