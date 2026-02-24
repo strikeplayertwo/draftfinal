@@ -3,12 +3,10 @@ import { flushSync } from 'react-dom';
 import { extractFENsFromGames } from '../tools/generate-fens';
 import { Chessboard, PieceDropHandlerArgs, PieceHandlerArgs, SquareHandlerArgs } from "react-chessboard";
 import { Chess, Piece, Move, Square } from 'chess.js';
+import { stockfishEngine } from "./engine/stockfishEngine";
 //import moveAudio from './assets/sounds/move.mp3';
 //import captureAudio from './assets/sounds/capture.mp3';
 import './App.css'
-import { evaluateFen } from "./engine/evaluate";
-import { getBestLineFromFen } from './engine/findBestLine';
-import { getMultiPVFromFen } from './engine/findMultLines';
 //import { K } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js';
 import pgnData from "./assets/twic1326.pgn?raw";
 type Arrow = {
@@ -97,6 +95,7 @@ function App() {
   const [realMove, setRealMove] = useState(1);
   const [showBack2, setShowBack2] = useState(false);
   const [storeGameResult, setStoreGameResult] = useState("");
+  let currentSearchId = 0;
   // create a chess game using a ref to always have access to the latest game state within closures and maintain the game state across renders
 
   //**loop to make sure starting eval is between -30 and 30
@@ -192,6 +191,7 @@ function App() {
   }
 
   async function findBestMove(moveType: number, chessPos: string){
+    //const requestId = ++latestRequestId;
     let string1 = "";
     let string2 = "";
     if (moveType === 1){
@@ -204,45 +204,31 @@ function App() {
     if (movesplayed > -3){
       setLoading(true);
       try {
-        const result = await getBestLineFromFen(string1, 18); //gets best line after played move--check if player blundered mate
-        const pv = result.pv;
+        const result = await getPV(string1, 18, 1, 8); //gets best line after played move--check if player blundered mate
+        //if (requestId !== latestRequestId) return;
+        const pv = result[0]?.pvMoves.join(" ");
         console.log("PV: " + pv);
         const bestMove = pv?.split(" ")?.[0];
         const bestResponse = pv?.split(" ")?.[1];
         const nextResponse = pv?.split(" ")?.[2];
         if (showBack2 === true && moveType === 0){
-          const lines = await getMultiPVFromFen(string1, 18, 3);
-          const maxMoves = 6;
-          const formatted = lines
-            .filter(line => line)
-            .map(line => {
-              const shortPv = line.pv
-                .split(" ")
-                .slice(0, maxMoves)
-                .join(" ");
-
-              if (line.mate !== null) {
-                return `#${line.mate} ${shortPv}`;
-              }
-              
-              if (line.cp !== null) {
-                if (string1.split(" ")[1] === "b" && line.cp !== null) {
-                  line.cp = -line.cp;
-                }
-                return `${line.cp > 0 ? "+" : ""}${(line.cp / 100).toFixed(2)} ${shortPv}`;
-              }
-
-              return null;
-            })
-            .filter(Boolean)
-            .join("\n");
-
-          setDisplayEval(formatted);
+          const lines = await getPV(string1, 18, 3, 4);
+          //if (requestId !== latestRequestId) return;
+          setDisplayEval(
+            lines
+              .map(l => `${l.scoreText} ${l.pvMoves.join(" ")}`)
+              .join("\n")
+          );
         }
 
-        const result2 = await getBestLineFromFen(string2, 18); //gets best line before played move--check if player has mate
-        const pv2 = result2.pv;
+        const result2 = await getPV(string2, 18, 1, 8); //gets best line before played move--check if player has mate
+        //if (requestId !== latestRequestId) return;
+        const pv2 = result2[0]?.pvMoves.join(" ");
         const bestMove2 = pv2?.split(" ")?.[0];
+        console.log("string2" + string2);
+        console.log("result2: " + JSON.stringify(result2));
+        console.log("PV2: " + pv2);
+        console.log("Best Move 2: " + bestMove2);
         setBestLine(bestMove2);
         
         if (oldMove === bestMove2){
@@ -289,8 +275,9 @@ function App() {
             trybool = false;
           }
 
-          const result3 = await getBestLineFromFen(tryFenGame.fen(), 18);
-          const pv3 = result3.pv;
+          const result3 = await getPV(tryFenGame.fen(), 18, 1, 8);
+          //if (requestId !== latestRequestId) return;
+          const pv3 = result3[0]?.pvMoves.join(" ");
           const tryMove = pv3?.split(" ")?.[0];
           
           if(oldMove !== '' && bestMove2 !== ''){
@@ -381,17 +368,41 @@ function App() {
     setChessPosition(smallGame.fen());
   }
 
-  async function newEval(eFen: string, depth: number) {
-    setLoading(true);
+  async function getEval(
+    fen: string,
+    depth: number
+  ): Promise<number> {
     try {
-      const score = await evaluateFen(eFen, depth);
-      return score;
+      const result = await stockfishEngine.evaluate(fen, depth);
+
+      return result.cp; //already normalized (mate handled inside engine)
+
     } catch (err) {
-      console.error(err);
-      return 3.7;
-    } finally {
-      setLoading(false);
+      console.error("Evaluation error:", err);
+      return 0;
     }
+  }
+
+  type DisplayLine = {
+  scoreText: string;
+  pvMoves: string[];
+};
+
+  async function getPV(fen: string, depth: number, multiPV: number, lines: number) {
+    const searchId = ++currentSearchId;
+
+    const result = await stockfishEngine.analyze(fen,
+      depth,
+      multiPV
+    );
+
+    // If another search started while we were analyzing, ignore this result
+    if (searchId !== currentSearchId) {
+      console.log("Search cancelled");
+      return [];
+    }
+
+    return result;
   }
 
   async function stopEffex(damessage: string = "") {
@@ -407,24 +418,24 @@ function App() {
   async function chooseFen(fungusFen: string, fungusMove: string) {
     let ourOldEval = oldEval;
     if (movesplayed === 0){
-      ourOldEval = await newEval(oldFen, 18);
+      ourOldEval = await getEval(oldFen, 18);
       setStartingEval(ourOldEval);
       setEvalHistory(prev => [...prev, ourOldEval]);
       console.log("Starting Eval logged: " + oldFen);
     }
-    const result = await getBestLineFromFen(chessGame.fen(), 18);
-    const mate = result.mate;
-    const ourEval = -1 * await newEval(chessGame.fen(), 18);
+    const result = await getPV(chessGame.fen(), 18, 1, 10);
+    const mate = result[0]?.scoreText.startsWith("M") ? Number(result[0].scoreText.substring(1)) : null;
+    const ourEval = -1 * await getEval(chessGame.fen(), 18);
     let bestEval = ourEval;
     let streaker = currentStreak;
 
-    const bingusSetup = await getBestLineFromFen(fungusFen, 18);
-    const pvb = bingusSetup.pv;
+    const bingusSetup = await getPV(fungusFen, 18, 1, 8);
+    const pvb = bingusSetup[0]?.pvMoves.join(" ");
     const bingusMove = pvb?.split(" ")?.[0];
     if(bingusMove !== fungusMove){ 
       tryFenGame.load(fungusFen);
       tryFenGame.move({from: bingusMove.substring(0, 2), to: bingusMove.substring(2, 4), promotion: 'q'});
-      bestEval = -1 * await newEval(tryFenGame.fen(), 18);
+      bestEval = -1 * await getEval(tryFenGame.fen(), 18);
       console.log(bingusMove + " not equals " + fungusMove);
     }else{
       console.log(bingusMove + " equals " + fungusMove);
@@ -554,7 +565,7 @@ function App() {
     setEvalHistory(prev => [...prev, evalA]);
 
     if (mate !== null){
-      const pv = result.pv;
+      const pv = result[0]?.pvMoves.join(" ");
       for (let i = 0; i < Math.abs(mate) + 5; i++){
         if (chessGame.isGameOver() === false){
           await new Promise(resolve => setTimeout(resolve, 500));
@@ -594,7 +605,7 @@ function App() {
     const MAX_ATTEMPTS = 100;
     while (attempts < MAX_ATTEMPTS) {
       const newFens = fens[Math.floor(Math.random() * fens.length)];
-      const evalB = await newEval(newFens, 10);
+      const evalB = await getEval(newFens, 10);
       //if ((evalA - evalB <= 30) && (evalA - evalB >= -30)){ 
       if (Math.abs(evalA) < 50){
         if ((evalA - evalB <= 30) && (evalA - evalB >= -30)){
@@ -615,7 +626,7 @@ function App() {
             }
           }); 
 
-          const newevalB = await newEval(newFens, 18);
+          const newevalB = await getEval(newFens, 18);
           const difference = evalA - newevalB;
           setOldEval(newevalB);
           setDif(difference);
@@ -624,7 +635,7 @@ function App() {
           return;
         }
       }else if (((evalA < evalB / 0.6) && (evalA > evalB * 0.6) && (evalA >= 0)) || ((evalA > evalB / 0.6) && (evalA < evalB * 0.6) && (evalA <= 0))){
-        const newevalB = await newEval(newFens, 18);
+        const newevalB = await getEval(newFens, 18);
         if (((evalA < newevalB / 0.5) && (evalA > newevalB * 0.5) && (evalA >= 0)) || ((evalA > newevalB / 0.5) && (evalA < newevalB * 0.5) && (evalA <= 0))){
           setBigChessPosition(newFens);
           chessGame.load(newFens);
@@ -663,8 +674,8 @@ function App() {
         console.log("Success 3! " + evalA + " " + evalB + " " + newevalB + " " + difference);
         return;*/
 
-        const result4 = await getBestLineFromFen(newFens, 18);
-        const pvswap = result4.pv;
+        const result4 = await getPV(newFens, 18, 1, 2);
+        const pvswap = result4[0]?.pvMoves.join(" ");
         const swapMove = pvswap?.split(" ")?.[0];
         chessGame.load(newFens);
         try{
@@ -672,7 +683,7 @@ function App() {
         }catch{
           console.log("invalid move in swapFen");
         }
-        const newevalB = await newEval(chessGame.fen(), 18);
+        const newevalB = await getEval(chessGame.fen(), 18);
 
         if (((evalA < newevalB / 0.5) && (evalA > newevalB * 0.5) && (evalA >= 0)) || ((evalA > newevalB / 0.5) && (evalA < newevalB * 0.5) && (evalA <= 0))){
           setBigChessPosition(chessGame.fen());
