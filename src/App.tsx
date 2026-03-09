@@ -7,8 +7,7 @@ import { Chess, Piece, Move, Square } from 'chess.js';
 //import captureAudio from './assets/sounds/capture.mp3';
 import './App.css'
 import { evaluateFen } from "./engine/evaluate";
-import { getBestLineFromFen } from './engine/findBestLine';
-import { getMultiPVFromFen } from './engine/findMultLines';
+import { workerA, workerB, workerC, workerD } from "./engine/stockfishWorker";
 //import { K } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js';
 import pgnData from "./assets/twic1326.pgn?raw";
 type Arrow = {
@@ -78,13 +77,13 @@ function EvalGraph({ evals, bPosHistory, bColors, onJumpToMove }: EvalGraphProps
 }
 
 function App() {
-  const fens = extractFENsFromGames(pgnData,94); //pick random fen and set position to it
+  const fens = extractFENsFromGames(pgnData,47); //pick random fen and set position to it
   const randomFen: number = Math.floor(Math.random() * fens.length);
   //const [newFen, setNewFen] = useState<string>(fens[randomFen]);
   //const [game, setGame] = useState<Chess>(new Chess());
   //const [fen, setFen] = useState('');
   const [gameStatus, setGameStatus] = useState("Moves played: 0");
-  const [movesplayed, setMovesPlayed] = useState(-2);
+  const [movesplayed, setMovesPlayed] = useState(-1);
   const [gameResult, setGameResult] = useState("");
   const [showEffex, setShowEffex] = useState("");
   const [currentStreak, setCurrentStreak] = useState(0);
@@ -137,25 +136,35 @@ function App() {
   const [bestLine, setBestLine] = useState('');
   const [arrows, setArrows] = useState<Arrow[]>([]);
   const [oldEval, setOldEval] = useState(-10000);
-  useEffect(() => {
-    setSquareStyles({});
-    setArrows([]);
-    if(realMove === 1){
-      setPosHistory([chessPosition]);
-      setMovesPlayed(prev => {
-        const next = prev + 1;
-        setGameStatus("Moves played: " + next);
-        return next;
-      });
-    }else{
-      setPosHistory(prev => [...prev, chessPosition]);
-    }
-    console.log(posHistory);
-    smallGame.load(chessPosition);
-    if (realMove !== 2){
-      findBestMove(realMove, chessPosition);
-    }else{
-      let cSquare = "a1";
+  const isAnalyzing = useRef(false);
+
+useEffect(() => {
+  // Prevent re-entrant calls
+  if (isAnalyzing.current) return;
+
+  setSquareStyles({});
+  setArrows([]);
+
+  if (realMove === 1) {
+    setPosHistory([chessPosition]);
+    setMovesPlayed(prev => {
+      const next = prev + 1;
+      setGameStatus("Moves played: " + next);
+      return next;
+    });
+  } else {
+    setPosHistory(prev => [...prev, chessPosition]);
+  }
+
+  smallGame.load(chessPosition);
+
+  if (realMove !== 2) {
+    isAnalyzing.current = true;
+    findBestMove(realMove, chessPosition).finally(() => {
+      isAnalyzing.current = false;
+    });
+  } else {
+    let cSquare = "a1";
       while(smallGame.get(cSquare as Square) === null || smallGame.get(cSquare as Square)?.type !== 'k' || smallGame.get(cSquare as Square)?.color !== smallGame.turn()){
         if(cSquare[1] !== '8'){
           cSquare = cSquare[0] + String.fromCharCode(cSquare.charCodeAt(1) + 1);
@@ -168,8 +177,8 @@ function App() {
           backgroundColor: 'rgba(255,0,0,0.2)'
         }
       }); 
-    }
-  }, [chessPosition]);
+  }
+}, [chessPosition]);
 
   function handleJumpToMove(index: number) {
     const fen = bPosHistory[index];
@@ -191,7 +200,7 @@ function App() {
     setGameResult(finalmessage);
   }
 
-  async function findBestMove(moveType: number, chessPos: string){
+  async function findBestMove(moveType: number, chessPos: string): Promise<void> {
     let string1 = "";
     let string2 = "";
     if (moveType === 1){
@@ -204,14 +213,23 @@ function App() {
     if (movesplayed > -3){
       setLoading(true);
       try {
-        const result = await getBestLineFromFen(string1, 18); //gets best line after played move--check if player blundered mate
+        console.log("findBestMove started", { moveType, string1, string2 });
+
+        const [result, result2] = await Promise.all([
+          workerA.getBestLine(string1, 18).then(r => { console.log("workerA done", r); return r; }),
+          workerB.getBestLine(string2, 18).then(r => { console.log("workerB done", r); return r; }),
+        ]);
+
+        console.log("Promise.all resolved");
+        //const result = await getBestLineFromFen(string1, 18); //gets best line after played move--check if player blundered mate
         const pv = result.pv;
         console.log("PV: " + pv);
         const bestMove = pv?.split(" ")?.[0];
         const bestResponse = pv?.split(" ")?.[1];
         const nextResponse = pv?.split(" ")?.[2];
+        
         if (showBack2 === true && moveType === 0){
-          const lines = await getMultiPVFromFen(string1, 18, 3);
+          const lines = await workerB.getMultiPV(string1, 18, 3);
           const maxMoves = 6;
           const formatted = lines
             .filter(line => line)
@@ -238,9 +256,9 @@ function App() {
             .join("\n");
 
           setDisplayEval(formatted);
-        }
+        };
 
-        const result2 = await getBestLineFromFen(string2, 18); //gets best line before played move--check if player has mate
+        //const result2 = await getBestLineFromFen(string2, 18); //gets best line before played move--check if player has mate
         const pv2 = result2.pv;
         const bestMove2 = pv2?.split(" ")?.[0];
         setBestLine(bestMove2);
@@ -279,20 +297,20 @@ function App() {
         }else{
           console.log("not best move: " + oldMove + " " + bestMove2);
 
-          tryFenGame.load(oldFen);
+          /*tryFenGame.load(oldFen);
           let trybool = true;
           try{
             tryFenGame.move({from: bestMove2.substring(0, 2), to: bestMove2.substring(2, 4), promotion: 'q'});
             tryFenGame.move({from: bestMove.substring(0, 2), to: bestMove.substring(2, 4), promotion: 'q'});
           }catch{
-            console.log("invalid move in tryFenGame");
+            console.log("invalid move in tryFenGame" + tryFenGame.fen());
             trybool = false;
           }
 
-          const result3 = await getBestLineFromFen(tryFenGame.fen(), 18);
+          const result3 = await workerA.getBestLine(tryFenGame.fen(), 18);
           const pv3 = result3.pv;
           const tryMove = pv3?.split(" ")?.[0];
-          
+          */
           if(oldMove !== '' && bestMove2 !== ''){
             setArrows(
             bestMove
@@ -323,13 +341,13 @@ function App() {
                         color: "rgb(0, 128, 0)", // green = best response
                       }]
                     : []),
-                  ...(tryMove && tryMove !== bestResponse && trybool
+                  /*...(tryMove && tryMove !== bestResponse && trybool
                     ? [{
                         startSquare: tryMove.substring(0, 2) as Square,
                         endSquare: tryMove.substring(2, 4) as Square,
                         color: "rgba(13, 0, 129, 1)", // red = best response
                       }]
-                    : []),
+                    : []),*/
                 ]
               : []
             );
@@ -405,31 +423,36 @@ function App() {
   }
 
   async function chooseFen(fungusFen: string, fungusMove: string) {
+    console.log("chooseFen checkpoint 1");
     let ourOldEval = oldEval;
     if (movesplayed === 0){
-      ourOldEval = await newEval(oldFen, 18);
+      ourOldEval = await workerC.getEval(oldFen, 18);
       setStartingEval(ourOldEval);
       setEvalHistory(prev => [...prev, ourOldEval]);
       console.log("Starting Eval logged: " + oldFen);
     }
-    const result = await getBestLineFromFen(chessGame.fen(), 18);
+    console.log("chooseFen checkpoint 2");
+    const [result, bingusSetup] = await Promise.all([
+      workerC.getBestLine(chessGame.fen(), 18).then(r => { console.log("chooseFen workerA done", r); return r; }),
+      workerD.getBestLine(fungusFen, 18).then(r => { console.log("chooseFen workerB done", r); return r; }),
+    ]);
+    console.log("chooseFen checkpoint 3");
     const mate = result.mate;
-    const ourEval = -1 * await newEval(chessGame.fen(), 18);
+    const ourEval = -1 * await workerC.getEval(chessGame.fen(), 18);
     let bestEval = ourEval;
     let streaker = currentStreak;
 
-    const bingusSetup = await getBestLineFromFen(fungusFen, 18);
     const pvb = bingusSetup.pv;
     const bingusMove = pvb?.split(" ")?.[0];
     if(bingusMove !== fungusMove){ 
       tryFenGame.load(fungusFen);
       tryFenGame.move({from: bingusMove.substring(0, 2), to: bingusMove.substring(2, 4), promotion: 'q'});
-      bestEval = -1 * await newEval(tryFenGame.fen(), 18);
+      bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 18);
       console.log(bingusMove + " not equals " + fungusMove);
     }else{
       console.log(bingusMove + " equals " + fungusMove);
     }
-
+    console.log("chooseFen checkpoint 4");
     let doublemessage = false;
     let bonus = 0;
     let disHighestStreak = highestStreak;
@@ -591,10 +614,10 @@ function App() {
     */
 
     let attempts = 0;
-    const MAX_ATTEMPTS = 100;
+    const MAX_ATTEMPTS = 1000;
     while (attempts < MAX_ATTEMPTS) {
       const newFens = fens[Math.floor(Math.random() * fens.length)];
-      const evalB = await newEval(newFens, 10);
+      const evalB = await workerA.getEval(newFens, 10);
       //if ((evalA - evalB <= 30) && (evalA - evalB >= -30)){ 
       if (Math.abs(evalA) < 50){
         if ((evalA - evalB <= 30) && (evalA - evalB >= -30)){
@@ -615,16 +638,16 @@ function App() {
             }
           }); 
 
-          const newevalB = await newEval(newFens, 18);
+          const newevalB = await workerB.getEval(newFens, 18);
           const difference = evalA - newevalB;
           setOldEval(newevalB);
           setDif(difference);
-          console.log("Success 1! " + evalA + " " + evalB + " " + newevalB + " " + difference);
+          console.log("Success 1! Elo Within 30 " + evalA + " " + evalB + " " + newevalB + " " + difference);
           setBPosHistory(prev => [...prev, newFens]);
           return;
         }
       }else if (((evalA < evalB / 0.6) && (evalA > evalB * 0.6) && (evalA >= 0)) || ((evalA > evalB / 0.6) && (evalA < evalB * 0.6) && (evalA <= 0))){
-        const newevalB = await newEval(newFens, 18);
+        const newevalB = await workerB.getEval(newFens, 18);
         if (((evalA < newevalB / 0.5) && (evalA > newevalB * 0.5) && (evalA >= 0)) || ((evalA > newevalB / 0.5) && (evalA < newevalB * 0.5) && (evalA <= 0))){
           setBigChessPosition(newFens);
           chessGame.load(newFens);
@@ -646,13 +669,13 @@ function App() {
           setOldEval(newevalB);
           const difference = evalA - newevalB;
           setDif(difference);
-          console.log("Success 2! " + evalA + " " + evalB + " " + newevalB + " " + difference);
+          console.log("Success 2! Elo within division range" + evalA + " " + evalB + " " + newevalB + " " + difference);
           setBPosHistory(prev => [...prev, newFens]);
           return;
         }else{
           console.log("Inaccuracy error");
         }
-      }else if (((Math.abs(evalA) < Math.abs(evalB) / 0.6) && (Math.abs(evalA) > Math.abs(evalB) * 0.6)) || ((Math.abs(evalA) > Math.abs(evalB) / 0.6) && (Math.abs(evalA) < Math.abs(evalB) * 0.6))){
+      }else if (((Math.abs(evalA) < Math.abs(evalB) / 0.7) && (Math.abs(evalA) > Math.abs(evalB) * 0.7)) || ((Math.abs(evalA) > Math.abs(evalB) / 0.7) && (Math.abs(evalA) < Math.abs(evalB) * 0.7))){
         /*const switchedFen = newFens.split(" ")[0] + " " + (newFens.split(" ")[1] === "w" ? "b" : "w") + " " + newFens.split(" ").slice(2).join(" ");
         console.log("eval switch: " + newFens + " " + switchedFen);
         setBigChessPosition(switchedFen);
@@ -663,7 +686,7 @@ function App() {
         console.log("Success 3! " + evalA + " " + evalB + " " + newevalB + " " + difference);
         return;*/
 
-        const result4 = await getBestLineFromFen(newFens, 18);
+        const result4 = await workerA.getBestLine(newFens, 18);
         const pvswap = result4.pv;
         const swapMove = pvswap?.split(" ")?.[0];
         chessGame.load(newFens);
@@ -672,7 +695,7 @@ function App() {
         }catch{
           console.log("invalid move in swapFen");
         }
-        const newevalB = await newEval(chessGame.fen(), 18);
+        const newevalB = await workerB.getEval(chessGame.fen(), 18);
 
         if (((evalA < newevalB / 0.5) && (evalA > newevalB * 0.5) && (evalA >= 0)) || ((evalA > newevalB / 0.5) && (evalA < newevalB * 0.5) && (evalA <= 0))){
           setBigChessPosition(chessGame.fen());
@@ -694,7 +717,7 @@ function App() {
           setOldEval(newevalB);
           const difference = evalA - newevalB;
           setDif(difference);
-          console.log("Success 3! " + evalA + " " + evalB + " " + newevalB + " " + difference);
+          console.log("Success 3! Elo swapped" + evalA + " " + evalB + " " + newevalB + " " + difference);
           setBPosHistory(prev => [...prev, chessGame.fen()]);
           return;
         }else{
