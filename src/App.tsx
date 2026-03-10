@@ -524,8 +524,10 @@ useEffect(() => {
       console.log("Streak ended: " + ourEval + " " + bestEval);
       streaker = 0;
     }
-
-    const thisaccuracy = Math.round((100 * Math.exp((ourEval - bestEval) / 200)) * 10);
+    let thisaccuracy = Math.round((100 * Math.exp((ourEval - bestEval) / 200)) * 10);
+    if(thisaccuracy > 1100){
+      thisaccuracy = 1100;
+    }
     if (thisaccuracy > 1000){
       setBColors(prev => [...prev, "rgb(0, 251, 255)"]);
     }else if (thisaccuracy === 1000){
