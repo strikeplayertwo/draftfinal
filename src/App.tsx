@@ -10,6 +10,11 @@ import { evaluateFen } from "./engine/evaluate";
 import { workerA, workerB, workerC, workerD } from "./engine/stockfishWorker";
 //import { K } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js';
 import pgnData from "./assets/twic1326.pgn?raw";
+//import  supabase from './utils/supabase'
+import { createClient, User } from "@supabase/supabase-js";
+
+const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
+
 type Arrow = {
   startSquare: Square;
   endSquare: Square;
@@ -21,6 +26,13 @@ type EvalGraphProps = {
   bColors: string[];
   onJumpToMove: (index: number) => void;
 };
+type GameResult = {
+  id: string;
+  user_id: string;
+  accuracy: number;
+  created_at: string;
+};
+
 function EvalGraph({ evals, bPosHistory, bColors, onJumpToMove }: EvalGraphProps) {
   if (evals.length < 2) return null;
 
@@ -118,6 +130,61 @@ function App() {
   const tryFenRef = useRef(new Chess(oldFen));
   const tryFenGame = tryFenRef.current;
   const [accuracy, setAccuracy] = useState(100);
+  const [instruments, setInstruments] = useState([]);
+
+  const [user, setUser] = useState<User | null>(null);
+ 
+  const [gameHistory, setGameHistory] = useState<GameResult[]>([]);
+
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+
+  useEffect(() => {
+    if (!user) return; // don't fetch if not logged in
+
+    async function fetchGameHistory() {
+      if (!user) return;
+      const { data } = await supabase
+        .from("game_results")
+        .select()
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      if (data) setGameHistory(data);
+    }
+
+    fetchGameHistory();
+  }, [user]);
+
+
+    useEffect(() => {
+    // Get current session on load
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null);
+    });
+
+    // Listen for login/logout
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  async function signInWithEmail(email: string, password: string) {
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) console.error("Sign in error:", error.message);
+  }
+
+  async function signUpWithEmail(email: string, password: string) {
+    const { error } = await supabase.auth.signUp({ email, password });
+    if (error) console.error("Sign up error:", error.message);
+  }
+
+  async function signOut() {
+    await supabase.auth.signOut();
+  }
+
+
   let cSquare = "a1";
   while(chessGame.get(cSquare as Square) === null || chessGame.get(cSquare as Square)?.type !== 'k' || chessGame.get(cSquare as Square)?.color !== chessGame.turn()){
     if(cSquare[1] !== '8'){
@@ -196,8 +263,17 @@ useEffect(() => {
     setPosHistory(prev => prev.slice(0, index + 1));
   }
 
-  async function triggerEnd(finalmessage: string){
+  async function triggerEnd(finalmessage: string, accuracy: number){
     setGameResult(finalmessage);
+    await saveGameResult(accuracy);
+  }
+
+  async function saveGameResult(accuracy: number) {
+    if (!user) return; // not logged in, skip
+    const { error } = await supabase
+      .from("game_results")
+      .insert({ user_id: user.id, accuracy });
+    if (error) console.error("Failed to save game result:", error);
   }
 
   async function findBestMove(moveType: number, chessPos: string): Promise<void> {
@@ -592,9 +668,9 @@ useEffect(() => {
         }
       }
       if (evalA > 0){
-        triggerEnd("You win! Final result: " + (mate > 0 ? "You mate in " + mate : "You mate in " + (-mate)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter) + ", Starting Eval: " + startingEval);
+        triggerEnd("You win! Final result: " + (mate > 0 ? "You mate in " + mate : "You mate in " + (-mate)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter) + ", Starting Eval: " + startingEval, displayAccuracy/10);
       }else{
-        triggerEnd("Game over! Final result: " + (mate > 0 ? "You are mated in " + mate : "You are mated in " + (-mate)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval);
+        triggerEnd("Game over! Final result: " + (mate > 0 ? "You are mated in " + mate : "You are mated in " + (-mate)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval, displayAccuracy/10);
       }
       return;
     }
@@ -616,7 +692,7 @@ useEffect(() => {
     */
 
     let attempts = 0;
-    const MAX_ATTEMPTS = 1000;
+    const MAX_ATTEMPTS = 400;
     while (attempts < MAX_ATTEMPTS) {
       const newFens = fens[Math.floor(Math.random() * fens.length)];
       const evalB = await workerA.getEval(newFens, 10);
@@ -731,9 +807,9 @@ useEffect(() => {
     }
     console.log("Failure");
     if(evalA > 0){
-      triggerEnd("You win! Final stats: Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval + ", Final Eval: " + evalA);
+      triggerEnd("You win! Final stats: Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval + ", Final Eval: " + evalA, displayAccuracy/10);
     }else{
-      triggerEnd("Game over! Final stats: Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval + ", Final Eval: " + evalA);
+      triggerEnd("Game over! Final stats: Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval + ", Final Eval: " + evalA, displayAccuracy/10);
     }
   }
 
@@ -964,11 +1040,32 @@ useEffect(() => {
   };
 
   return (
-    //<DndProvider backend={HTML5Backend}>
     <>
-      {/*<button onClick={handleEvaluate}>Evaluate</button>
-      {loading && <p>Evaluating...</p>} */}
-
+      <div className="auth-bar">
+        {user ? (
+          <>
+            <span>{user.email}</span>
+            <button onClick={signOut}>Sign out</button>
+          </>
+        ) : (
+          <div>
+            <input
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+            <input
+              type="password"
+              placeholder="Password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+            <button onClick={() => signInWithEmail(email, password)}>Sign in</button>
+            <button onClick={() => signUpWithEmail(email, password)}>Sign up</button>
+          </div>
+        )}
+      </div>
       <div className="statusText">{gameStatus}</div>
       <div className="statusText">{streakMsg}</div>
       <div className="game-container">
@@ -1008,6 +1105,14 @@ useEffect(() => {
         <div className="result-box">
           <h2>{gameResult}</h2>
           <EvalGraph evals={evalHistory} bPosHistory={bPosHistory} bColors={bColors} onJumpToMove={handleJumpToMove}/>
+          <h3>Past Games</h3>
+          <ul>
+            {gameHistory.map((game) => (
+              <li key={game.id}>
+                {new Date(game.created_at).toLocaleDateString()} — Accuracy: {game.accuracy.toFixed(1)}%
+              </li>
+            ))}
+          </ul>
         </div>
           {/* result UI */}
         </div>
@@ -1017,6 +1122,7 @@ useEffect(() => {
       <div className={`evals-graph ${showBack2 ? "show" : "hide"}`}>{DisplayEval}</div>
       {/*loading && <p>Loading...</p>*/} 
       </>
+      
       //</DndProvider>
   ); 
 }
