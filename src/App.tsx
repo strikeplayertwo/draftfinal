@@ -1,16 +1,13 @@
-import { useEffect, useState, useRef, use } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { flushSync } from 'react-dom';
 import { extractFENsFromGames } from '../tools/generate-fens';
-import { Chessboard, PieceDropHandlerArgs, PieceHandlerArgs, SquareHandlerArgs } from "react-chessboard";
-import { Chess, Piece, Move, Square } from 'chess.js';
+import { Chessboard, PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
+import { Chess, Square } from 'chess.js';
 //import moveAudio from './assets/sounds/move.mp3';
 //import captureAudio from './assets/sounds/capture.mp3';
 import './App.css'
-import { evaluateFen } from "./engine/evaluate";
 import { workerA, workerB, workerC, workerD } from "./engine/stockfishWorker";
-//import { K } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js';
 import pgnData from "./assets/twic1326.pgn?raw";
-//import  supabase from './utils/supabase'
 import { createClient, User } from "@supabase/supabase-js";
 
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
@@ -91,9 +88,6 @@ function EvalGraph({ evals, bPosHistory, bColors, onJumpToMove }: EvalGraphProps
 function App() {
   const fens = extractFENsFromGames(pgnData,47); //pick random fen and set position to it
   const randomFen: number = Math.floor(Math.random() * fens.length);
-  //const [newFen, setNewFen] = useState<string>(fens[randomFen]);
-  //const [game, setGame] = useState<Chess>(new Chess());
-  //const [fen, setFen] = useState('');
   const [gameStatus, setGameStatus] = useState("Moves played: 0");
   const [movesplayed, setMovesPlayed] = useState(-1);
   const [gameResult, setGameResult] = useState("");
@@ -105,13 +99,10 @@ function App() {
   const [brilcounter, setbrilcounter] = useState(0);
   const [evalHistory, setEvalHistory] = useState<number[]>([]);
   const [posHistory, setPosHistory] = useState<string[]>([]);
-  const [realMove, setRealMove] = useState(1);
+  const [isAnalysisMove, setisAnalysisMove] = useState("real");
   const [showBack2, setShowBack2] = useState(false);
   const [storeGameResult, setStoreGameResult] = useState("");
   // create a chess game using a ref to always have access to the latest game state within closures and maintain the game state across renders
-
-  //**loop to make sure starting eval is between -30 and 30
-
   const [DisplayEval, setDisplayEval] = useState("");
   const chessGameRef = useRef(new Chess(fens[randomFen]));
   const chessGame = chessGameRef.current;
@@ -130,12 +121,10 @@ function App() {
   const tryFenRef = useRef(new Chess(oldFen));
   const tryFenGame = tryFenRef.current;
   const [accuracy, setAccuracy] = useState(100);
-  const [instruments, setInstruments] = useState([]);
 
+  //supabase stuff
   const [user, setUser] = useState<User | null>(null);
- 
   const [gameHistory, setGameHistory] = useState<GameResult[]>([]);
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
@@ -155,8 +144,7 @@ function App() {
     fetchGameHistory();
   }, [user]);
 
-
-    useEffect(() => {
+  useEffect(() => {
     // Get current session on load
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
@@ -184,82 +172,77 @@ function App() {
     await supabase.auth.signOut();
   }
 
-
-  let cSquare = "a1";
-  while(chessGame.get(cSquare as Square) === null || chessGame.get(cSquare as Square)?.type !== 'k' || chessGame.get(cSquare as Square)?.color !== chessGame.turn()){
-    if(cSquare[1] !== '8'){
-      cSquare = cSquare[0] + String.fromCharCode(cSquare.charCodeAt(1) + 1);
-    }else{
-      cSquare = String.fromCharCode(cSquare.charCodeAt(0) + 1) + '1';
-    }
-  };
-  const [squareStyles, setSquareStyles] = useState<Record<string, React.CSSProperties>>({});
-  const [optionSquares, setOptionSquares] = useState<Record<string, React.CSSProperties>>({
-    [cSquare]: {
-      backgroundColor: 'rgba(255,0,0,0.2)'
-    }
-  });
-  const [loading, setLoading] = useState(false);
-  const [bestLine, setBestLine] = useState('');
-  const [arrows, setArrows] = useState<Arrow[]>([]);
-  const [oldEval, setOldEval] = useState(-10000);
-  const isAnalyzing = useRef(false);
-
-useEffect(() => {
-  // Prevent re-entrant calls
-  if (isAnalyzing.current) return;
-
-  setSquareStyles({});
-  setArrows([]);
-
-  if (realMove === 1) {
-    setPosHistory([chessPosition]);
-    setMovesPlayed(prev => {
-      const next = prev + 1;
-      setGameStatus("Moves played: " + next);
-      return next;
-    });
-  } else {
-    setPosHistory(prev => [...prev, chessPosition]);
-  }
-
-  smallGame.load(chessPosition);
-
-  if (realMove !== 2) {
-    isAnalyzing.current = true;
-    findBestMove(realMove, chessPosition).finally(() => {
-      isAnalyzing.current = false;
-    });
-  } else {
+  function highlightKingSquare(chessInstance: Chess, type: string) {
     let cSquare = "a1";
-      while(smallGame.get(cSquare as Square) === null || smallGame.get(cSquare as Square)?.type !== 'k' || smallGame.get(cSquare as Square)?.color !== smallGame.turn()){
-        if(cSquare[1] !== '8'){
-          cSquare = cSquare[0] + String.fromCharCode(cSquare.charCodeAt(1) + 1);
-        }else{
-          cSquare = String.fromCharCode(cSquare.charCodeAt(0) + 1) + '1';
-        }
-      };
+    while(chessInstance.get(cSquare as Square) === null || chessInstance.get(cSquare as Square)?.type !== 'k' || chessInstance.get(cSquare as Square)?.color !== chessInstance.turn()){
+      if(cSquare[1] !== '8'){
+        cSquare = cSquare[0] + String.fromCharCode(cSquare.charCodeAt(1) + 1);
+      }else{
+        cSquare = String.fromCharCode(cSquare.charCodeAt(0) + 1) + '1';
+      }
+    };
+    if(type === "small"){
       setSquareStyles({
         [cSquare]: {
           backgroundColor: 'rgba(255,0,0,0.2)'
         }
       }); 
+    }else if(type === "big"){
+      setOptionSquares({
+        [cSquare]: {
+          backgroundColor: 'rgba(255,0,0,0.2)'
+        }
+      });
+    }
   }
-}, [chessPosition]);
+
+  const [squareStyles, setSquareStyles] = useState<Record<string, React.CSSProperties>>({});
+  const [optionSquares, setOptionSquares] = useState<Record<string, React.CSSProperties>>({});
+  const [arrows, setArrows] = useState<Arrow[]>([]);
+  const [oldEval, setOldEval] = useState(-10000);
+  const isAnalyzing = useRef(false);
+
+  useEffect(() => {
+    // Prevent re-entrant calls
+    if (isAnalyzing.current) return;
+
+    setSquareStyles({});
+    setArrows([]);
+
+    if (isAnalysisMove === "real") {
+      setPosHistory([chessPosition]);
+      setMovesPlayed(prev => {
+        const next = prev + 1;
+        return next;
+      });
+      setGameStatus("Moves played: " + (movesplayed + 1));
+    } else {
+      setPosHistory(prev => [...prev, chessPosition]);
+    }
+
+    smallGame.load(chessPosition);
+
+    if (isAnalysisMove !== "endAnalysis") {
+      isAnalyzing.current = true;
+      findBestMove(isAnalysisMove, chessPosition).finally(() => {
+        isAnalyzing.current = false;
+      });
+    } else {
+      highlightKingSquare(smallGame, "small");
+    }
+  }, [chessPosition]);
 
   function handleJumpToMove(index: number) {
     const fen = bPosHistory[index];
     if (!fen) return;
     
-    setRealMove(2);
+    setisAnalysisMove("endAnalysis");
     setArrows([]);
     setShowBack2(true);
     setStoreGameResult(gameResult);
     setGameResult("");
     smallGame.load(fen);
     setChessPosition(fen);
-
-    // Optional: trim history if jumping backward
     setPosHistory(prev => prev.slice(0, index + 1));
   }
 
@@ -276,36 +259,32 @@ useEffect(() => {
     if (error) console.error("Failed to save game result:", error);
   }
 
-  async function findBestMove(moveType: number, chessPos: string): Promise<void> {
-    let string1 = "";
-    let string2 = "";
-    if (moveType === 1){
-      string1 = chessGame.fen();
-      string2 = oldFen;
+  async function findBestMove(moveType: string, chessPos: string): Promise<void> {
+    let fenAfterMove = "";
+    let fenBeforeMove = "";
+    if (moveType === "real"){
+      fenAfterMove = chessGame.fen();
+      fenBeforeMove = oldFen;
     }else{
-      string1 = chessPos;
-      string2 = posHistory[posHistory.length - 1];
+      fenAfterMove = chessPos;
+      fenBeforeMove = posHistory[posHistory.length - 1];
     }
     if (movesplayed > -3){
-      setLoading(true);
       try {
-        console.log("findBestMove started", { moveType, string1, string2 });
-
+        console.log("findBestMove started", { moveType, fenAfterMove, fenBeforeMove });
         const [result, result2] = await Promise.all([
-          workerA.getBestLine(string1, 18).then(r => { console.log("workerA done", r); return r; }),
-          workerB.getBestLine(string2, 18).then(r => { console.log("workerB done", r); return r; }),
+          workerA.getBestLine(fenAfterMove, 18).then(r => { console.log("workerA done", r); return r; }),
+          workerB.getBestLine(fenBeforeMove, 18).then(r => { console.log("workerB done", r); return r; }),
         ]);
-
         console.log("Promise.all resolved");
-        //const result = await getBestLineFromFen(string1, 18); //gets best line after played move--check if player blundered mate
         const pv = result.pv;
         console.log("PV: " + pv);
         const bestMove = pv?.split(" ")?.[0];
         const bestResponse = pv?.split(" ")?.[1];
         const nextResponse = pv?.split(" ")?.[2];
         
-        if (showBack2 === true && moveType === 0){
-          const lines = await workerB.getMultiPV(string1, 18, 3);
+        if (showBack2 === true && moveType === "analysis"){
+          const lines = await workerB.getMultiPV(fenAfterMove, 18, 3);
           const maxMoves = 6;
           const formatted = lines
             .filter(line => line)
@@ -320,7 +299,7 @@ useEffect(() => {
               }
               
               if (line.cp !== null) {
-                if (string1.split(" ")[1] === "b" && line.cp !== null) {
+                if (fenAfterMove.split(" ")[1] === "b" && line.cp !== null) {
                   line.cp = -line.cp;
                 }
                 return `${line.cp > 0 ? "+" : ""}${(line.cp / 100).toFixed(2)} ${shortPv}`;
@@ -334,10 +313,8 @@ useEffect(() => {
           setDisplayEval(formatted);
         };
 
-        //const result2 = await getBestLineFromFen(string2, 18); //gets best line before played move--check if player has mate
         const pv2 = result2.pv;
         const bestMove2 = pv2?.split(" ")?.[0];
-        setBestLine(bestMove2);
         
         if (oldMove === bestMove2){
           setArrows(
@@ -372,21 +349,6 @@ useEffect(() => {
           });
         }else{
           console.log("not best move: " + oldMove + " " + bestMove2);
-
-          /*tryFenGame.load(oldFen);
-          let trybool = true;
-          try{
-            tryFenGame.move({from: bestMove2.substring(0, 2), to: bestMove2.substring(2, 4), promotion: 'q'});
-            tryFenGame.move({from: bestMove.substring(0, 2), to: bestMove.substring(2, 4), promotion: 'q'});
-          }catch{
-            console.log("invalid move in tryFenGame" + tryFenGame.fen());
-            trybool = false;
-          }
-
-          const result3 = await workerA.getBestLine(tryFenGame.fen(), 18);
-          const pv3 = result3.pv;
-          const tryMove = pv3?.split(" ")?.[0];
-          */
           if(oldMove !== '' && bestMove2 !== ''){
             setArrows(
             bestMove
@@ -417,13 +379,6 @@ useEffect(() => {
                         color: "rgb(0, 128, 0)", // green = best response
                       }]
                     : []),
-                  /*...(tryMove && tryMove !== bestResponse && trybool
-                    ? [{
-                        startSquare: tryMove.substring(0, 2) as Square,
-                        endSquare: tryMove.substring(2, 4) as Square,
-                        color: "rgba(13, 0, 129, 1)", // red = best response
-                      }]
-                    : []),*/
                 ]
               : []
             );
@@ -449,23 +404,14 @@ useEffect(() => {
             });
           }
         }
-        
-        //console.log("Best line: " + bestMove);
-        /*setArrows(bestMove ? [{
-          startSquare: bestMove.substring(0, 2) as Square,
-          endSquare: bestMove.substring(2, 4) as Square,
-          color: 'rgb(0, 128, 0)'
-        }] : []);*/
       } catch (err) {
         console.error(err);
-      } finally {
-        setLoading(false);
       }
     }
   }
 
   async function handleBack() {
-    setRealMove(2);
+    setisAnalysisMove("endAnalysis");
     if(posHistory.length > 1){
       smallGame.load(posHistory[posHistory.length - 2]);
       setPosHistory(prev => prev.slice(0, -1));
@@ -473,19 +419,6 @@ useEffect(() => {
       smallGame.load(oldFen);
     }
     setChessPosition(smallGame.fen());
-  }
-
-  async function newEval(eFen: string, depth: number) {
-    setLoading(true);
-    try {
-      const score = await evaluateFen(eFen, depth);
-      return score;
-    } catch (err) {
-      console.error(err);
-      return 3.7;
-    } finally {
-      setLoading(false);
-    }
   }
 
   async function stopEffex(damessage: string = "") {
@@ -498,8 +431,7 @@ useEffect(() => {
     setShowEffex("");
   }
 
-  async function chooseFen(fungusFen: string, fungusMove: string) {
-    console.log("chooseFen checkpoint 1");
+  async function chooseFen(fenBeforeMove: string, playerMove: string) {
     let ourOldEval = oldEval;
     if (movesplayed === 0){
       ourOldEval = await workerC.getEval(oldFen, 18);
@@ -507,28 +439,26 @@ useEffect(() => {
       setEvalHistory(prev => [...prev, ourOldEval]);
       console.log("Starting Eval logged: " + oldFen);
     }
-    console.log("chooseFen checkpoint 2");
-    const [result, bingusSetup] = await Promise.all([
+    const [result, stockfishSetup] = await Promise.all([
       workerC.getBestLine(chessGame.fen(), 18).then(r => { console.log("chooseFen workerA done", r); return r; }),
-      workerD.getBestLine(fungusFen, 18).then(r => { console.log("chooseFen workerB done", r); return r; }),
+      workerD.getBestLine(fenBeforeMove, 18).then(r => { console.log("chooseFen workerB done", r); return r; }),
     ]);
-    console.log("chooseFen checkpoint 3");
     const mate = result.mate;
     const ourEval = -1 * await workerC.getEval(chessGame.fen(), 18);
     let bestEval = ourEval;
     let streaker = currentStreak;
 
-    const pvb = bingusSetup.pv;
-    const bingusMove = pvb?.split(" ")?.[0];
-    if(bingusMove !== fungusMove){ 
-      tryFenGame.load(fungusFen);
-      tryFenGame.move({from: bingusMove.substring(0, 2), to: bingusMove.substring(2, 4), promotion: 'q'});
+    const pvb = stockfishSetup.pv;
+    const stockfishMove = pvb?.split(" ")?.[0];
+    if(stockfishMove !== playerMove){
+      
+      tryFenGame.load(fenBeforeMove);
+      tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
       bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 18);
-      console.log(bingusMove + " not equals " + fungusMove);
+      console.log(stockfishMove + " not equals " + playerMove);
     }else{
-      console.log(bingusMove + " equals " + fungusMove);
+      console.log(stockfishMove + " equals " + playerMove);
     }
-    console.log("chooseFen checkpoint 4");
     let doublemessage = false;
     let bonus = 0;
     let disHighestStreak = highestStreak;
@@ -619,7 +549,7 @@ useEffect(() => {
     if (movesplayed !== 0){
       setAccuracy(displayAccuracy);
     }else{
-      setAccuracy(thisaccuracy);//could be error if movesplayed is only 1
+      setAccuracy(thisaccuracy);
     }
     console.log("Accuracy " + accuracy + " this: " + thisaccuracy + " Moves: " + movesplayed);
 
@@ -674,22 +604,6 @@ useEffect(() => {
       }
       return;
     }
-    /*
-    if (ourEval - oldEval > -50){
-      console.log("Streak continued: " + ourEval + " " + oldEval);
-      setCurrentStreak(prev => {
-        const next = prev + 1;
-        setStreakMsg("Current Streak: " + next);
-        return next;
-      });
-    }else{
-      if(oldEval !== -10000){
-        setCurrentStreak(0);
-        setStreakMsg("Current Streak: 0");
-        console.log("Streak ended: " + ourEval + " " + oldEval);
-      }
-    }
-    */
 
     let attempts = 0;
     const MAX_ATTEMPTS = 400;
@@ -701,21 +615,7 @@ useEffect(() => {
         if ((evalA - evalB <= 30) && (evalA - evalB >= -30)){
           setBigChessPosition(newFens);
           chessGame.load(newFens);
-
-          let cSquare = "a1";
-          while(chessGame.get(cSquare as Square) === null || chessGame.get(cSquare as Square)?.type !== 'k' || chessGame.get(cSquare as Square)?.color !== chessGame.turn()){
-            if(cSquare[1] !== '8'){
-              cSquare = cSquare[0] + String.fromCharCode(cSquare.charCodeAt(1) + 1);
-            }else{
-              cSquare = String.fromCharCode(cSquare.charCodeAt(0) + 1) + '1';
-            }
-          };
-          setOptionSquares({
-            [cSquare]: {
-              backgroundColor: 'rgba(255,0,0,0.2)'
-            }
-          }); 
-
+          highlightKingSquare(chessGame, "big");
           const newevalB = await workerB.getEval(newFens, 18);
           const difference = evalA - newevalB;
           setOldEval(newevalB);
@@ -729,21 +629,7 @@ useEffect(() => {
         if (((evalA < newevalB / 0.5) && (evalA > newevalB * 0.5) && (evalA >= 0)) || ((evalA > newevalB / 0.5) && (evalA < newevalB * 0.5) && (evalA <= 0))){
           setBigChessPosition(newFens);
           chessGame.load(newFens);
-
-          let cSquare = "a1";
-          while(chessGame.get(cSquare as Square) === null || chessGame.get(cSquare as Square)?.type !== 'k' || chessGame.get(cSquare as Square)?.color !== chessGame.turn()){
-            if(cSquare[1] !== '8'){
-              cSquare = cSquare[0] + String.fromCharCode(cSquare.charCodeAt(1) + 1);
-            }else{
-              cSquare = String.fromCharCode(cSquare.charCodeAt(0) + 1) + '1';
-            }
-          };
-          setOptionSquares({
-            [cSquare]: {
-              backgroundColor: 'rgba(255,0,0,0.2)'
-            }
-          });
-
+          highlightKingSquare(chessGame, "big");
           setOldEval(newevalB);
           const difference = evalA - newevalB;
           setDif(difference);
@@ -754,16 +640,6 @@ useEffect(() => {
           console.log("Inaccuracy error");
         }
       }else if (((Math.abs(evalA) < Math.abs(evalB) / 0.7) && (Math.abs(evalA) > Math.abs(evalB) * 0.7)) || ((Math.abs(evalA) > Math.abs(evalB) / 0.7) && (Math.abs(evalA) < Math.abs(evalB) * 0.7))){
-        /*const switchedFen = newFens.split(" ")[0] + " " + (newFens.split(" ")[1] === "w" ? "b" : "w") + " " + newFens.split(" ").slice(2).join(" ");
-        console.log("eval switch: " + newFens + " " + switchedFen);
-        setBigChessPosition(switchedFen);
-        chessGame.load(switchedFen)
-        const newevalB = await newEval(switchedFen, 18);
-        const difference = evalA - newevalB;
-        setDif(difference);
-        console.log("Success 3! " + evalA + " " + evalB + " " + newevalB + " " + difference);
-        return;*/
-
         const result4 = await workerA.getBestLine(newFens, 18);
         const pvswap = result4.pv;
         const swapMove = pvswap?.split(" ")?.[0];
@@ -777,21 +653,7 @@ useEffect(() => {
 
         if (((evalA < newevalB / 0.5) && (evalA > newevalB * 0.5) && (evalA >= 0)) || ((evalA > newevalB / 0.5) && (evalA < newevalB * 0.5) && (evalA <= 0))){
           setBigChessPosition(chessGame.fen());
-
-          let cSquare = "a1";
-          while(chessGame.get(cSquare as Square) === null || chessGame.get(cSquare as Square)?.type !== 'k' || chessGame.get(cSquare as Square)?.color !== chessGame.turn()){
-            if(cSquare[1] !== '8'){
-              cSquare = cSquare[0] + String.fromCharCode(cSquare.charCodeAt(1) + 1);
-            }else{
-              cSquare = String.fromCharCode(cSquare.charCodeAt(0) + 1) + '1';
-            }
-          };
-          setOptionSquares({
-            [cSquare]: {
-              backgroundColor: 'rgba(255,0,0,0.2)'
-            }
-          });
-
+          highlightKingSquare(chessGame, "big");
           setOldEval(newevalB);
           const difference = evalA - newevalB;
           setDif(difference);
@@ -813,24 +675,15 @@ useEffect(() => {
     }
   }
 
-  /*function runEval() {
-    //const chess = new Chess();
-    const score = evaluateFen(chessGame.fen());
-    console.log("Evaluation:", score);
-  }*/
-
-
   function getMoveOptions(square: Square, chess = chessGame) {
     const moves = chess.moves({
       square,
       verbose: true
     });
-
     if (moves.length === 0) {
       setOptionSquares({});
       return false;
     }
-
     const newSquares: Record<string, React.CSSProperties> = {};
 
     for (const move of moves) {
@@ -874,7 +727,6 @@ useEffect(() => {
       return;
     }
     try {
-      //const beforeFen = chessGame.fen();
       const sendthatfen = chessGame.fen();
       setOldFen(chessGame.fen());
       chessGame.move({
@@ -883,13 +735,12 @@ useEffect(() => {
         promotion: 'q'
       });
       setOldMove(moveFrom + square);
-      setRealMove(1);
+      setisAnalysisMove("real");
       setChessPosition(chessGame.fen()); 
       chooseFen(sendthatfen, moveFrom + square);
 
     }catch {
       const hasMoveOptions = getMoveOptions(square as Square);
-
       if (hasMoveOptions){
         setMoveFrom(square);
       }
@@ -912,7 +763,6 @@ useEffect(() => {
     });
 
     setMoveFrom('');
-    //find pos of king
     
     setOptionSquares({});
   }
@@ -935,7 +785,7 @@ useEffect(() => {
         });
 
         // update the position state upon successful move to trigger a re-render of the chessboard
-        setRealMove(1);
+        setisAnalysisMove("real");
         setChessPosition(chessGame.fen());
 
         setSquareStyles(prev => {
@@ -964,9 +814,7 @@ useEffect(() => {
     square,
     piece
   }: SquareHandlerArgs){
-    console.log("1");
     if (!moveFrom && piece){
-      console.log("2");
       const hasMoveOptions = getMoveOptions(square as Square, smallGame);
       if (hasMoveOptions){
         setMoveFrom(square);
@@ -979,7 +827,6 @@ useEffect(() => {
     });
     const foundMove = moves.find(m => m.from === moveFrom && m.to === square);
     if (!foundMove) {
-      console.log("3");
       console.log(smallGame);
       console.log(moves);
       console.log(moveFrom);
@@ -993,13 +840,10 @@ useEffect(() => {
         to: square,
         promotion: 'q'
       });
-      console.log("4");
-      setRealMove(0);
+      setisAnalysisMove("analysis");
       setChessPosition(smallGame.fen());
-      console.log("5"); 
     }catch (e) {
       console.log(e);
-      console.log("6");
       const hasMoveOptions = getMoveOptions(square as Square, smallGame);
       if (hasMoveOptions){
         setMoveFrom(square);
@@ -1120,10 +964,7 @@ useEffect(() => {
       <button className="back-button" onClick={handleBack}>Back</button>
       <button className={`back2-button ${showBack2 ? "show" : "hide"}`} onClick={() => {setShowBack2(false); setGameResult(storeGameResult);}}>Back to Graph</button>
       <div className={`evals-graph ${showBack2 ? "show" : "hide"}`}>{DisplayEval}</div>
-      {/*loading && <p>Loading...</p>*/} 
       </>
-      
-      //</DndProvider>
   ); 
 }
 export default App;
