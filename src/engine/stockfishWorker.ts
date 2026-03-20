@@ -47,9 +47,18 @@ function getWorker(): Worker {
     if (text.startsWith("bestmove")) {
       const resolve = currentResolve;
       currentResolve = null;
-      const results = currentResults;
+      const results = { ...currentResults };
       currentResults = {};
-      resolve?.(results[1]); // for single-PV callers; multiPV callers get all via separate helper
+      
+      // Guard against undefined result
+      if (!results[1]) {
+        console.warn("Stockfish returned no result for position");
+        resolve?.({ pv: "", cp: 0, mate: null });
+        processNext();
+        return;
+      }
+      
+      resolve?.(results[1]);
       processNext();
     }
   };
@@ -137,12 +146,15 @@ export function createPersistentWorker() {
         return new Promise((resolve) => {
         queue.push(() => {
             currentResolve = (result) => {
-            if (result.mate !== null) {
-                // Convert mate to a large cp value: mate in 1 = 10000, mate in 5 = 9996, etc.
-                resolve(result.mate > 0 ? 2000 - result.mate * 75 : -2000 - result.mate * 75);
-            } else {
+              if (!result || result.pv === "") {
+                resolve(0);
+                return;
+              }
+              if (result.mate !== null) {
+                resolve(result.mate > 0 ? 10000 - result.mate : -10000 - result.mate);
+              } else {
                 resolve(result.cp ?? 0);
-            }
+              }
             };
             worker.postMessage(`position fen ${fen}`);
             worker.postMessage(`go depth ${depth}`);

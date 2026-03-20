@@ -922,6 +922,7 @@ function App() {
           setBigChessPosition(newGame.fen());
           setOldFen(newGame.fen());
           highlightKingSquare(newGame, "big");
+          setBPosHistory([newGame.fen()]);
           setScreen("classic");
           }}>Classic</button>
         <button onClick={() => setScreen("daily")}>Daily</button>
