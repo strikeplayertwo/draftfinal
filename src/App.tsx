@@ -87,7 +87,7 @@ function EvalGraph({ evals, bPosHistory, bColors, onJumpToMove }: EvalGraphProps
 
 function App() {
   const fens = extractFENsFromGames(pgnData,47); //pick random fen and set position to it
-  const randomFen: number = Math.floor(Math.random() * fens.length);
+  //const randomFen: number = Math.floor(Math.random() * fens.length);
   const [gameStatus, setGameStatus] = useState("Moves played: 0");
   const [movesplayed, setMovesPlayed] = useState(-1);
   const [gameResult, setGameResult] = useState("");
@@ -104,22 +104,23 @@ function App() {
   const [storeGameResult, setStoreGameResult] = useState("");
   // create a chess game using a ref to always have access to the latest game state within closures and maintain the game state across renders
   const [DisplayEval, setDisplayEval] = useState("");
-  const chessGameRef = useRef(new Chess(fens[randomFen]));
-  const chessGame = chessGameRef.current;
-  const [bPosHistory, setBPosHistory] = useState<string[]>([chessGame.fen()]);
+  const chessGameRef = useRef<Chess | null>(null);
+  //const chessGameRef = useRef(new Chess(fens[randomFen]));
+  //const chessGame = chessGameRef.current;
+  const [bPosHistory, setBPosHistory] = useState<string[]>([]);
   const [bColors, setBColors] = useState<string[]>([]);
-  const smallGameRef = useRef(new Chess(chessGame.fen()));
-  const smallGame = smallGameRef.current;
+  const smallGameRef = useRef<Chess | null>(null);
   const [startingEval, setStartingEval] = useState(0);
   const [dif, setDif] = useState(0);
   // track the current position of the chess game in state to trigger a re-render of the chessboard
-  const [chessPosition, setChessPosition] = useState(chessGame.fen());
-  const [bigChessPosition, setBigChessPosition] = useState(chessGame.fen());
+  const [chessPosition, setChessPosition] = useState("");
+  const [bigChessPosition, setBigChessPosition] = useState("");
   const [moveFrom, setMoveFrom] = useState('');
   const [oldMove, setOldMove] = useState('');
-  const [oldFen, setOldFen] = useState(chessGame.fen());
-  const tryFenRef = useRef(new Chess(oldFen));
-  const tryFenGame = tryFenRef.current;
+  const [oldFen, setOldFen] = useState("");
+  const tryFenRef = useRef<Chess | null>(null);
+  //const tryFenRef = useRef(new Chess(oldFen));
+  //const tryFenGame = tryFenRef.current;
   const [accuracy, setAccuracy] = useState(100);
 
   const [screen, setScreen] = useState<"title" | "versus" | "classic" | "daily" | "settings" | "analytics">("title");
@@ -208,6 +209,8 @@ function App() {
     // Prevent re-entrant calls
     if (isAnalyzing.current) return;
 
+    const smallGame = smallGameRef.current;
+    if (!smallGame) return;
     setSquareStyles({});
     setArrows([]);
 
@@ -235,6 +238,8 @@ function App() {
   }, [chessPosition]);
 
   function handleJumpToMove(index: number) {
+    const smallGame = smallGameRef.current;
+    if (!smallGame) return;
     const fen = bPosHistory[index];
     if (!fen) return;
     
@@ -262,6 +267,8 @@ function App() {
   }
 
   async function findBestMove(moveType: string, chessPos: string): Promise<void> {
+    const chessGame = chessGameRef.current;
+    if (!chessGame) return;
     let fenAfterMove = "";
     let fenBeforeMove = "";
     if (moveType === "real"){
@@ -413,6 +420,8 @@ function App() {
   }
 
   async function handleBack() {
+    const smallGame = smallGameRef.current;
+    if (!smallGame) return;
     setisAnalysisMove("endAnalysis");
     if(posHistory.length > 1){
       smallGame.load(posHistory[posHistory.length - 2]);
@@ -433,7 +442,22 @@ function App() {
     setShowEffex("");
   }
 
+  async function chooseFirstFen(): Promise<string> {
+    while (true) {
+      const newFen = fens[Math.floor(Math.random() * fens.length)];
+      const evalB = await workerA.getEval(newFen, 10);
+      console.log(evalB);
+      if (Math.abs(evalB) < 10) {
+        return newFen;
+      }
+    }
+  }
+
   async function chooseFen(fenBeforeMove: string, playerMove: string) {
+    const chessGame = chessGameRef.current;
+    if (!chessGame) return;
+    const tryFenGame = tryFenRef.current;
+    if (!tryFenGame) return;
     let ourOldEval = oldEval;
     if (movesplayed === 0){
       ourOldEval = await workerC.getEval(oldFen, 18);
@@ -555,20 +579,8 @@ function App() {
     }
     console.log("Accuracy " + accuracy + " this: " + thisaccuracy + " Moves: " + movesplayed);
 
-    let streakbonus = 0;
-    if (streaker === 1){
-      streakbonus = 25;
-    }else if (streaker === 2){
-      streakbonus = 50;
-    }else if (streaker === 3){
-      streakbonus = 80;
-    }else if (streaker === 4){
-      streakbonus = 125;
-    }else if (streaker === 5){
-      streakbonus = 200;
-    }else if (streaker >= 6){
-      streakbonus = 300;
-    }
+    const bonuses: Record<number, number> = { 1: 25, 2: 50, 3: 80, 4: 125, 5: 200 };
+    const streakbonus = streaker >= 6 ? 300 : (bonuses[streaker] ?? 0);
     let msg = "";
     for (let i = 0; i < streaker; i++){
       msg += "🔥";
@@ -677,7 +689,9 @@ function App() {
     }
   }
 
-  function getMoveOptions(square: Square, chess = chessGame) {
+  function getMoveOptions(square: Square, chessInstance: Chess = chessGameRef.current as Chess) {
+    const chess = chessInstance;
+    if (!chess) return;
     const moves = chess.moves({
       square,
       verbose: true
@@ -706,6 +720,8 @@ function App() {
     square,
     piece
   }: SquareHandlerArgs){
+    const chessGame = chessGameRef.current;
+    if (!chessGame) return;
     if (!moveFrom && piece){
       const hasMoveOptions = getMoveOptions(square as Square);
 
@@ -773,6 +789,8 @@ function App() {
       sourceSquare,
       targetSquare
     }: PieceDropHandlerArgs) {
+      const chessGame = chessGameRef.current;
+      if (!chessGame) return false;
       // type narrow targetSquare potentially being null (e.g. if dropped off board)
       if (!targetSquare) {
         return false;
@@ -816,6 +834,8 @@ function App() {
     square,
     piece
   }: SquareHandlerArgs){
+    const smallGame = smallGameRef.current;
+    if (!smallGame) return;
     if (!moveFrom && piece){
       const hasMoveOptions = getMoveOptions(square as Square, smallGame);
       if (hasMoveOptions){
@@ -889,8 +909,21 @@ function App() {
     return (
       <div className="title-screen">
         <h1>Boggart Chess v0.0.0</h1>
-        <button onClick={() => setScreen("versus")}>Versus</button>
-        <button onClick={() => setScreen("classic")}>Classic</button>
+        <button onClick={() => {
+          setScreen("versus");
+        }}>Versus</button>
+        <button onClick={async () => {
+          const startFen = await chooseFirstFen();
+          const newGame = new Chess(startFen);
+          chessGameRef.current = newGame;
+          smallGameRef.current = new Chess(startFen);
+          tryFenRef.current = new Chess(startFen);
+          setChessPosition(newGame.fen());
+          setBigChessPosition(newGame.fen());
+          setOldFen(newGame.fen());
+          highlightKingSquare(newGame, "big");
+          setScreen("classic");
+          }}>Classic</button>
         <button onClick={() => setScreen("daily")}>Daily</button>
         <button onClick={() => setScreen("settings")}>Settings</button>
         <button onClick={() => setScreen("analytics")}>Analytics</button>
