@@ -122,6 +122,8 @@ function App() {
   const tryFenGame = tryFenRef.current;
   const [accuracy, setAccuracy] = useState(100);
 
+  const [screen, setScreen] = useState<"title" | "versus" | "classic" | "daily" | "settings" | "analytics">("title");
+
   //supabase stuff
   const [user, setUser] = useState<User | null>(null);
   const [gameHistory, setGameHistory] = useState<GameResult[]>([]);
@@ -883,8 +885,62 @@ function App() {
     id: 'board2',
   };
 
+  if (screen === "title") {
+    return (
+      <div className="title-screen">
+        <h1>Boggart Chess v0.0.0</h1>
+        <button onClick={() => setScreen("versus")}>Versus</button>
+        <button onClick={() => setScreen("classic")}>Classic</button>
+        <button onClick={() => setScreen("daily")}>Daily</button>
+        <button onClick={() => setScreen("settings")}>Settings</button>
+        <button onClick={() => setScreen("analytics")}>Analytics</button>
+      </div>
+    );
+  }
+
+  if (screen === "settings") {
+    return (
+      <div>
+        <button onClick={() => setScreen("title")}>← Back</button>
+        <h2>Settings</h2>
+        {/* your settings UI */}
+      </div>
+    );
+  }
+
+  if (screen === "analytics") {
+    return (
+      <div>
+        <button onClick={() => setScreen("title")}>← Back</button>
+        <h2>Analytics</h2>
+        {gameHistory.map((game) => (
+          <li key={game.id}>{new Date(game.created_at).toLocaleDateString()} — {game.accuracy.toFixed(1)}%</li>
+        ))}
+      </div>
+    );
+  }
+
+  if (screen === "versus") {
+    return (
+      <div>
+        <button onClick={() => setScreen("title")}>← Back</button>
+        {/* mode 2 UI */}
+      </div>
+    );
+  }
+
+  if (screen === "daily") {
+    return (
+      <div>
+        <button onClick={() => setScreen("title")}>← Back</button>
+        {/* mode 3 UI */}
+      </div>
+    );
+  }
+
   return (
     <>
+      <button onClick={() => setScreen("title")}>← Menu</button>
       <div className="auth-bar">
         {user ? (
           <>
