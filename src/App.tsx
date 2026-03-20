@@ -442,6 +442,117 @@ function App() {
     setShowEffex("");
   }
 
+  const PIECE_VALUES: Record<string, number> = {
+    p: 1, n: 3, b: 3, r: 5, q: 9, k: 99
+  };
+
+  function countAttackedPieces(fen: string): number {
+  const fenParts = fen.split(" ");
+  const sideToMove = fenParts[1] as "w" | "b";
+  const opponent = sideToMove === "w" ? "b" : "w";
+
+  const stmFen = [...fenParts]; stmFen[1] = sideToMove;
+  const oppFen = [...fenParts]; oppFen[1] = opponent;
+  const stmGame = new Chess(stmFen.join(" "));
+  const oppGame = new Chess(oppFen.join(" "));
+
+  // Use moves() only for finding attackers (captures),
+  // but use isAttacked() for checking if a square is defended
+  function getAttackers(game: Chess, square: string): { from: string, piece: string }[] {
+    return game.moves({ verbose: true })
+      .filter(m => m.to === square)
+      .map(m => ({ from: m.from, piece: m.piece }));
+  }
+
+  const board = stmGame.board();
+  let attackedCount = 0;
+
+  for (let rank = 0; rank < 8; rank++) {
+    for (let file = 0; file < 8; file++) {
+      const piece = board[rank][file];
+      if (!piece) continue;
+
+      const square = (String.fromCharCode(97 + file) + (8 - rank)) as Square;
+      const pieceValue = PIECE_VALUES[piece.type];
+
+      // isAttacked() correctly checks all attacked squares including pawn defense
+      const isDefended = piece.color === sideToMove
+        ? stmGame.isAttacked(square, sideToMove)
+        : oppGame.isAttacked(square, opponent);
+
+      if (piece.color === opponent) {
+        // Opponent piece: count if defended AND attacked by stm with equal/lesser value
+        if (!isDefended) continue;
+        const hasValidAttacker = getAttackers(stmGame, square)
+          .some(a => PIECE_VALUES[a.piece] <= pieceValue);
+        if (hasValidAttacker) attackedCount++;
+
+      } else {
+        // Side to move piece: count if defended AND attacker is defended
+        if (!isDefended) continue;
+        const attackers = getAttackers(oppGame, square)
+          .filter(a => PIECE_VALUES[a.piece] <= pieceValue);
+        const hasDefendedAttacker = attackers.some(a => 
+          oppGame.isAttacked(a.from as Square, opponent)
+        );
+        if (hasDefendedAttacker) attackedCount++;
+      }
+    }
+  }
+
+  return attackedCount;
+}
+
+  async function chooseFiveFens(): Promise<string[]> {
+    const chosenFens: string[] = [];
+    const chosenScores: number[] = [];
+    for (let i = 0; i < 50; i++){
+      const newFen = fens[Math.floor(Math.random() * fens.length)];
+      let score = 0;
+      const lines = await workerA.getTop6Lines(newFen, 16);
+      let pieces = newFen.split(" ")[0]
+        .replace(/[^a-zA-Z]/g, "")
+        .length;
+      if (pieces > 25) pieces = 25;
+      score += pieces;
+      let cpCount = 0;
+      const line1 = lines[0].cp;
+      lines.forEach((line, i) =>{
+        if (line.cp > -9000 && line.cp < 9000){
+          if (line.cp - line1 > -101){
+            cpCount += 10;
+          }
+        }
+      })
+      score += cpCount;
+      let addScore = 25;
+      if(lines[1] !== undefined){
+        addScore = addScore - Math.trunc((line1 - lines[1].cp) / 12);
+        if (addScore < 0) addScore = 0;
+        score += addScore;
+      }
+
+      let attacked = countAttackedPieces(newFen) * 10;
+      if (attacked > 30){
+        attacked = 30;
+      }
+      score += attacked;
+      if (chosenFens.length < 5) {
+        chosenFens.push(newFen);
+        chosenScores.push(score);
+        console.log ("Chosen fen " + newFen + " with score " + score);
+      }else if (score > Math.min(...chosenScores)) {
+        const minIndex = chosenScores.indexOf(Math.min(...chosenScores));
+        chosenFens[minIndex] = newFen;
+        console.log ("Replacing " + chosenScores[minIndex] + " with score " + score);
+        chosenScores[minIndex] = score;
+      }
+      console.log(score + " " + pieces + " " + cpCount + " " + addScore + " " + attacked);
+      console.log(i);
+    }
+    return chosenFens;
+  }
+
   async function chooseFirstFen(): Promise<string> {
     while (true) {
       const newFen = fens[Math.floor(Math.random() * fens.length)];
@@ -908,6 +1019,31 @@ function App() {
   if (screen === "title") {
     return (
       <div className="title-screen">
+        <div className="auth-bar">
+          {user ? (
+            <>
+              <span>{user.email}</span>
+              <button onClick={signOut}>Sign out</button>
+            </>
+          ) : (
+            <div>
+              <input
+                type="email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+              />
+              <input
+                type="password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
+              <button onClick={() => signInWithEmail(email, password)}>Sign in</button>
+              <button onClick={() => signUpWithEmail(email, password)}>Sign up</button>
+            </div>
+          )}
+        </div>
         <h1>Boggart Chess v0.0.0</h1>
         <button onClick={() => {
           setScreen("versus");
@@ -925,7 +1061,11 @@ function App() {
           setBPosHistory([newGame.fen()]);
           setScreen("classic");
           }}>Classic</button>
-        <button onClick={() => setScreen("daily")}>Daily</button>
+        <button onClick={async () => {
+          let fens = await chooseFiveFens();
+          console.log("Chosen Fens: " + fens);
+          setScreen("daily");
+        }}>Daily</button>
         <button onClick={() => setScreen("settings")}>Settings</button>
         <button onClick={() => setScreen("analytics")}>Analytics</button>
       </div>
@@ -966,7 +1106,9 @@ function App() {
   if (screen === "daily") {
     return (
       <div>
-        <button onClick={() => setScreen("title")}>← Back</button>
+        <button onClick={async () => {
+          setScreen("title");
+          }}>← Back</button>
         {/* mode 3 UI */}
       </div>
     );
@@ -975,31 +1117,6 @@ function App() {
   return (
     <>
       <button onClick={() => setScreen("title")}>← Menu</button>
-      <div className="auth-bar">
-        {user ? (
-          <>
-            <span>{user.email}</span>
-            <button onClick={signOut}>Sign out</button>
-          </>
-        ) : (
-          <div>
-            <input
-              type="email"
-              placeholder="Email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
-            <button onClick={() => signInWithEmail(email, password)}>Sign in</button>
-            <button onClick={() => signUpWithEmail(email, password)}>Sign up</button>
-          </div>
-        )}
-      </div>
       <div className="statusText">{gameStatus}</div>
       <div className="statusText">{streakMsg}</div>
       <div className="game-container">

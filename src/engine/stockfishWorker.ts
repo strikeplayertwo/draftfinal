@@ -162,6 +162,58 @@ export function createPersistentWorker() {
         processNext();
         });
     },
+    getTop6Lines(fen: string, depth = 18): Promise<{ cp: number; pv: string }[]> {
+      const isBlack = fen.split(" ")[1] === "b";
+      return new Promise((resolve) => {
+        queue.push(() => {
+          const multiResults: Record<number, any> = {};
+
+          const originalOnMessage = worker.onmessage;
+          worker.onmessage = (e) => {
+            const text = String(e.data);
+
+            if (text.includes(" multipv ")) {
+              const multipvMatch = text.match(/multipv (\d+)/);
+              const cpMatch = text.match(/score cp (-?\d+)/);
+              const mateMatch = text.match(/score mate (-?\d+)/);
+              const pvMatch = text.match(/ pv (.+)$/);
+
+              if (multipvMatch && pvMatch) {
+                const index = parseInt(multipvMatch[1], 10);
+                let cp: number;
+                if (mateMatch) {
+                  // Convert mate to large cp value, preserving sign
+                  const mateIn = parseInt(mateMatch[1], 10);
+                  cp = mateIn > 0 ? 10000 - mateIn : -10000 - mateIn;
+                } else {
+                  cp = cpMatch ? parseInt(cpMatch[1], 10) : 0;
+                }
+
+                if (isBlack) cp = -cp;
+                multiResults[index] = { cp, pv: pvMatch[1] };
+              }
+            }
+
+            if (text.startsWith("bestmove")) {
+              worker.onmessage = originalOnMessage;
+              worker.postMessage("setoption name MultiPV value 1"); // reset to default
+              
+              const sorted = Object.values(multiResults)
+                .sort((a: any, b: any) => b.cp - a.cp) // best first
+                .map((r: any) => ({ cp: r.cp, pv: r.pv }));
+
+              resolve(sorted.length > 0 ? sorted : []);
+              processNext();
+            }
+          };
+
+          worker.postMessage("setoption name MultiPV value 2");
+          worker.postMessage(`position fen ${fen}`);
+          worker.postMessage(`go depth ${depth}`);
+        });
+        processNext();
+      });
+    },
     getMultiPV(fen: string, depth = 18, numLines = 3): Promise<MultiPVResult[]> {
         return new Promise((resolve) => {
             queue.push(() => {
