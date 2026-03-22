@@ -102,6 +102,8 @@ function App() {
   const [isAnalysisMove, setisAnalysisMove] = useState("real");
   const [showBack2, setShowBack2] = useState(false);
   const [storeGameResult, setStoreGameResult] = useState("");
+  const [fenIndex, setFenIndex] = useState(0);
+  const [fiveFens, setFiveFens] = useState<string[]>([]);
   // create a chess game using a ref to always have access to the latest game state within closures and maintain the game state across renders
   const [DisplayEval, setDisplayEval] = useState("");
   const chessGameRef = useRef<Chess | null>(null);
@@ -253,7 +255,30 @@ function App() {
     setPosHistory(prev => prev.slice(0, index + 1));
   }
 
+  function dailyHandleJumpToMove(index: number) {
+    const chessGame = chessGameRef.current;
+    if (!chessGame) return;
+    const fen = bPosHistory[index];
+    if (!fen) return;
+    
+    setisAnalysisMove("endAnalysis");
+    setArrows([]);
+    setShowBack2(true);
+    setStoreGameResult(gameResult);
+    setGameResult("");
+    chessGame.load(fen);
+    setBigChessPosition(fen);
+    setPosHistory(prev => prev.slice(0, index + 1));
+  }
+
+
+
   async function triggerEnd(finalmessage: string, accuracy: number){
+    setGameResult(finalmessage);
+    await saveGameResult(accuracy);
+  }
+
+  async function dailyTriggerEnd(finalmessage: string, accuracy: number){
     setGameResult(finalmessage);
     await saveGameResult(accuracy);
   }
@@ -276,7 +301,11 @@ function App() {
       fenBeforeMove = oldFen;
     }else{
       fenAfterMove = chessPos;
-      fenBeforeMove = posHistory[posHistory.length - 1];
+      if (screen === "daily"){
+        fenBeforeMove = oldFen;
+      }else{
+        fenBeforeMove = posHistory[posHistory.length - 1];
+      }
     }
     if (movesplayed > -3){
       try {
@@ -432,6 +461,14 @@ function App() {
     setChessPosition(smallGame.fen());
   }
 
+  async function dailyHandleBack() {
+    const chessGame = chessGameRef.current;
+    if (!chessGame) return;
+    setisAnalysisMove("endAnalysis");
+    chessGame.load(oldFen);
+    setChessPosition(chessGame.fen());
+  }
+
   async function stopEffex(damessage: string = "") {
     await new Promise(resolve => setTimeout(resolve, 1500));
     if(damessage !== ""){
@@ -447,66 +484,66 @@ function App() {
   };
 
   function countAttackedPieces(fen: string): number {
-  const fenParts = fen.split(" ");
-  const sideToMove = fenParts[1] as "w" | "b";
-  const opponent = sideToMove === "w" ? "b" : "w";
+    const fenParts = fen.split(" ");
+    const sideToMove = fenParts[1] as "w" | "b";
+    const opponent = sideToMove === "w" ? "b" : "w";
 
-  const stmFen = [...fenParts]; stmFen[1] = sideToMove;
-  const oppFen = [...fenParts]; oppFen[1] = opponent;
-  const stmGame = new Chess(stmFen.join(" "));
-  const oppGame = new Chess(oppFen.join(" "));
+    const stmFen = [...fenParts]; stmFen[1] = sideToMove;
+    const oppFen = [...fenParts]; oppFen[1] = opponent;
+    const stmGame = new Chess(stmFen.join(" "));
+    const oppGame = new Chess(oppFen.join(" "));
 
-  // Use moves() only for finding attackers (captures),
-  // but use isAttacked() for checking if a square is defended
-  function getAttackers(game: Chess, square: string): { from: string, piece: string }[] {
-    return game.moves({ verbose: true })
-      .filter(m => m.to === square)
-      .map(m => ({ from: m.from, piece: m.piece }));
-  }
+    // Use moves() only for finding attackers (captures),
+    // but use isAttacked() for checking if a square is defended
+    function getAttackers(game: Chess, square: string): { from: string, piece: string }[] {
+      return game.moves({ verbose: true })
+        .filter(m => m.to === square)
+        .map(m => ({ from: m.from, piece: m.piece }));
+    }
 
-  const board = stmGame.board();
-  let attackedCount = 0;
+    const board = stmGame.board();
+    let attackedCount = 0;
 
-  for (let rank = 0; rank < 8; rank++) {
-    for (let file = 0; file < 8; file++) {
-      const piece = board[rank][file];
-      if (!piece) continue;
+    for (let rank = 0; rank < 8; rank++) {
+      for (let file = 0; file < 8; file++) {
+        const piece = board[rank][file];
+        if (!piece) continue;
 
-      const square = (String.fromCharCode(97 + file) + (8 - rank)) as Square;
-      const pieceValue = PIECE_VALUES[piece.type];
+        const square = (String.fromCharCode(97 + file) + (8 - rank)) as Square;
+        const pieceValue = PIECE_VALUES[piece.type];
 
-      // isAttacked() correctly checks all attacked squares including pawn defense
-      const isDefended = piece.color === sideToMove
-        ? stmGame.isAttacked(square, sideToMove)
-        : oppGame.isAttacked(square, opponent);
+        // isAttacked() correctly checks all attacked squares including pawn defense
+        const isDefended = piece.color === sideToMove
+          ? stmGame.isAttacked(square, sideToMove)
+          : oppGame.isAttacked(square, opponent);
 
-      if (piece.color === opponent) {
-        // Opponent piece: count if defended AND attacked by stm with equal/lesser value
-        if (!isDefended) continue;
-        const hasValidAttacker = getAttackers(stmGame, square)
-          .some(a => PIECE_VALUES[a.piece] <= pieceValue);
-        if (hasValidAttacker) attackedCount++;
+        if (piece.color === opponent) {
+          // Opponent piece: count if defended AND attacked by stm with equal/lesser value
+          if (!isDefended) continue;
+          const hasValidAttacker = getAttackers(stmGame, square)
+            .some(a => PIECE_VALUES[a.piece] <= pieceValue);
+          if (hasValidAttacker) attackedCount++;
 
-      } else {
-        // Side to move piece: count if defended AND attacker is defended
-        if (!isDefended) continue;
-        const attackers = getAttackers(oppGame, square)
-          .filter(a => PIECE_VALUES[a.piece] <= pieceValue);
-        const hasDefendedAttacker = attackers.some(a => 
-          oppGame.isAttacked(a.from as Square, opponent)
-        );
-        if (hasDefendedAttacker) attackedCount++;
+        } else {
+          // Side to move piece: count if defended AND attacker is defended
+          if (!isDefended) continue;
+          const attackers = getAttackers(oppGame, square)
+            .filter(a => PIECE_VALUES[a.piece] <= pieceValue);
+          const hasDefendedAttacker = attackers.some(a => 
+            oppGame.isAttacked(a.from as Square, opponent)
+          );
+          if (hasDefendedAttacker) attackedCount++;
+        }
       }
     }
-  }
 
-  return attackedCount;
-}
+    return attackedCount;
+  }
 
   async function chooseFiveFens(): Promise<string[]> {
     const chosenFens: string[] = [];
     const chosenScores: number[] = [];
-    for (let i = 0; i < 50; i++){
+    for (let i = 0; i < 10; i++){
       const newFen = fens[Math.floor(Math.random() * fens.length)];
       let score = 0;
       const lines = await workerA.getTop6Lines(newFen, 16);
@@ -562,6 +599,73 @@ function App() {
         return newFen;
       }
     }
+  }
+
+  async function dailyNext(fenBeforeMove: string, playerMove: string, fiveFens: string[], fenIndex: number) {
+    const chessGame = chessGameRef.current;
+    if (!chessGame) {
+      console.log("chessGame is not available"); 
+      return;
+    }
+    let tryFenGame = tryFenRef.current;
+    if (!tryFenGame) {
+      tryFenGame = new Chess(fenBeforeMove);
+    }
+    let [ourEval, stockfishSetup] = await Promise.all([
+      workerC.getEval(chessGame.fen(), 18),
+      workerD.getBestLine(fenBeforeMove, 18).then(r => { console.log("chooseFen workerB done", r); return r; }),
+    ]);
+    ourEval = -1 * ourEval;
+    let bestEval = ourEval;
+
+    const pvb = stockfishSetup.pv;
+    console.log("Stockfish PV: " + pvb);
+    let stockfishMove = pvb?.split(" ")?.[0];
+    if(stockfishMove !== playerMove){
+      tryFenGame.load(fenBeforeMove);
+      tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
+      bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 18);
+      console.log(stockfishMove + " not equals " + playerMove);
+    }else{
+      console.log(stockfishMove + " equals " + playerMove);
+    }
+
+    let thisaccuracy = Math.round((100 * Math.exp((ourEval - bestEval) / 200)) * 10);
+    if(thisaccuracy > 1100){
+      thisaccuracy = 1100;
+    }
+    if (thisaccuracy > 1000){
+      setBColors(prev => [...prev, "rgb(0, 251, 255)"]);
+    }else if (thisaccuracy === 1000){
+      setBColors(prev => [...prev, "rgb(0, 255, 55)"]);
+    }else if (thisaccuracy > 850){
+      setBColors(prev => [...prev, "rgb(0, 137, 7)"]);
+    }else if (thisaccuracy > 600){
+      setBColors(prev => [...prev, "rgb(255, 174, 0)"]);
+    }else{
+      setBColors(prev => [...prev, "rgb(255, 0, 0)"]);
+    }
+    const displayAccuracy = Math.round(((accuracy * (movesplayed) + thisaccuracy) / (movesplayed + 1)));
+    if (movesplayed !== 0){
+      setAccuracy(displayAccuracy);
+    }else{
+      setAccuracy(thisaccuracy);
+    }
+    console.log("Accuracy " + accuracy + " this: " + thisaccuracy + " Moves: " + movesplayed);
+    setShowEffex("Accuracy: " + thisaccuracy/10);
+    stopEffex();
+    setStreakMsg("Current Accuracy: " + displayAccuracy/10);
+    setFenIndex(prev => prev + 1);
+    setBPosHistory(prev => [...prev, chessGame.fen()]);
+    setEvalHistory(prev => [...prev, thisaccuracy]);
+    if (fenIndex + 1 < fiveFens.length) {
+      chessGame.load(fiveFens[fenIndex + 1]);
+      setBigChessPosition(chessGame.fen());
+      highlightKingSquare(chessGame, "small");
+    }else{
+      dailyTriggerEnd("Daily Challenge Completed! Final Accuracy: " + displayAccuracy/10, displayAccuracy/10);
+    }
+    return;
   }
 
   async function chooseFen(fenBeforeMove: string, playerMove: string) {
@@ -865,9 +969,23 @@ function App() {
       });
       setOldMove(moveFrom + square);
       setisAnalysisMove("real");
-      setChessPosition(chessGame.fen()); 
-      chooseFen(sendthatfen, moveFrom + square);
-
+      //setChessPosition(chessGame.fen());
+      setPosHistory([chessPosition]);
+      setMovesPlayed(prev => {
+        const next = prev + 1;
+        return next;
+      });
+      setGameStatus("Moves played: " + (movesplayed + 1)); 
+      setBigChessPosition(chessGame.fen()); 
+      if(screen === "daily"){
+        if (movesplayed < 5){
+          dailyNext(sendthatfen, moveFrom + square, fiveFens, fenIndex);
+        }else{
+          findBestMove("analysis", chessGame.fen());
+        }
+      }else{
+        chooseFen(sendthatfen, moveFrom + square);
+      }
     }catch {
       const hasMoveOptions = getMoveOptions(square as Square);
       if (hasMoveOptions){
@@ -1016,6 +1134,15 @@ function App() {
     id: 'board2',
   };
 
+  const dailyBoardOptions = {
+    arrows,
+    onPieceDrop,
+    onSquareClick,
+    position: bigChessPosition,
+    squareStyles,
+    id: 'board3',
+  };
+
   if (screen === "title") {
     return (
       <div className="title-screen">
@@ -1062,9 +1189,18 @@ function App() {
           setScreen("classic");
           }}>Classic</button>
         <button onClick={async () => {
-          let fens = await chooseFiveFens();
-          console.log("Chosen Fens: " + fens);
           setScreen("daily");
+          setMovesPlayed(0);
+          setGameStatus("Moves played: 0");
+          let fens = await chooseFiveFens();
+          setFiveFens(fens);
+          setFenIndex(0);
+          console.log("Chosen Fens: " + fens);
+          //for (let i = 0; i < fens.length; i++){
+            chessGameRef.current = new Chess(fens[0]);
+            setBigChessPosition(fens[0]);
+            highlightKingSquare(chessGameRef.current, "small");
+          //}
         }}>Daily</button>
         <button onClick={() => setScreen("settings")}>Settings</button>
         <button onClick={() => setScreen("analytics")}>Analytics</button>
@@ -1110,6 +1246,48 @@ function App() {
           setScreen("title");
           }}>← Back</button>
         {/* mode 3 UI */}
+        <div className="statusText">{gameStatus}</div>
+        <div className="statusText">{streakMsg}</div>
+        <div className="game-container">
+          <div className="board-layer">
+            <div className="dailyboards">
+              <div id ="board3">
+              <Chessboard
+                options={dailyBoardOptions}
+              />
+              </div>
+            </div>
+          </div>
+
+          <div
+            className={`overlay ${showEffex ? "overlay-front" : "overlay-back"}`}
+          >
+          <div className="effex-box">
+            <h3>{showEffex}</h3>
+          </div>
+            {/* result UI */}
+          </div>
+          <div
+            className={`overlay ${gameResult ? "overlay-front" : "overlay-back"}`}
+          >
+          <div className="result-box">
+            <h2>{gameResult}</h2>
+            <EvalGraph evals={evalHistory} bPosHistory={bPosHistory} bColors={bColors} onJumpToMove={dailyHandleJumpToMove}/>
+            <h3>Past Games</h3>
+            <ul>
+              {gameHistory.map((game) => (
+                <li key={game.id}>
+                  {new Date(game.created_at).toLocaleDateString()} — Accuracy: {game.accuracy.toFixed(1)}%
+                </li>
+              ))}
+            </ul>
+          </div>
+            {/* result UI */}
+          </div>
+        </div>
+        <button className={`back-button ${showBack2 ? "show" : "hide"}`} onClick={dailyHandleBack}>Back</button>
+        <button className={`back2-button ${showBack2 ? "show" : "hide"}`} onClick={() => {setShowBack2(false); setGameResult(storeGameResult);}}>Back to Graph</button>
+        <div className={`evals-graph ${showBack2 ? "show" : "hide"}`}>{DisplayEval}</div>
       </div>
     );
   }

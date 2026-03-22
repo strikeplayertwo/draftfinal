@@ -45,6 +45,12 @@
   position: relative; 
 }
 
+.dailyboards {
+  display: flex;
+  align-items: center;
+  position: relative; 
+}
+
 .boards {
   transform: translateX(-150px); /* board1 width / 2 */
 }
