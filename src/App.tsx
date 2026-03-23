@@ -101,11 +101,13 @@ function App() {
   const [posHistory, setPosHistory] = useState<string[]>([]);
   const [isAnalysisMove, setisAnalysisMove] = useState("real");
   const [showBack2, setShowBack2] = useState(false);
+  const [showPosList, setShowPosList] = useState(false);
   const [storeGameResult, setStoreGameResult] = useState("");
   const [fenIndex, setFenIndex] = useState(0);
   const [fiveFens, setFiveFens] = useState<string[]>([]);
   // create a chess game using a ref to always have access to the latest game state within closures and maintain the game state across renders
   const [DisplayEval, setDisplayEval] = useState("");
+  const [PosList, setPosList] = useState("");
   const chessGameRef = useRef<Chess | null>(null);
   //const chessGameRef = useRef(new Chess(fens[randomFen]));
   //const chessGame = chessGameRef.current;
@@ -270,8 +272,6 @@ function App() {
     setBigChessPosition(fen);
     setPosHistory(prev => prev.slice(0, index + 1));
   }
-
-
 
   async function triggerEnd(finalmessage: string, accuracy: number){
     setGameResult(finalmessage);
@@ -453,7 +453,7 @@ function App() {
     if (!smallGame) return;
     setisAnalysisMove("endAnalysis");
     if(posHistory.length > 1){
-      smallGame.load(posHistory[posHistory.length - 2]);
+      smallGame.load(posHistory[posHistory.length - 1]);
       setPosHistory(prev => prev.slice(0, -1));
     }else{
       smallGame.load(oldFen);
@@ -465,7 +465,9 @@ function App() {
     const chessGame = chessGameRef.current;
     if (!chessGame) return;
     setisAnalysisMove("endAnalysis");
-    chessGame.load(oldFen);
+    chessGame.load(posHistory[posHistory.length - 1]);
+    setPosHistory(prev => prev.slice(0, -1));
+    //chessGame.load(oldFen);
     setChessPosition(chessGame.fen());
   }
 
@@ -543,7 +545,8 @@ function App() {
   async function chooseFiveFens(): Promise<string[]> {
     const chosenFens: string[] = [];
     const chosenScores: number[] = [];
-    for (let i = 0; i < 10; i++){
+    const chosenStats: {fen: string, score: number, pieces: number, cpCount: number, addScore: number, attacked: number}[] = [];
+    for (let i = 0; i < 50; i++){
       const newFen = fens[Math.floor(Math.random() * fens.length)];
       let score = 0;
       const lines = await workerA.getTop6Lines(newFen, 16);
@@ -553,10 +556,9 @@ function App() {
       if (pieces > 25) pieces = 25;
       score += pieces;
       let cpCount = 0;
-      const line1 = lines[0].cp;
       lines.forEach((line, i) =>{
         if (line.cp > -9000 && line.cp < 9000){
-          if (line.cp - line1 > -101){
+          if (line.cp - lines[0].cp > -101 && line.cp - lines[0].cp < -41){
             cpCount += 10;
           }
         }
@@ -564,7 +566,11 @@ function App() {
       score += cpCount;
       let addScore = 25;
       if(lines[1] !== undefined){
-        addScore = addScore - Math.trunc((line1 - lines[1].cp) / 12);
+        if(lines[1].cp - lines[0].cp < -101){
+          addScore = addScore - Math.trunc(((lines[0].cp - lines[1].cp) - 100) / 5);
+        }else if (lines[1].cp - lines[0].cp > -51){
+          addScore = addScore - Math.trunc((50 - (lines[0].cp - lines[1].cp)) / 5);
+        }
         if (addScore < 0) addScore = 0;
         score += addScore;
       }
@@ -575,14 +581,26 @@ function App() {
       }
       score += attacked;
       if (chosenFens.length < 5) {
-        chosenFens.push(newFen);
-        chosenScores.push(score);
-        console.log ("Chosen fen " + newFen + " with score " + score);
+        if(!chosenFens.includes(newFen)){
+          chosenFens.push(newFen);
+          chosenScores.push(score);
+          chosenStats.push({fen: newFen, score, pieces, cpCount, addScore, attacked});
+          console.log ("Chosen fen " + newFen + " with score " + score);
+          const formatted = chosenFens.map((fen, index) => `Score: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cpCount}/20 Clarity: ${chosenStats[index].addScore}/25 Onslaught: ${chosenStats[index].attacked}/30`)
+            .join("\n");
+          setPosList(formatted);
+        }
       }else if (score > Math.min(...chosenScores)) {
-        const minIndex = chosenScores.indexOf(Math.min(...chosenScores));
-        chosenFens[minIndex] = newFen;
-        console.log ("Replacing " + chosenScores[minIndex] + " with score " + score);
-        chosenScores[minIndex] = score;
+        if(!chosenFens.includes(newFen)){
+          const minIndex = chosenScores.indexOf(Math.min(...chosenScores));
+          chosenFens[minIndex] = newFen;
+          console.log ("Replacing " + chosenScores[minIndex] + " with score " + score);
+          chosenScores[minIndex] = score;
+          chosenStats[minIndex] = {fen: newFen, score, pieces, cpCount, addScore, attacked};
+          const formatted = chosenFens.map((fen, index) => `Score: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cpCount}/20 Clarity: ${chosenStats[index].addScore}/25 Onslaught: ${chosenStats[index].attacked}/30`)
+            .join("\n");
+          setPosList(formatted);
+        }
       }
       console.log(score + " " + pieces + " " + cpCount + " " + addScore + " " + attacked);
       console.log(i);
@@ -1192,6 +1210,7 @@ function App() {
           setScreen("daily");
           setMovesPlayed(0);
           setGameStatus("Moves played: 0");
+          setShowPosList(true);
           let fens = await chooseFiveFens();
           setFiveFens(fens);
           setFenIndex(0);
@@ -1288,6 +1307,7 @@ function App() {
         <button className={`back-button ${showBack2 ? "show" : "hide"}`} onClick={dailyHandleBack}>Back</button>
         <button className={`back2-button ${showBack2 ? "show" : "hide"}`} onClick={() => {setShowBack2(false); setGameResult(storeGameResult);}}>Back to Graph</button>
         <div className={`evals-graph ${showBack2 ? "show" : "hide"}`}>{DisplayEval}</div>
+        <div className={`pos-list ${showPosList ? "show" : "hide"}`}>{PosList}</div>
       </div>
     );
   }
