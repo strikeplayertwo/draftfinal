@@ -86,8 +86,9 @@ function EvalGraph({ evals, bPosHistory, bColors, onJumpToMove }: EvalGraphProps
 }
 
 function App() {
-  const fens = extractFENsFromGames(pgnData,47); //pick random fen and set position to it
+  const fens = extractFENsFromGames(pgnData,94); //pick random fen and set position to it
   //const randomFen: number = Math.floor(Math.random() * fens.length);
+  const [dailyFens, setDailyFens] = useState<string[]>([]);
   const [gameStatus, setGameStatus] = useState("Moves played: 0");
   const [movesplayed, setMovesPlayed] = useState(-1);
   const [gameResult, setGameResult] = useState("");
@@ -260,7 +261,7 @@ function App() {
   function dailyHandleJumpToMove(index: number) {
     const chessGame = chessGameRef.current;
     if (!chessGame) return;
-    const fen = bPosHistory[index];
+    const fen = dailyFens[index];
     if (!fen) return;
     
     setisAnalysisMove("endAnalysis");
@@ -270,7 +271,7 @@ function App() {
     setGameResult("");
     chessGame.load(fen);
     setBigChessPosition(fen);
-    setPosHistory(prev => prev.slice(0, index + 1));
+    setPosHistory([fen]);
   }
 
   async function triggerEnd(finalmessage: string, accuracy: number){
@@ -453,7 +454,7 @@ function App() {
     if (!smallGame) return;
     setisAnalysisMove("endAnalysis");
     if(posHistory.length > 1){
-      smallGame.load(posHistory[posHistory.length - 1]);
+      smallGame.load(posHistory[posHistory.length - 2]);
       setPosHistory(prev => prev.slice(0, -1));
     }else{
       smallGame.load(oldFen);
@@ -465,7 +466,7 @@ function App() {
     const chessGame = chessGameRef.current;
     if (!chessGame) return;
     setisAnalysisMove("endAnalysis");
-    chessGame.load(posHistory[posHistory.length - 1]);
+    chessGame.load(posHistory[posHistory.length - 2]);
     setPosHistory(prev => prev.slice(0, -1));
     //chessGame.load(oldFen);
     setChessPosition(chessGame.fen());
@@ -542,23 +543,62 @@ function App() {
     return attackedCount;
   }
 
+  function countPieceSquares(fen: string): number {
+    const fenParts = fen.split(" ");
+    const sideToMove = fenParts[1] as "w" | "b";
+    const opponent = sideToMove === "w" ? "b" : "w";
+    const stmFen = [...fenParts]; stmFen[1] = sideToMove;
+    const oppFen = [...fenParts]; oppFen[1] = opponent;
+    const stmGame = new Chess(stmFen.join(" "));
+    const oppGame = new Chess(oppFen.join(" "));
+
+    /*function getMoves(game: Chess, square: string): { to: string }[] {
+      return game.moves({ verbose: true })
+        .filter(m => m.from === square)
+        .map(m => ({ to: m.to}));
+    }*/
+
+    const board = stmGame.board();
+    let moveCount = 0;
+
+    for (let rank = 0; rank < 8; rank++) {
+      for (let file = 0; file < 8; file++) {
+        const piece = board[rank][file];
+        if (!piece) continue;
+        if(piece.color !== sideToMove) continue;
+        if(piece.type === "p" || piece.type === "k") continue;
+
+        const square = (String.fromCharCode(97 + file) + (8 - rank)) as Square;
+        const moves = stmGame.moves({ verbose: true }).filter(m => m.from === square);
+        //const moves = getMoves(stmGame, square);
+        const unguardedMoves = moves.filter(move => {
+          return !oppGame.isAttacked(move.to as Square, opponent);
+        }).length;
+        moveCount += unguardedMoves;
+      }
+    }
+    return moveCount;
+  }
+
   async function chooseFiveFens(): Promise<string[]> {
-    const chosenFens: string[] = [];
+    let chosenFens: string[] = [];
     const chosenScores: number[] = [];
     const chosenStats: {fen: string, score: number, pieces: number, cpCount: number, addScore: number, attacked: number}[] = [];
     for (let i = 0; i < 50; i++){
-      const newFen = fens[Math.floor(Math.random() * fens.length)];
+      let newFen = fens[Math.floor(Math.random() * fens.length)];
       let score = 0;
       const lines = await workerA.getTop6Lines(newFen, 16);
-      let pieces = newFen.split(" ")[0]
+      //new pieces: amount of unguarded squares that side to move's bishops/knights/rooks/queen can move to, up to 50, .5 per square
+      /*let pieces = newFen.split(" ")[0]
         .replace(/[^a-zA-Z]/g, "")
         .length;
-      if (pieces > 25) pieces = 25;
+      if (pieces > 25) pieces = 25;*/
+      let pieces = countPieceSquares(newFen);
       score += pieces;
       let cpCount = 0;
       lines.forEach((line, i) =>{
         if (line.cp > -9000 && line.cp < 9000){
-          if (line.cp - lines[0].cp > -101 && line.cp - lines[0].cp < -41){
+          if (line.cp - lines[0].cp > -81 && line.cp - lines[0].cp < -41){
             cpCount += 10;
           }
         }
@@ -566,8 +606,8 @@ function App() {
       score += cpCount;
       let addScore = 25;
       if(lines[1] !== undefined){
-        if(lines[1].cp - lines[0].cp < -101){
-          addScore = addScore - Math.trunc(((lines[0].cp - lines[1].cp) - 100) / 5);
+        if(lines[1].cp - lines[0].cp < -81){
+          addScore = addScore - Math.trunc(((lines[0].cp - lines[1].cp) - 80) / 5);
         }else if (lines[1].cp - lines[0].cp > -51){
           addScore = addScore - Math.trunc((50 - (lines[0].cp - lines[1].cp)) / 5);
         }
@@ -600,11 +640,16 @@ function App() {
           const formatted = chosenFens.map((fen, index) => `Score: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cpCount}/20 Clarity: ${chosenStats[index].addScore}/25 Onslaught: ${chosenStats[index].attacked}/30`)
             .join("\n");
           setPosList(formatted);
+        }else {
+          console.log("duplicate fen: " + newFen + " " + chosenFens + " " + chosenFens.includes(newFen));
         }
+      }else{
+        //console.log (score + " was not higher than " + Math.min(...chosenScores));
       }
-      console.log(score + " " + pieces + " " + cpCount + " " + addScore + " " + attacked);
+      console.log(score + " " + pieces + " " + cpCount + " " + addScore + " " + attacked + " " + newFen);
       console.log(i);
     }
+    setDailyFens(chosenFens);
     return chosenFens;
   }
 

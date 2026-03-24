@@ -207,7 +207,7 @@ export function createPersistentWorker() {
             }
           };
 
-          worker.postMessage("setoption name MultiPV value 2");
+          worker.postMessage("setoption name MultiPV value 3");
           worker.postMessage(`position fen ${fen}`);
           worker.postMessage(`go depth ${depth}`);
         });
