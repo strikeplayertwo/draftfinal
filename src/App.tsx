@@ -23,10 +23,18 @@ type EvalGraphProps = {
   bColors: string[];
   onJumpToMove: (index: number) => void;
 };
-type GameResult = {
+type ClassicGameResult = {
   id: string;
   user_id: string;
   accuracy: number;
+  created_at: string;
+};
+
+type DailyGameResult = {
+  id: string;
+  user_id: string;
+  accuracy: number;
+  daily_score: number;
   created_at: string;
 };
 
@@ -140,7 +148,8 @@ function App() {
 
   //supabase stuff
   const [user, setUser] = useState<User | null>(null);
-  const [gameHistory, setGameHistory] = useState<GameResult[]>([]);
+  const [gameHistory, setGameHistory] = useState<ClassicGameResult[]>([]);
+  const [dailyGameHistory, setDailyGameHistory] = useState<DailyGameResult[]>([]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rankInfo, setRankInfo] = useState<RankInfo>(null);
@@ -151,7 +160,7 @@ function App() {
     async function fetchGameHistory() {
       if (!user) return;
       const { data } = await supabase
-        .from("game_results")
+        .from("classic_game_results")
         .select()
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
@@ -238,6 +247,11 @@ function App() {
 
     if (isAnalysisMove === "real") {
       setPosHistory([chessPosition]);
+      setMovesPlayed(prev => {
+        const next = prev + 1;
+        return next;
+      });
+      setGameStatus("Moves played: " + (movesplayed + 1));
     } else {
       setPosHistory(prev => [...prev, chessPosition]);
     }
@@ -295,15 +309,23 @@ function App() {
 
   async function dailyTriggerEnd(finalmessage: string, accuracy: number){
     setGameResult(finalmessage);
-    await saveGameResult(accuracy);
+    await saveDailyGameResult(accuracy);
   }
 
   async function saveGameResult(accuracy: number) {
     if (!user) return; // not logged in, skip
     const { error } = await supabase
-      .from("game_results")
+      .from("classic_game_results")
       .insert({ user_id: user.id, accuracy });
     if (error) console.error("Failed to save game result:", error);
+  }
+
+  async function saveDailyGameResult(accuracy: number) {
+    if (!user) return; // not logged in, skip
+    const { error } = await supabase
+      .from("daily_game_results")
+      .insert({ user_id: user.id, accuracy });
+    if (error) console.error("Failed to save daily game result:", error);
   }
 
   async function blankAnalysis(chessPos: string): Promise<void> {
@@ -1214,15 +1236,16 @@ function App() {
         setDailySquares({});
       }
       console.log("PosHistory: " + posHistory);
-      setMovesPlayed(prev => {
-        const next = prev + 1;
-        return next;
-      });
-      setGameStatus("Moves played: " + (movesplayed + 1)); 
-      setBigChessPosition(chessGame.fen()); 
       if(screen === "daily"){
+        setMovesPlayed(prev => {
+          const next = prev + 1;
+          return next;
+        });
+        setGameStatus("Moves played: " + (movesplayed + 1)); 
+        setBigChessPosition(chessGame.fen()); 
         if (movesplayed < 5){
           dailyNext(sendthatfen, moveFrom + square, fiveFens, fenIndex);
+          
         }else{
           findBestMove("analysis", chessGame.fen(), sendthatfen);
         }
