@@ -30,6 +30,13 @@ type GameResult = {
   created_at: string;
 };
 
+type RankInfo = {
+  today:   { rank: number; total: number };
+  week:    { rank: number; total: number };
+  allTime: { rank: number; total: number };
+} | null;
+
+
 function EvalGraph({ evals, bPosHistory, bColors, onJumpToMove }: EvalGraphProps) {
   if (evals.length < 2) return null;
 
@@ -110,6 +117,7 @@ function App() {
   const [DisplayEval, setDisplayEval] = useState("");
   const [PosList, setPosList] = useState("");
   const chessGameRef = useRef<Chess | null>(null);
+  const [fenScores, setFenScores] = useState(0);
   //const chessGameRef = useRef(new Chess(fens[randomFen]));
   //const chessGame = chessGameRef.current;
   const [bPosHistory, setBPosHistory] = useState<string[]>([]);
@@ -135,6 +143,7 @@ function App() {
   const [gameHistory, setGameHistory] = useState<GameResult[]>([]);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rankInfo, setRankInfo] = useState<RankInfo>(null);
 
   useEffect(() => {
     if (!user) return; // don't fetch if not logged in
@@ -196,7 +205,7 @@ function App() {
         }
       });
     }else if(type === "small"){
-      setSquareStyles({
+      setSmallSquares({
         [cSquare]: {
           backgroundColor: 'rgba(255,0,0,0.2)'
         }
@@ -213,6 +222,7 @@ function App() {
   const [squareStyles, setSquareStyles] = useState<Record<string, React.CSSProperties>>({});
   const [optionSquares, setOptionSquares] = useState<Record<string, React.CSSProperties>>({});
   const [dailySquares, setDailySquares] = useState<Record<string, React.CSSProperties>>({});
+  const [smallSquares, setSmallSquares] = useState<Record<string, React.CSSProperties>>({});
   const [arrows, setArrows] = useState<Arrow[]>([]);
   const [oldEval, setOldEval] = useState(-10000);
   const isAnalyzing = useRef(false);
@@ -223,16 +233,11 @@ function App() {
 
     const smallGame = smallGameRef.current;
     if (!smallGame) return;
-    setSquareStyles({});
+    setSmallSquares({});
     setArrows([]);
 
     if (isAnalysisMove === "real") {
       setPosHistory([chessPosition]);
-      setMovesPlayed(prev => {
-        const next = prev + 1;
-        return next;
-      });
-      setGameStatus("Moves played: " + (movesplayed + 1));
     } else {
       setPosHistory(prev => [...prev, chessPosition]);
     }
@@ -453,7 +458,7 @@ function App() {
               return newSquareStyles;
             });
           }else{
-            setSquareStyles(prev => {
+            setSmallSquares(prev => {
               const newSquareStyles = {
                 ...prev
               };
@@ -523,7 +528,7 @@ function App() {
                 return newSquareStyles;
               });
             }else{
-              setSquareStyles(prev => {
+              setSmallSquares(prev => {
                 const newSquareStyles = {
                   ...prev
                 };
@@ -759,6 +764,7 @@ function App() {
       console.log(i);
     }
     setDailyFens(chosenFens);
+    setFenScores(chosenScores.reduce((a, b) => a + b, 0));
     return chosenFens;
   }
 
@@ -771,6 +777,54 @@ function App() {
         return newFen;
       }
     }
+  }
+
+  async function saveAndRankResult(dailyScore: number) {
+    if (!user) return;
+
+    const dailyId = new Date().toISOString().split("T")[0];
+    const today = new Date().toISOString().split("T")[0];
+    const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
+    // ✅ Query BEFORE inserting so the new score isn't in the list yet
+    const { data: allScores } = await supabase
+      .from("game_results")
+      .select("daily_score")
+      .eq("user_id", user.id)
+      .order("daily_score", { ascending: false });
+
+    const { data: todayScores } = await supabase
+      .from("game_results")
+      .select("daily_score")
+      .eq("user_id", user.id)
+      .gte("created_at", today)
+      .order("daily_score", { ascending: false });
+
+    const { data: weekScores } = await supabase
+      .from("game_results")
+      .select("daily_score")
+      .eq("user_id", user.id)
+      .gte("created_at", weekAgo)
+      .order("daily_score", { ascending: false });
+
+    // Insert after querying
+    const { error } = await supabase
+      .from("game_results")
+      .insert({ user_id: user.id, daily_score: dailyScore, daily_id: dailyId });
+
+    if (error) { console.error(error); return; }
+
+    if (!allScores || !todayScores || !weekScores) return;
+
+    // Rank = number of existing scores strictly higher than new score + 1
+    const rankIn = (scores: { daily_score: number }[]) =>
+      scores.filter(s => s.daily_score > dailyScore).length + 1;
+
+    setRankInfo({
+      today:   { rank: rankIn(todayScores), total: todayScores.length + 1 },
+      week:    { rank: rankIn(weekScores),  total: weekScores.length + 1  },
+      allTime: { rank: rankIn(allScores),   total: allScores.length + 1   },
+    });
   }
 
   async function dailyNext(fenBeforeMove: string, playerMove: string, fiveFens: string[], fenIndex: number) {
@@ -841,7 +895,9 @@ function App() {
       setBigChessPosition(chessGame.fen());
       highlightKingSquare(chessGame, "daily");
     }else{
-      dailyTriggerEnd("Daily Challenge Completed! Final Accuracy: " + displayAccuracy/10, displayAccuracy/10);
+      const dailyScore = displayAccuracy * fenScores;
+      await saveAndRankResult(dailyScore);
+      dailyTriggerEnd("Daily Challenge Completed! Final Accuracy: " + displayAccuracy/10 + ". Final Score: " + dailyScore, displayAccuracy/10);
     }
     return;
   }
@@ -1150,8 +1206,8 @@ function App() {
       });
       setOldMove(moveFrom + square);
       setisAnalysisMove("real");
-      //setChessPosition(chessGame.fen());
       if (screen !== "daily"){
+        setChessPosition(chessGame.fen());
         setPosHistory([chessPosition]);
       }else{
         setPosHistory(prev => [...prev, chessGame.fen()]);
@@ -1182,7 +1238,7 @@ function App() {
       return;
     }
 
-    setSquareStyles(prev => {
+    setSmallSquares(prev => {
       const newSquareStyles = {
         ...prev
       };
@@ -1225,7 +1281,7 @@ function App() {
         setisAnalysisMove("real");
         setChessPosition(chessGame.fen());
 
-        setSquareStyles(prev => {
+        setSmallSquares(prev => {
           const newSquareStyles = {
             ...prev
           };
@@ -1289,7 +1345,7 @@ function App() {
       }
       return;
     }
-    setSquareStyles(prev => {
+    setSmallSquares(prev => {
       const newSquareStyles = {
         ...prev
       };
@@ -1310,7 +1366,7 @@ function App() {
     arrows,
     onSquareClick: smallOnSquareClick,
     position: chessPosition,
-    squareStyles,
+    squareStyles: smallSquares,
     id: 'board1',
   };
 
@@ -1463,14 +1519,23 @@ function App() {
           <div className="result-box">
             <h2>{gameResult}</h2>
             <EvalGraph evals={evalHistory} bPosHistory={bPosHistory} bColors={bColors} onJumpToMove={dailyHandleJumpToMove}/>
-            <h3>Past Games</h3>
+            {rankInfo && (
+              <div className="rank-info">
+                <h3>Your Rankings</h3>
+                <p>Today:    #{rankInfo.today.rank}</p>
+                <p>This week: #{rankInfo.week.rank}</p>
+                <p>All-time:  #{rankInfo.allTime.rank}</p>
+              </div>
+            )}
+            {/*<h3>Past Scores</h3>
             <ul>
               {gameHistory.map((game) => (
                 <li key={game.id}>
-                  {new Date(game.created_at).toLocaleDateString()} — Accuracy: {game.accuracy.toFixed(1)}%
+                  {new Date(game.created_at).toLocaleDateString()} — Accuracy: {game.accuracy.toFixed(1)}% — Score: {game.score}
                 </li>
               ))}
             </ul>
+            */}
           </div>
             {/* result UI */}
           </div>
