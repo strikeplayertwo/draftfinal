@@ -189,7 +189,7 @@ function App() {
         cSquare = String.fromCharCode(cSquare.charCodeAt(0) + 1) + '1';
       }
     };
-    if(screen === "daily"){
+    if(screen === "daily" || type === "daily"){
       setDailySquares({
         [cSquare]: {
           backgroundColor: 'rgba(255,0,0,0.2)'
@@ -299,6 +299,62 @@ function App() {
       .from("game_results")
       .insert({ user_id: user.id, accuracy });
     if (error) console.error("Failed to save game result:", error);
+  }
+
+  async function blankAnalysis(chessPos: string): Promise<void> {
+    const lines = await workerB.getMultiPV(chessPos, 18, 3);
+    const maxMoves = 6;
+    const formatted = lines
+      .filter(line => line)
+      .map(line => {
+        const shortPv = line.pv
+          .split(" ")
+          .slice(0, maxMoves)
+          .join(" ");
+
+        if (line.mate !== null) {
+          return `#${line.mate} ${shortPv}`;
+        }
+        
+        if (line.cp !== null) {
+          if (chessPos.split(" ")[1] === "b" && line.cp !== null) {
+            line.cp = -line.cp;
+          }
+          return `${line.cp > 0 ? "+" : ""}${(line.cp / 100).toFixed(2)} ${shortPv}`;
+        }
+
+        return null;
+      })
+      .filter(Boolean)
+      .join("\n");
+
+    setDisplayEval(formatted);
+    const bestMove = lines[0]?.pv?.split(" ")?.[0];
+    const secondMove = lines[1]?.pv?.split(" ")?.[0];
+    const thirdMove = lines[2]?.pv?.split(" ")?.[0];
+    setArrows(
+      bestMove
+        ? [
+            {
+              startSquare: bestMove.substring(0, 2) as Square,
+              endSquare: bestMove.substring(2, 4) as Square,
+              color: "rgb(0, 128, 0)",
+            },
+            ...(secondMove ? [{
+                startSquare: secondMove.substring(0, 2) as Square,
+                endSquare: secondMove.substring(2, 4) as Square,
+                color: "rgb(40, 128, 40)",
+              }]
+            : []),
+            ...(thirdMove ? [{
+                startSquare: thirdMove.substring(0, 2) as Square,
+                endSquare: thirdMove.substring(2, 4) as Square,
+                color: "rgb(40, 148, 40)",
+              }]
+            : []),
+        ]
+      : []
+    );
   }
 
   async function findBestMove(moveType: string, chessPos: string, beforeFen: string = ""): Promise<void> {
@@ -504,6 +560,7 @@ function App() {
     }else{
       smallGame.load(oldFen);
     }
+    blankAnalysis(smallGame.fen());
     setChessPosition(smallGame.fen());
   }
 
@@ -520,6 +577,7 @@ function App() {
     //chessGame.load(oldFen);
     setDailySquares({});
     setArrows([]);
+    blankAnalysis(chessGame.fen());
     setBigChessPosition(chessGame.fen());
   }
 
@@ -781,7 +839,7 @@ function App() {
     if (fenIndex + 1 < fiveFens.length) {
       chessGame.load(fiveFens[fenIndex + 1]);
       setBigChessPosition(chessGame.fen());
-      highlightKingSquare(chessGame, "small");
+      highlightKingSquare(chessGame, "daily");
     }else{
       dailyTriggerEnd("Daily Challenge Completed! Final Accuracy: " + displayAccuracy/10, displayAccuracy/10);
     }
@@ -1330,7 +1388,8 @@ function App() {
           //for (let i = 0; i < fens.length; i++){
             chessGameRef.current = new Chess(fens[0]);
             setBigChessPosition(fens[0]);
-            highlightKingSquare(chessGameRef.current, "small");
+            const chessGame = chessGameRef.current;
+            highlightKingSquare(chessGame, "daily");
           //}
         }}>Daily</button>
         <button onClick={() => setScreen("settings")}>Settings</button>
