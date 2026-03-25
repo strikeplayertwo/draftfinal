@@ -189,7 +189,13 @@ function App() {
         cSquare = String.fromCharCode(cSquare.charCodeAt(0) + 1) + '1';
       }
     };
-    if(type === "small"){
+    if(screen === "daily"){
+      setDailySquares({
+        [cSquare]: {
+          backgroundColor: 'rgba(255,0,0,0.2)'
+        }
+      });
+    }else if(type === "small"){
       setSquareStyles({
         [cSquare]: {
           backgroundColor: 'rgba(255,0,0,0.2)'
@@ -206,6 +212,7 @@ function App() {
 
   const [squareStyles, setSquareStyles] = useState<Record<string, React.CSSProperties>>({});
   const [optionSquares, setOptionSquares] = useState<Record<string, React.CSSProperties>>({});
+  const [dailySquares, setDailySquares] = useState<Record<string, React.CSSProperties>>({});
   const [arrows, setArrows] = useState<Arrow[]>([]);
   const [oldEval, setOldEval] = useState(-10000);
   const isAnalyzing = useRef(false);
@@ -266,12 +273,14 @@ function App() {
     
     setisAnalysisMove("endAnalysis");
     setArrows([]);
+    setDailySquares({});
     setShowBack2(true);
     setStoreGameResult(gameResult);
     setGameResult("");
     chessGame.load(fen);
     setBigChessPosition(fen);
     setPosHistory([fen]);
+    console.log("PosHistory: " + posHistory);
   }
 
   async function triggerEnd(finalmessage: string, accuracy: number){
@@ -292,7 +301,7 @@ function App() {
     if (error) console.error("Failed to save game result:", error);
   }
 
-  async function findBestMove(moveType: string, chessPos: string): Promise<void> {
+  async function findBestMove(moveType: string, chessPos: string, beforeFen: string = ""): Promise<void> {
     const chessGame = chessGameRef.current;
     if (!chessGame) return;
     let fenAfterMove = "";
@@ -303,7 +312,7 @@ function App() {
     }else{
       fenAfterMove = chessPos;
       if (screen === "daily"){
-        fenBeforeMove = oldFen;
+        fenBeforeMove = beforeFen;
       }else{
         fenBeforeMove = posHistory[posHistory.length - 1];
       }
@@ -374,18 +383,33 @@ function App() {
               ]
             : []
           );
-          setSquareStyles(prev => {
-            const newSquareStyles = {
-              ...prev
-            };
-            newSquareStyles[oldMove.substring(0, 2)] = {
-              backgroundColor: "rgba(0, 128, 0, 0.2)"
-            };
-            newSquareStyles[oldMove.substring(2, 4)] = {
-              backgroundColor: "rgba(0, 128, 0, 0.2)"
-            };
-            return newSquareStyles;
-          });
+          if (screen === "daily"){
+            setDailySquares(prev => {
+              const newSquareStyles = {
+                ...prev
+              };
+              newSquareStyles[oldMove.substring(0, 2)] = {
+                backgroundColor: "rgba(0, 128, 0, 0.2)"
+              };
+              newSquareStyles[oldMove.substring(2, 4)] = {
+                backgroundColor: "rgba(0, 128, 0, 0.2)"
+              };
+              return newSquareStyles;
+            });
+          }else{
+            setSquareStyles(prev => {
+              const newSquareStyles = {
+                ...prev
+              };
+              newSquareStyles[oldMove.substring(0, 2)] = {
+                backgroundColor: "rgba(0, 128, 0, 0.2)"
+              };
+              newSquareStyles[oldMove.substring(2, 4)] = {
+                backgroundColor: "rgba(0, 128, 0, 0.2)"
+              };
+              return newSquareStyles;
+            });
+          }
         }else{
           console.log("not best move: " + oldMove + " " + bestMove2);
           if(oldMove !== '' && bestMove2 !== ''){
@@ -423,24 +447,45 @@ function App() {
             );
           };
           if (movesplayed > -1) {
-            setSquareStyles(prev => {
-              const newSquareStyles = {
-                ...prev
-              };
-              newSquareStyles[bestMove2.substring(0, 2)] = {
-                backgroundColor: "rgba(0, 128, 0, 0.2)"
-              };
-              newSquareStyles[bestMove2.substring(2, 4)] = {
-                backgroundColor: "rgba(0, 128, 0, 0.2)"
-              };
-              newSquareStyles[oldMove.substring(0, 2)] = {
-                backgroundColor: 'rgba(255, 0, 0, 0.2)'
-              };
-              newSquareStyles[oldMove.substring(2, 4)] = {
-                backgroundColor: 'rgba(255, 0, 0, 0.2)'
-              };
-              return newSquareStyles;
-            });
+            if (screen === "daily"){
+              setDailySquares(prev => {
+                const newSquareStyles = {
+                  ...prev
+                };
+                newSquareStyles[bestMove2.substring(0, 2)] = {
+                  backgroundColor: "rgba(0, 128, 0, 0.2)"
+                };
+                newSquareStyles[bestMove2.substring(2, 4)] = {
+                  backgroundColor: "rgba(0, 128, 0, 0.2)"
+                };
+                newSquareStyles[oldMove.substring(0, 2)] = {
+                  backgroundColor: 'rgba(255, 0, 0, 0.2)'
+                };
+                newSquareStyles[oldMove.substring(2, 4)] = {
+                  backgroundColor: 'rgba(255, 0, 0, 0.2)'
+                };
+                return newSquareStyles;
+              });
+            }else{
+              setSquareStyles(prev => {
+                const newSquareStyles = {
+                  ...prev
+                };
+                newSquareStyles[bestMove2.substring(0, 2)] = {
+                  backgroundColor: "rgba(0, 128, 0, 0.2)"
+                };
+                newSquareStyles[bestMove2.substring(2, 4)] = {
+                  backgroundColor: "rgba(0, 128, 0, 0.2)"
+                };
+                newSquareStyles[oldMove.substring(0, 2)] = {
+                  backgroundColor: 'rgba(255, 0, 0, 0.2)'
+                };
+                newSquareStyles[oldMove.substring(2, 4)] = {
+                  backgroundColor: 'rgba(255, 0, 0, 0.2)'
+                };
+                return newSquareStyles;
+              });
+            }
           }
         }
       } catch (err) {
@@ -464,12 +509,18 @@ function App() {
 
   async function dailyHandleBack() {
     const chessGame = chessGameRef.current;
-    if (!chessGame) return;
+    if (!chessGame) {
+      console.log("chessGame not found");
+      return;
+    }
     setisAnalysisMove("endAnalysis");
     chessGame.load(posHistory[posHistory.length - 2]);
     setPosHistory(prev => prev.slice(0, -1));
+    console.log("PosHistory: " + posHistory);
     //chessGame.load(oldFen);
-    setChessPosition(chessGame.fen());
+    setDailySquares({});
+    setArrows([]);
+    setBigChessPosition(chessGame.fen());
   }
 
   async function stopEffex(damessage: string = "") {
@@ -584,7 +635,7 @@ function App() {
     let chosenFens: string[] = [];
     const chosenScores: number[] = [];
     const chosenStats: {fen: string, score: number, pieces: number, cpCount: number, addScore: number, attacked: number}[] = [];
-    for (let i = 0; i < 50; i++){
+    for (let i = 0; i < 20; i++){
       let newFen = fens[Math.floor(Math.random() * fens.length)];
       let score = 0;
       const lines = await workerA.getTop6Lines(newFen, 16);
@@ -701,10 +752,12 @@ function App() {
       setBColors(prev => [...prev, "rgb(0, 251, 255)"]);
     }else if (thisaccuracy === 1000){
       setBColors(prev => [...prev, "rgb(0, 255, 55)"]);
-    }else if (thisaccuracy > 850){
+    }else if (thisaccuracy > 750){
       setBColors(prev => [...prev, "rgb(0, 137, 7)"]);
-    }else if (thisaccuracy > 600){
-      setBColors(prev => [...prev, "rgb(255, 174, 0)"]);
+    }else if (thisaccuracy > 550){
+      setBColors(prev => [...prev, "rgb(255, 213, 0)"]);
+    }else if (thisaccuracy > 300){
+      setBColors(prev => [...prev, "rgb(255, 114, 0)"]);
     }else{
       setBColors(prev => [...prev, "rgb(255, 0, 0)"]);
     }
@@ -715,7 +768,11 @@ function App() {
       setAccuracy(thisaccuracy);
     }
     console.log("Accuracy " + accuracy + " this: " + thisaccuracy + " Moves: " + movesplayed);
-    setShowEffex("Accuracy: " + thisaccuracy/10);
+    if (thisaccuracy > 1000){
+      setShowEffex("Brilliant Move! Accuracy: " + thisaccuracy/10);
+    }else{
+      setShowEffex("Accuracy: " + thisaccuracy/10);
+    }
     stopEffex();
     setStreakMsg("Current Accuracy: " + displayAccuracy/10);
     setFenIndex(prev => prev + 1);
@@ -975,7 +1032,11 @@ function App() {
       verbose: true
     });
     if (moves.length === 0) {
-      setOptionSquares({});
+      if (screen === "daily") {
+        setDailySquares({});
+      } else {
+        setOptionSquares({});
+      }
       return false;
     }
     const newSquares: Record<string, React.CSSProperties> = {};
@@ -990,7 +1051,11 @@ function App() {
     newSquares[square] = {
       background: 'rgba(255, 255, 0, 0.4)'
     };
-    setOptionSquares(newSquares);
+    if (screen === "daily"){
+      setDailySquares(newSquares);
+    }else{
+      setOptionSquares(newSquares);
+    }
     return true;
   }
 
@@ -1002,23 +1067,18 @@ function App() {
     if (!chessGame) return;
     if (!moveFrom && piece){
       const hasMoveOptions = getMoveOptions(square as Square);
-
       if (hasMoveOptions){
         setMoveFrom(square);
       }
-
       return;
     }
-
     const moves = chessGame.moves({
       square: moveFrom as Square,
       verbose: true
     });
     const foundMove = moves.find(m => m.from === moveFrom && m.to === square);
-
     if (!foundMove) {
       const hasMoveOptions = getMoveOptions(square as Square);
-
       setMoveFrom(hasMoveOptions ? square: '');
       return;
     }
@@ -1033,7 +1093,13 @@ function App() {
       setOldMove(moveFrom + square);
       setisAnalysisMove("real");
       //setChessPosition(chessGame.fen());
-      setPosHistory([chessPosition]);
+      if (screen !== "daily"){
+        setPosHistory([chessPosition]);
+      }else{
+        setPosHistory(prev => [...prev, chessGame.fen()]);
+        setDailySquares({});
+      }
+      console.log("PosHistory: " + posHistory);
       setMovesPlayed(prev => {
         const next = prev + 1;
         return next;
@@ -1044,7 +1110,7 @@ function App() {
         if (movesplayed < 5){
           dailyNext(sendthatfen, moveFrom + square, fiveFens, fenIndex);
         }else{
-          findBestMove("analysis", chessGame.fen());
+          findBestMove("analysis", chessGame.fen(), sendthatfen);
         }
       }else{
         chooseFen(sendthatfen, moveFrom + square);
@@ -1075,6 +1141,7 @@ function App() {
     setMoveFrom('');
     
     setOptionSquares({});
+    setDailySquares({});
   }
 
   function onPieceDrop({
@@ -1202,7 +1269,7 @@ function App() {
     onPieceDrop,
     onSquareClick,
     position: bigChessPosition,
-    squareStyles,
+    squareStyles: dailySquares,
     id: 'board3',
   };
 
