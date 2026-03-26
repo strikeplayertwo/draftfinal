@@ -2,16 +2,22 @@ import {parse} from 'pgn-parser'
 import {Chess} from "chess.js";
 
 
-function splitPGNGames(pgnText: string): string[] {
+function splitPGNGames(pgnText: string, openingFilter: string): string[] {
   return pgnText
     .split(/\r?\n\r?\n(?=\[Event )/)
-    //.split(/\n\n(?=\[Event )/) // every game starts with [Event]
-    .filter(g => g.trim().length > 0);
+    .filter(g => g.trim().length > 0)
+    .filter(g => {
+      if (openingFilter === "All") return true; // no filter, return all
+      // Match against the [Opening "..."] tag in the PGN header
+      const openingMatch = g.match(/\[Opening "([^"]+)"\]/);
+      if (!openingMatch) return false;
+      return openingMatch[1].toLowerCase().includes(openingFilter.toLowerCase());
+    });
 }
 
 
-export function extractFENsFromGames(pgnText: string, limit = 469) {
-  const gamesText = splitPGNGames(pgnText).slice(0, limit);
+export function extractFENsFromGames(pgnText: string, limit = 469, opening = "All") {
+  const gamesText = splitPGNGames(pgnText, opening).slice(0, limit);
   const fens: string[] = [];
 
   for (const gameText of gamesText) {

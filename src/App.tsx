@@ -101,8 +101,7 @@ function EvalGraph({ evals, bPosHistory, bColors, onJumpToMove }: EvalGraphProps
 }
 
 function App() {
-  const fens = extractFENsFromGames(pgnData,94); //pick random fen and set position to it
-  //const randomFen: number = Math.floor(Math.random() * fens.length);
+  const fens = extractFENsFromGames(pgnData,94, "All");
   const [dailyFens, setDailyFens] = useState<string[]>([]);
   const [gameStatus, setGameStatus] = useState("Moves played: 0");
   const [movesplayed, setMovesPlayed] = useState(-1);
@@ -167,8 +166,20 @@ function App() {
       if (data) setGameHistory(data);
     }
 
+    async function fetchDailyGameHistory() {
+      if (!user) return;
+      const { data } = await supabase
+        .from("daily_game_results")
+        .select()
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      if (data) setDailyGameHistory(data);
+    }
+
+
     fetchGameHistory();
-  }, [user]);
+    fetchDailyGameHistory();
+    }, [user]);
 
   useEffect(() => {
     // Get current session on load
@@ -228,7 +239,7 @@ function App() {
     }
   }
 
-  const [squareStyles, setSquareStyles] = useState<Record<string, React.CSSProperties>>({});
+  //const [squareStyles, setSquareStyles] = useState<Record<string, React.CSSProperties>>({});
   const [optionSquares, setOptionSquares] = useState<Record<string, React.CSSProperties>>({});
   const [dailySquares, setDailySquares] = useState<Record<string, React.CSSProperties>>({});
   const [smallSquares, setSmallSquares] = useState<Record<string, React.CSSProperties>>({});
@@ -307,9 +318,9 @@ function App() {
     await saveGameResult(accuracy);
   }
 
-  async function dailyTriggerEnd(finalmessage: string, accuracy: number){
+  async function dailyTriggerEnd(finalmessage: string, accuracy: number, daily_score: number){
     setGameResult(finalmessage);
-    await saveDailyGameResult(accuracy);
+    //await saveDailyGameResult(accuracy, daily_score);
   }
 
   async function saveGameResult(accuracy: number) {
@@ -320,13 +331,14 @@ function App() {
     if (error) console.error("Failed to save game result:", error);
   }
 
-  async function saveDailyGameResult(accuracy: number) {
+  /*async function saveDailyGameResult(accuracy: number, daily_score: number) {
     if (!user) return; // not logged in, skip
+    const daily_id = new Date().toISOString().split("T")[0];
     const { error } = await supabase
       .from("daily_game_results")
-      .insert({ user_id: user.id, accuracy });
+      .insert({ user_id: user.id, accuracy, daily_score, daily_id });
     if (error) console.error("Failed to save daily game result:", error);
-  }
+  }*/
 
   async function blankAnalysis(chessPos: string): Promise<void> {
     const lines = await workerB.getMultiPV(chessPos, 18, 3);
@@ -732,7 +744,7 @@ function App() {
       let pieces = countPieceSquares(newFen);
       score += pieces;
       let cpCount = 0;
-      lines.forEach((line, i) =>{
+      lines.forEach((line) =>{
         if (line.cp > -9000 && line.cp < 9000){
           if (line.cp - lines[0].cp > -81 && line.cp - lines[0].cp < -41){
             cpCount += 10;
@@ -801,7 +813,7 @@ function App() {
     }
   }
 
-  async function saveAndRankResult(dailyScore: number) {
+  async function saveAndRankResult(dailyScore: number, accuracy: number) {
     if (!user) return;
 
     const dailyId = new Date().toISOString().split("T")[0];
@@ -810,20 +822,20 @@ function App() {
 
     // ✅ Query BEFORE inserting so the new score isn't in the list yet
     const { data: allScores } = await supabase
-      .from("game_results")
+      .from("daily_game_results")
       .select("daily_score")
       .eq("user_id", user.id)
       .order("daily_score", { ascending: false });
 
     const { data: todayScores } = await supabase
-      .from("game_results")
+      .from("daily_game_results")
       .select("daily_score")
       .eq("user_id", user.id)
       .gte("created_at", today)
       .order("daily_score", { ascending: false });
 
     const { data: weekScores } = await supabase
-      .from("game_results")
+      .from("daily_game_results")
       .select("daily_score")
       .eq("user_id", user.id)
       .gte("created_at", weekAgo)
@@ -831,8 +843,8 @@ function App() {
 
     // Insert after querying
     const { error } = await supabase
-      .from("game_results")
-      .insert({ user_id: user.id, daily_score: dailyScore, daily_id: dailyId });
+      .from("daily_game_results")
+      .insert({ user_id: user.id, daily_score: dailyScore, daily_id: dailyId, accuracy });
 
     if (error) { console.error(error); return; }
 
@@ -917,9 +929,10 @@ function App() {
       setBigChessPosition(chessGame.fen());
       highlightKingSquare(chessGame, "daily");
     }else{
-      const dailyScore = displayAccuracy * fenScores;
-      await saveAndRankResult(dailyScore);
-      dailyTriggerEnd("Daily Challenge Completed! Final Accuracy: " + displayAccuracy/10 + ". Final Score: " + dailyScore, displayAccuracy/10);
+      const dailyScore = (displayAccuracy * fenScores / 2500);
+      const displayScore = Math.round(dailyScore);
+      await saveAndRankResult(dailyScore, displayAccuracy/10);
+      dailyTriggerEnd("Daily Challenge Completed! Final Accuracy: " + displayAccuracy/10 + ". Final Score: " + displayScore, displayAccuracy/10, dailyScore);
     }
     return;
   }
@@ -1550,15 +1563,16 @@ function App() {
                 <p>All-time:  #{rankInfo.allTime.rank}</p>
               </div>
             )}
-            {/*<h3>Past Scores</h3>
+            <h3>Past Scores</h3>
             <ul>
-              {gameHistory.map((game) => (
+              {dailyGameHistory.map((game) => (
                 <li key={game.id}>
-                  {new Date(game.created_at).toLocaleDateString()} — Accuracy: {game.accuracy.toFixed(1)}% — Score: {game.score}
+                  {new Date(game.created_at).toLocaleDateString()} 
+                  {game.accuracy != null ? ` — Accuracy: ${game.accuracy.toFixed(1)}%` : ""}
+                  {game.daily_score != null ? ` — Score: ${game.daily_score.toFixed(1)}` : ""}
                 </li>
               ))}
             </ul>
-            */}
           </div>
             {/* result UI */}
           </div>
