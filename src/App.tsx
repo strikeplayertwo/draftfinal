@@ -1464,19 +1464,55 @@ function App() {
         <button onClick={() => {
           setScreen("versus");
         }}>Versus</button>
-        <button onClick={async () => {
-          const startFen = await chooseFirstFen("Sicilian");
-          const newGame = new Chess(startFen);
-          chessGameRef.current = newGame;
-          smallGameRef.current = new Chess(startFen);
-          tryFenRef.current = new Chess(startFen);
-          setChessPosition(newGame.fen());
-          setBigChessPosition(newGame.fen());
-          setOldFen(newGame.fen());
-          highlightKingSquare(newGame, "big");
-          setBPosHistory([newGame.fen()]);
-          setScreen("classic");
-          }}>Classic</button>
+        <div style={{ position: "relative", display: "inline-block" }}>
+          <button onClick={() => setShowOpeningSelect(prev => !prev)}>
+            Classic Mode ▾
+          </button>
+
+          {showOpeningSelect && (
+            <div style={{
+              position: "absolute",
+              top: "100%",
+              left: 0,
+              background: "#161b22",
+              border: "1px solid #30363d",
+              borderRadius: 8,
+              zIndex: 100,
+              minWidth: 200,
+              padding: "8px 0"
+            }}>
+              {openings.map(opening => (
+                <div
+                  key={opening}
+                  onClick={async () => {
+                    setShowOpeningSelect(false);
+                    const startFen = await chooseFirstFen(opening);
+                    const newGame = new Chess(startFen);
+                    chessGameRef.current = newGame;
+                    smallGameRef.current = new Chess(startFen);
+                    tryFenRef.current = new Chess(startFen);
+                    setChessPosition(newGame.fen());
+                    setBigChessPosition(newGame.fen());
+                    setOldFen(newGame.fen());
+                    highlightKingSquare(newGame, "big");
+                    setBPosHistory([newGame.fen()]);
+                    setScreen("classic");
+                  }}
+                  style={{
+                    padding: "10px 16px",
+                    cursor: "pointer",
+                    color: "#e6edf3",
+                    fontSize: "0.9rem",
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = "#21262d")}
+                  onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                >
+                  {opening}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
         <button onClick={async () => {
           setScreen("daily");
           setMovesPlayed(0);
