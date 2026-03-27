@@ -157,7 +157,8 @@ function App() {
   //opening stuff
   const [showOpeningSelect, setShowOpeningSelect] = useState(false);
   const [reqMove, setReqMove] = useState<string>("none");
-  const [selectedOpening, setSelectedOpening] = useState<string>("None");
+  const [daOpeningFens, setDaOpeningFens] = useState<string[]>([]);
+  const [daOpeningMoves, setDaOpeningMoves] = useState<string[]>([]);
   const openings = ["None", "Random", "Sicilian", "French", "Caro-Kann", "English", "Ruy Lopez", "King's Indian", "Queen's Pawn Game", "Queen's Bishop Game", "Queen's Indian", "Gruenfeld", "Queen's Gambit Declined", "Reti", "Benoni", "Catalan", "Giuoco Piano/Pianissimo"];
   const openingPlyLengths: Record<string, number> = { "None": 6, "Random": 6, "Sicilian": 2, "French": 4, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "Queen's Bishop Game": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 3, "Reti": 1, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Giuoco Piano/Pianissimo": 5 };
   const openingMoveMap: Record<string, string> = {
@@ -978,6 +979,15 @@ function App() {
       setEvalHistory(prev => [...prev, ourOldEval]);
       console.log("Starting Eval logged: " + oldFen);
     }
+    if (reqMove !== "none"){
+      if (playerMove !== reqMove){
+        setDif(-50);
+      }else{
+        setDif(50);
+      }
+    }else{
+
+    }
     const [result, stockfishSetup] = await Promise.all([
       workerC.getBestLine(chessGame.fen(), 18).then(r => { console.log("chooseFen workerA done", r); return r; }),
       workerD.getBestLine(fenBeforeMove, 18).then(r => { console.log("chooseFen workerB done", r); return r; }),
@@ -1107,6 +1117,16 @@ function App() {
       }
     }
 
+    if (reqMove !== "none"){
+      if (playerMove !== reqMove){
+        setDif(-50);
+      }else{
+        setDif(50);
+      }
+    }
+
+
+    
     const evalA = (ourOldEval - bestEval + ourEval + bonus + streakbonus + dif);
     console.log("EvalA: " + evalA + " ourOldEval: " + ourOldEval + " BestEval: " + bestEval + " OurEval: " + ourEval + " Bonus: " + bonus + " StreakBonus: " + streakbonus + " Dif: " + dif);
     setEvalHistory(prev => [...prev, evalA]);
@@ -1133,73 +1153,92 @@ function App() {
       return;
     }
 
-    let attempts = 0;
-    const MAX_ATTEMPTS = 400;
-    while (attempts < MAX_ATTEMPTS) {
-      const newFens = fens[Math.floor(Math.random() * fens.length)];
-      const evalB = await workerA.getEval(newFens, 10);
-      //if ((evalA - evalB <= 30) && (evalA - evalB >= -30)){ 
-      if (Math.abs(evalA) < 50){
-        if ((evalA - evalB <= 30) && (evalA - evalB >= -30)){
-          setBigChessPosition(newFens);
-          chessGame.load(newFens);
-          highlightKingSquare(chessGame, "big");
-          const newevalB = await workerB.getEval(newFens, 18);
-          const difference = evalA - newevalB;
-          setOldEval(newevalB);
-          setDif(difference);
-          console.log("Success 1! Elo Within 30 " + evalA + " " + evalB + " " + newevalB + " " + difference);
-          setBPosHistory(prev => [...prev, newFens]);
-          return;
-        }
-      }else if (((evalA < evalB / 0.6) && (evalA > evalB * 0.6) && (evalA >= 0)) || ((evalA > evalB / 0.6) && (evalA < evalB * 0.6) && (evalA <= 0))){
-        const newevalB = await workerB.getEval(newFens, 18);
-        if (((evalA < newevalB / 0.5) && (evalA > newevalB * 0.5) && (evalA >= 0)) || ((evalA > newevalB / 0.5) && (evalA < newevalB * 0.5) && (evalA <= 0))){
-          setBigChessPosition(newFens);
-          chessGame.load(newFens);
-          highlightKingSquare(chessGame, "big");
-          setOldEval(newevalB);
-          const difference = evalA - newevalB;
-          setDif(difference);
-          console.log("Success 2! Elo within division range" + evalA + " " + evalB + " " + newevalB + " " + difference);
-          setBPosHistory(prev => [...prev, newFens]);
-          return;
-        }else{
-          console.log("Inaccuracy error");
-        }
-      }else if (((Math.abs(evalA) < Math.abs(evalB) / 0.7) && (Math.abs(evalA) > Math.abs(evalB) * 0.7)) || ((Math.abs(evalA) > Math.abs(evalB) / 0.7) && (Math.abs(evalA) < Math.abs(evalB) * 0.7))){
-        const result4 = await workerA.getBestLine(newFens, 18);
-        const pvswap = result4.pv;
-        const swapMove = pvswap?.split(" ")?.[0];
-        chessGame.load(newFens);
-        try{
-          chessGame.move({from: swapMove.substring(0, 2), to: swapMove.substring(2, 4), promotion: 'q'});
-        }catch{
-          console.log("invalid move in swapFen");
-        }
-        const newevalB = await workerB.getEval(chessGame.fen(), 18);
 
-        if (((evalA < newevalB / 0.5) && (evalA > newevalB * 0.5) && (evalA >= 0)) || ((evalA > newevalB / 0.5) && (evalA < newevalB * 0.5) && (evalA <= 0))){
-          setBigChessPosition(chessGame.fen());
-          highlightKingSquare(chessGame, "big");
-          setOldEval(newevalB);
-          const difference = evalA - newevalB;
-          setDif(difference);
-          console.log("Success 3! Elo swapped" + evalA + " " + evalB + " " + newevalB + " " + difference);
-          setBPosHistory(prev => [...prev, chessGame.fen()]);
-          return;
-        }else{
-          console.log("Inaccuracy error on swap");
-        };
-      }
-      console.log("Eval1: " + evalA + " Eval2: " + evalB);
-      attempts++;
-    }
-    console.log("Failure");
-    if(evalA > 0){
-      triggerEnd("You win! Final stats: Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval + ", Final Eval: " + evalA, displayAccuracy/10);
+    if(daOpeningFens.length > 0 && Math.random() < 0.5){
+      const randnumb = Math.floor(Math.random() * (daOpeningFens.length - 1))
+      const newFens = daOpeningFens[randnumb];
+      const evalB = await workerA.getEval(newFens, 10);
+      setBigChessPosition(newFens);
+      chessGame.load(newFens);
+      highlightKingSquare(chessGame, "big");
+      const newevalB = await workerB.getEval(newFens, 18);
+      const difference = evalA - newevalB;
+      setOldEval(newevalB);
+      setDif(difference);
+      console.log("Taking Opening Position. " + evalA + " " + evalB + " " + newevalB + " " + difference);
+      setReqMove(daOpeningMoves[randnumb]);
+      setBPosHistory(prev => [...prev, newFens]);
+      return;
     }else{
-      triggerEnd("Game over! Final stats: Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval + ", Final Eval: " + evalA, displayAccuracy/10);
+      setReqMove("none");
+      let attempts = 0;
+      const MAX_ATTEMPTS = 400;
+      while (attempts < MAX_ATTEMPTS) {
+        const newFens = fens[Math.floor(Math.random() * fens.length)];
+        const evalB = await workerA.getEval(newFens, 10);
+        //if ((evalA - evalB <= 30) && (evalA - evalB >= -30)){ 
+        if (Math.abs(evalA) < 50){
+          if ((evalA - evalB <= 30) && (evalA - evalB >= -30)){
+            setBigChessPosition(newFens);
+            chessGame.load(newFens);
+            highlightKingSquare(chessGame, "big");
+            const newevalB = await workerB.getEval(newFens, 18);
+            const difference = evalA - newevalB;
+            setOldEval(newevalB);
+            setDif(difference);
+            console.log("Success 1! Elo Within 30 " + evalA + " " + evalB + " " + newevalB + " " + difference);
+            setBPosHistory(prev => [...prev, newFens]);
+            return;
+          }
+        }else if (((evalA < evalB / 0.6) && (evalA > evalB * 0.6) && (evalA >= 0)) || ((evalA > evalB / 0.6) && (evalA < evalB * 0.6) && (evalA <= 0))){
+          const newevalB = await workerB.getEval(newFens, 18);
+          if (((evalA < newevalB / 0.5) && (evalA > newevalB * 0.5) && (evalA >= 0)) || ((evalA > newevalB / 0.5) && (evalA < newevalB * 0.5) && (evalA <= 0))){
+            setBigChessPosition(newFens);
+            chessGame.load(newFens);
+            highlightKingSquare(chessGame, "big");
+            setOldEval(newevalB);
+            const difference = evalA - newevalB;
+            setDif(difference);
+            console.log("Success 2! Elo within division range" + evalA + " " + evalB + " " + newevalB + " " + difference);
+            setBPosHistory(prev => [...prev, newFens]);
+            return;
+          }else{
+            console.log("Inaccuracy error");
+          }
+        }else if (((Math.abs(evalA) < Math.abs(evalB) / 0.7) && (Math.abs(evalA) > Math.abs(evalB) * 0.7)) || ((Math.abs(evalA) > Math.abs(evalB) / 0.7) && (Math.abs(evalA) < Math.abs(evalB) * 0.7))){
+          const result4 = await workerA.getBestLine(newFens, 18);
+          const pvswap = result4.pv;
+          const swapMove = pvswap?.split(" ")?.[0];
+          chessGame.load(newFens);
+          try{
+            chessGame.move({from: swapMove.substring(0, 2), to: swapMove.substring(2, 4), promotion: 'q'});
+          }catch{
+            console.log("invalid move in swapFen");
+          }
+          const newevalB = await workerB.getEval(chessGame.fen(), 18);
+
+          if (((evalA < newevalB / 0.5) && (evalA > newevalB * 0.5) && (evalA >= 0)) || ((evalA > newevalB / 0.5) && (evalA < newevalB * 0.5) && (evalA <= 0))){
+            setBigChessPosition(chessGame.fen());
+            highlightKingSquare(chessGame, "big");
+            setOldEval(newevalB);
+            const difference = evalA - newevalB;
+            setDif(difference);
+            console.log("Success 3! Elo swapped" + evalA + " " + evalB + " " + newevalB + " " + difference);
+            setBPosHistory(prev => [...prev, chessGame.fen()]);
+            return;
+          }else{
+            console.log("Inaccuracy error on swap");
+          };
+        }
+        console.log("Eval1: " + evalA + " Eval2: " + evalB);
+        attempts++;
+      }
+      console.log("Failure");
+      if(evalA > 0){
+        triggerEnd("You win! Final stats: Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval + ", Final Eval: " + evalA, displayAccuracy/10);
+      }else{
+        triggerEnd("Game over! Final stats: Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval + ", Final Eval: " + evalA, displayAccuracy/10);
+      }
     }
   }
 
@@ -1262,7 +1301,7 @@ function App() {
       return;
     }
     try {
-      if (reqMove !== "none"){
+      if (reqMove !== "none" && daOpeningFens.length === 0){
         const sendthatfen = chessGame.fen();
         chessGame.move({
           from: moveFrom,
@@ -1535,32 +1574,36 @@ function App() {
                     const plyLength = openingPlyLengths[opening];
                     const newGame = new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
                     const openingFens = [newGame.fen()];
-                    setBigChessPosition(newGame.fen());
-                    for (let i = 0; i < plyLength; i++){
-                      await new Promise(resolve => setTimeout(resolve, 1500));
-                      const move = openingMoves[i];
-                      if (!move) break;
-                      newGame.move(move);
+                    if(opening !== "None"){
                       setBigChessPosition(newGame.fen());
-                      openingFens.push(newGame.fen());
-                    }
-                    await new Promise(resolve => setTimeout(resolve, 3000));
-                    newGame.load(openingFens[0]);
-                    setBigChessPosition(openingFens[0]);
-                    async function playerRunThru(openingFens: string[]){
-                      for (let i = 0; i < openingFens.length - 1; i++){
-                        newGame.load(openingFens[i]);
-                        chessGameRef.current = newGame;
-                        setReqMove(openingMoves[i]);
-                        while(chessGameRef.current.fen() !== openingFens[i + 1]){
-                          //console.log("No. Big Chess Position: " + bigChessPosition + " Opening Fen: " + openingFens[i + 1]);
-                          await new Promise(resolve => setTimeout(resolve, 50));
-                        }
-                        //console.log("Yes. Big Chess Position: " + bigChessPosition + " Opening Fen: " + openingFens[i + 1]);
+                      for (let i = 0; i < plyLength; i++){
+                        await new Promise(resolve => setTimeout(resolve, 1500));
+                        const move = openingMoves[i];
+                        if (!move) break;
+                        newGame.move(move);
+                        setBigChessPosition(newGame.fen());
+                        openingFens.push(newGame.fen());
                       }
-                    }
-                    await playerRunThru(openingFens);
-                    setReqMove("none");
+                      await new Promise(resolve => setTimeout(resolve, 3000));
+                      newGame.load(openingFens[0]);
+                      setBigChessPosition(openingFens[0]);
+                      async function playerRunThru(openingFens: string[]){
+                        for (let i = 0; i < openingFens.length - 1; i++){
+                          newGame.load(openingFens[i]);
+                          chessGameRef.current = newGame;
+                          setReqMove(openingMoves[i]);
+                          while(chessGameRef.current.fen() !== openingFens[i + 1]){
+                            //console.log("No. Big Chess Position: " + bigChessPosition + " Opening Fen: " + openingFens[i + 1]);
+                            await new Promise(resolve => setTimeout(resolve, 50));
+                          }
+                          //console.log("Yes. Big Chess Position: " + bigChessPosition + " Opening Fen: " + openingFens[i + 1]);
+                        }
+                      }
+                      await playerRunThru(openingFens);
+                      setDaOpeningFens(openingFens);
+                      setDaOpeningMoves(openingMoves);
+                      setReqMove("none");
+                    };
                     const startFen = await chooseFirstFen(opening, plyLength);
                     await new Promise(resolve => setTimeout(resolve, 1000));
                     newGame.load(startFen);
