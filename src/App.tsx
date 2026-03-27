@@ -156,9 +156,29 @@ function App() {
   
   //opening stuff
   const [showOpeningSelect, setShowOpeningSelect] = useState(false);
-  const [selectedOpening, setSelectedOpening] = useState<string>("all");
-  const openings = ["All", "Sicilian", "French", "Caro-Kann", "English", "King's Indian", "Queen's Pawn Game", "Queen's Bishop Game", "Queen's Indian", "Reti", "Benoni", "Gruenfeld", "Queen's Gambit Declined", "Catalan", "Giuoco Piano/Pianissimo"];
-
+  const [reqMove, setReqMove] = useState<string>("none");
+  const [selectedOpening, setSelectedOpening] = useState<string>("None");
+  const openings = ["None", "Random", "Sicilian", "French", "Caro-Kann", "English", "Ruy Lopez", "King's Indian", "Queen's Pawn Game", "Queen's Bishop Game", "Queen's Indian", "Gruenfeld", "Queen's Gambit Declined", "Reti", "Benoni", "Catalan", "Giuoco Piano/Pianissimo"];
+  const openingPlyLengths: Record<string, number> = { "None": 6, "Random": 6, "Sicilian": 2, "French": 4, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "Queen's Bishop Game": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 3, "Reti": 1, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Giuoco Piano/Pianissimo": 5 };
+  const openingMoveMap: Record<string, string> = {
+    "None": "",
+    "Random": "",
+    "Sicilian": "e2e4 c7c5",
+    "French": "e2e4 e7e6 d2d4 d7d5",
+    "Caro-Kann": "e2e4 b7b5",
+    "English": "c2c4",
+    "Ruy Lopez": "e2e4 e7e5 g1f3 b8c6 f1b5",
+    "King's Indian": "d2d4 g8f6 c2c4 g7g6",
+    "Queen's Pawn Game": "d2d4 d7d5",
+    "Queen's Bishop Game": "d2d4 d7d5 g1f3 g8f6 c1f4 c7c5 e2e3",
+    "Queen's Indian": "d2d4 b8c6 c2c4 e7e6 g2g3 b8c6",
+    "Gruenfeld": "d2d4 b8c6 c2c4 g7g6 g1f3 b8c6",
+    "Queen's Gambit Declined": "d2d4 d7d5 c2c4",
+    "Reti": "g1f3",
+    "Benoni": "d2d4 g8f6 c2c4 c7c5",
+    "Catalan": "d2d4 g8f6 c2c4 e7e6 g2g3",
+    "Giuoco Piano/Pianissimo": "e2e4 e7e5 g1f3 b8c6 f1c4"
+  };
   useEffect(() => {
     if (!user) return; // don't fetch if not logged in
 
@@ -809,14 +829,14 @@ function App() {
     return chosenFens;
   }
 
-  async function chooseFirstFen(opening: string = "All"): Promise<string> {
-    const daFens = extractFENsFromGames(pgnData,94, opening);
+  async function chooseFirstFen(opening: string = "None", plyLength: number = 6): Promise<string> {
+    const daFens = extractFENsFromGames(pgnData,94, opening, plyLength);
     setFens(daFens);
     while (true) {
       const newFen = daFens[Math.floor(Math.random() * daFens.length)];
       const evalB = await workerA.getEval(newFen, 10);
       console.log(evalB);
-      if (Math.abs(evalB) < 10) {
+      if (Math.abs(evalB) < 30) {
         return newFen;
       }
     }
@@ -1095,6 +1115,7 @@ function App() {
       const pv = result.pv;
       for (let i = 0; i < Math.abs(mate) + 5; i++){
         if (chessGame.isGameOver() === false){
+          setBigChessPosition(chessGame.fen());
           await new Promise(resolve => setTimeout(resolve, 500));
           const move = pv?.split(" ")?.[i];
           chessGame.move({from: move?.substring(0, 2) as Square, to: move?.substring(2, 4) as Square, promotion: 'q'});
@@ -1241,38 +1262,57 @@ function App() {
       return;
     }
     try {
-      const sendthatfen = chessGame.fen();
-      setOldFen(chessGame.fen());
-      chessGame.move({
-        from: moveFrom,
-        to: square,
-        promotion: 'q'
-      });
-      setOldMove(moveFrom + square);
-      setisAnalysisMove("real");
-      if (screen !== "daily"){
-        setChessPosition(chessGame.fen());
-        setPosHistory([chessPosition]);
-      }else{
-        setPosHistory(prev => [...prev, chessGame.fen()]);
-        setDailySquares({});
-      }
-      console.log("PosHistory: " + posHistory);
-      if(screen === "daily"){
-        setMovesPlayed(prev => {
-          const next = prev + 1;
-          return next;
+      if (reqMove !== "none"){
+        const sendthatfen = chessGame.fen();
+        chessGame.move({
+          from: moveFrom,
+          to: square,
+          promotion: 'q'
         });
-        setGameStatus("Moves played: " + (movesplayed + 1)); 
-        setBigChessPosition(chessGame.fen()); 
-        if (movesplayed < 5){
-          dailyNext(sendthatfen, moveFrom + square, fiveFens, fenIndex);
-          
+        if(moveFrom + square === reqMove){
+          chessGameRef.current = chessGame;
+          console.log("Requested move played");
+          setBigChessPosition(chessGame.fen());
         }else{
-          findBestMove("analysis", chessGame.fen(), sendthatfen);
+          console.log("Requested move not played: " + moveFrom + square + " reqMove: " + reqMove + "chesspos: " + bigChessPosition);
+          setBigChessPosition(sendthatfen);
+          chessGame.undo();
         }
+
       }else{
-        chooseFen(sendthatfen, moveFrom + square);
+        const sendthatfen = chessGame.fen();
+        setOldFen(chessGame.fen());
+        chessGame.move({
+          from: moveFrom,
+          to: square,
+          promotion: 'q'
+        });
+        setOldMove(moveFrom + square);
+        setisAnalysisMove("real");
+        if (screen !== "daily"){
+          setChessPosition(chessGame.fen());
+          setPosHistory([chessPosition]);
+        }else{
+          setPosHistory(prev => [...prev, chessGame.fen()]);
+          setDailySquares({});
+        }
+        console.log("PosHistory: " + posHistory);
+        if(screen === "daily"){
+          setMovesPlayed(prev => {
+            const next = prev + 1;
+            return next;
+          });
+          setGameStatus("Moves played: " + (movesplayed + 1)); 
+          setBigChessPosition(chessGame.fen()); 
+          if (movesplayed < 5){
+            dailyNext(sendthatfen, moveFrom + square, fiveFens, fenIndex);
+            
+          }else{
+            findBestMove("analysis", chessGame.fen(), sendthatfen);
+          }
+        }else{
+          chooseFen(sendthatfen, moveFrom + square);
+        }
       }
     }catch {
       const hasMoveOptions = getMoveOptions(square as Square);
@@ -1283,22 +1323,23 @@ function App() {
       return;
     }
 
-    setSmallSquares(prev => {
-      const newSquareStyles = {
-        ...prev
-      };
-      newSquareStyles[moveFrom] = {
-        backgroundColor: 'rgba(255,0,0,0.2)'
-      };
-      newSquareStyles[square] = {
-        backgroundColor: 'rgba(255,0,0,0.2)'
-      };
-      
-      return newSquareStyles;
-    });
+    if(reqMove === "none"){
+      setSmallSquares(prev => {
+        const newSquareStyles = {
+          ...prev
+        };
+        newSquareStyles[moveFrom] = {
+          backgroundColor: 'rgba(255,0,0,0.2)'
+        };
+        newSquareStyles[square] = {
+          backgroundColor: 'rgba(255,0,0,0.2)'
+        };
+        
+        return newSquareStyles;
+      });
+    }
 
     setMoveFrom('');
-    
     setOptionSquares({});
     setDailySquares({});
   }
@@ -1485,9 +1526,44 @@ function App() {
                 <div
                   key={opening}
                   onClick={async () => {
+                    setScreen("classic");
                     setShowOpeningSelect(false);
-                    const startFen = await chooseFirstFen(opening);
-                    const newGame = new Chess(startFen);
+                    if(opening === "Random"){
+                      opening = openings[Math.floor(Math.random() * (openings.length - 3)) + 2];
+                    };
+                    const openingMoves = openingMoveMap[opening].split(" ");
+                    const plyLength = openingPlyLengths[opening];
+                    const newGame = new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+                    const openingFens = [newGame.fen()];
+                    setBigChessPosition(newGame.fen());
+                    for (let i = 0; i < plyLength; i++){
+                      await new Promise(resolve => setTimeout(resolve, 1500));
+                      const move = openingMoves[i];
+                      if (!move) break;
+                      newGame.move(move);
+                      setBigChessPosition(newGame.fen());
+                      openingFens.push(newGame.fen());
+                    }
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                    newGame.load(openingFens[0]);
+                    setBigChessPosition(openingFens[0]);
+                    async function playerRunThru(openingFens: string[]){
+                      for (let i = 0; i < openingFens.length - 1; i++){
+                        newGame.load(openingFens[i]);
+                        chessGameRef.current = newGame;
+                        setReqMove(openingMoves[i]);
+                        while(chessGameRef.current.fen() !== openingFens[i + 1]){
+                          //console.log("No. Big Chess Position: " + bigChessPosition + " Opening Fen: " + openingFens[i + 1]);
+                          await new Promise(resolve => setTimeout(resolve, 50));
+                        }
+                        //console.log("Yes. Big Chess Position: " + bigChessPosition + " Opening Fen: " + openingFens[i + 1]);
+                      }
+                    }
+                    await playerRunThru(openingFens);
+                    setReqMove("none");
+                    const startFen = await chooseFirstFen(opening, plyLength);
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    newGame.load(startFen);
                     chessGameRef.current = newGame;
                     smallGameRef.current = new Chess(startFen);
                     tryFenRef.current = new Chess(startFen);
@@ -1496,7 +1572,6 @@ function App() {
                     setOldFen(newGame.fen());
                     highlightKingSquare(newGame, "big");
                     setBPosHistory([newGame.fen()]);
-                    setScreen("classic");
                   }}
                   style={{
                     padding: "10px 16px",

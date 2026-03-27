@@ -7,7 +7,7 @@ function splitPGNGames(pgnText: string, openingFilter: string): string[] {
     .split(/\r?\n\r?\n(?=\[Event )/)
     .filter(g => g.trim().length > 0)
     .filter(g => {
-      if (openingFilter === "All") return true; // no filter, return all
+      if (openingFilter === "None") return true; // no filter, return all
       // Match against the [Opening "..."] tag in the PGN header
       const openingMatch = g.match(/\[Opening "([^"]+)"\]/);
       if (!openingMatch) return false;
@@ -16,19 +16,18 @@ function splitPGNGames(pgnText: string, openingFilter: string): string[] {
 }
 
 
-export function extractFENsFromGames(pgnText: string, limit = 469, opening = "All") {
+export function extractFENsFromGames(pgnText: string, limit = 469, opening = "None", plyLength = 6) {
   const gamesText = splitPGNGames(pgnText, opening).slice(0, limit);
   const fens: string[] = [];
 
   for (const gameText of gamesText) {
     const parsed = parse(gameText)[0];
-    if (!parsed?.moves || parsed.moves.length < 6) continue; // plies/2 = moves
+    if (!parsed?.moves || parsed.moves.length < plyLength) continue; // plies/2 = moves
 
     const chess = new Chess();
 
-    const minPly = 6;
     const maxPly = parsed.moves.length - 1;
-    const randomPly = Math.floor(Math.random() * (maxPly - minPly + 1)) + minPly;
+    const randomPly = Math.floor(Math.random() * (maxPly - plyLength + 1)) + plyLength;
 
     try {
       for (let i = 0; i < randomPly; i++) {
