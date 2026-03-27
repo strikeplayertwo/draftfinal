@@ -101,7 +101,8 @@ function EvalGraph({ evals, bPosHistory, bColors, onJumpToMove }: EvalGraphProps
 }
 
 function App() {
-  const fens = extractFENsFromGames(pgnData,94, "All");
+  //const fens = extractFENsFromGames(pgnData,94, "All");
+  const [fens, setFens] = useState<string[]>([]);
   const [dailyFens, setDailyFens] = useState<string[]>([]);
   const [gameStatus, setGameStatus] = useState("Moves played: 0");
   const [movesplayed, setMovesPlayed] = useState(-1);
@@ -152,6 +153,11 @@ function App() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rankInfo, setRankInfo] = useState<RankInfo>(null);
+  
+  //opening stuff
+  const [showOpeningSelect, setShowOpeningSelect] = useState(false);
+  const [selectedOpening, setSelectedOpening] = useState<string>("all");
+  const openings = ["All", "Sicilian", "French", "Caro-Kann", "English", "King's Indian", "Queen's Pawn Game", "Queen's Bishop Game", "Queen's Indian", "Reti", "Benoni", "Gruenfeld", "Queen's Gambit Declined", "Catalan", "Giuoco Piano/Pianissimo"];
 
   useEffect(() => {
     if (!user) return; // don't fetch if not logged in
@@ -729,6 +735,7 @@ function App() {
   }
 
   async function chooseFiveFens(): Promise<string[]> {
+    const fens = extractFENsFromGames(pgnData,94, "All");
     let chosenFens: string[] = [];
     const chosenScores: number[] = [];
     const chosenStats: {fen: string, score: number, pieces: number, cpCount: number, addScore: number, attacked: number}[] = [];
@@ -802,9 +809,11 @@ function App() {
     return chosenFens;
   }
 
-  async function chooseFirstFen(): Promise<string> {
+  async function chooseFirstFen(opening: string = "All"): Promise<string> {
+    const daFens = extractFENsFromGames(pgnData,94, opening);
+    setFens(daFens);
     while (true) {
-      const newFen = fens[Math.floor(Math.random() * fens.length)];
+      const newFen = daFens[Math.floor(Math.random() * daFens.length)];
       const evalB = await workerA.getEval(newFen, 10);
       console.log(evalB);
       if (Math.abs(evalB) < 10) {
@@ -1456,7 +1465,7 @@ function App() {
           setScreen("versus");
         }}>Versus</button>
         <button onClick={async () => {
-          const startFen = await chooseFirstFen();
+          const startFen = await chooseFirstFen("Sicilian");
           const newGame = new Chess(startFen);
           chessGameRef.current = newGame;
           smallGameRef.current = new Chess(startFen);
