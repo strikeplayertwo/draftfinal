@@ -27,6 +27,8 @@ type ClassicGameResult = {
   id: string;
   user_id: string;
   accuracy: number;
+  result: string;
+  opening: string;
   created_at: string;
 };
 
@@ -156,6 +158,7 @@ function App() {
   
   //opening stuff
   const [showOpeningSelect, setShowOpeningSelect] = useState(false);
+  const [gameOpening, setGameOpening] = useState("None");
   const [reqMove, setReqMove] = useState<string>("none");
   const [daOpeningFens, setDaOpeningFens] = useState<string[]>([]);
   const [daOpeningMoves, setDaOpeningMoves] = useState<string[]>([]);
@@ -166,13 +169,13 @@ function App() {
     "Random": "",
     "Sicilian": "e2e4 c7c5",
     "French": "e2e4 e7e6 d2d4 d7d5",
-    "Caro-Kann": "e2e4 b7b5",
+    "Caro-Kann": "e2e4 c7c6",
     "English": "c2c4",
     "Ruy Lopez": "e2e4 e7e5 g1f3 b8c6 f1b5",
     "King's Indian": "d2d4 g8f6 c2c4 g7g6",
     "Queen's Pawn Game": "d2d4 d7d5",
     "Queen's Bishop Game": "d2d4 d7d5 g1f3 g8f6 c1f4 c7c5 e2e3",
-    "Queen's Indian": "d2d4 b8c6 c2c4 e7e6 g2g3 b8c6",
+    "Queen's Indian": "d2d4 g8f6 c2c4 e7e6 g1f3 b7b6",
     "Gruenfeld": "d2d4 b8c6 c2c4 g7g6 g1f3 b8c6",
     "Queen's Gambit Declined": "d2d4 d7d5 c2c4",
     "Reti": "g1f3",
@@ -340,9 +343,9 @@ function App() {
     console.log("PosHistory: " + posHistory);
   }
 
-  async function triggerEnd(finalmessage: string, accuracy: number){
+  async function triggerEnd(finalmessage: string, accuracy: number, result: string, opening: string){
     setGameResult(finalmessage);
-    await saveGameResult(accuracy);
+    await saveGameResult(accuracy, result, opening);
   }
 
   async function dailyTriggerEnd(finalmessage: string, accuracy: number, daily_score: number){
@@ -350,11 +353,11 @@ function App() {
     //await saveDailyGameResult(accuracy, daily_score);
   }
 
-  async function saveGameResult(accuracy: number) {
+  async function saveGameResult(accuracy: number, result: string, opening: string) {
     if (!user) return; // not logged in, skip
     const { error } = await supabase
       .from("classic_game_results")
-      .insert({ user_id: user.id, accuracy });
+      .insert({ user_id: user.id, accuracy, result, opening });
     if (error) console.error("Failed to save game result:", error);
   }
 
@@ -756,12 +759,16 @@ function App() {
   }
 
   async function chooseFiveFens(): Promise<string[]> {
-    const fens = extractFENsFromGames(pgnData,94, "All");
+    const daDailyFens = extractFENsFromGames(pgnData,94, "None", 6);
     let chosenFens: string[] = [];
     const chosenScores: number[] = [];
     const chosenStats: {fen: string, score: number, pieces: number, cpCount: number, addScore: number, attacked: number}[] = [];
     for (let i = 0; i < 20; i++){
-      let newFen = fens[Math.floor(Math.random() * fens.length)];
+      const newFen = daDailyFens[Math.floor(Math.random() * daDailyFens.length)];
+      if (!newFen){
+        console.log("No fen found, skipping iteration " + i);
+        continue;
+      }
       let score = 0;
       const lines = await workerA.getTop6Lines(newFen, 16);
       //new pieces: amount of unguarded squares that side to move's bishops/knights/rooks/queen can move to, up to 50, .5 per square
@@ -1146,9 +1153,9 @@ function App() {
         }
       }
       if (evalA > 0){
-        triggerEnd("You win! Final result: " + (mate > 0 ? "You mate in " + mate : "You mate in " + (-mate)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter) + ", Starting Eval: " + startingEval, displayAccuracy/10);
+        triggerEnd("You win! Final result: " + (mate > 0 ? "You mate in " + mate : "You mate in " + (-mate)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter) + ", Starting Eval: " + startingEval, displayAccuracy/10, "Win", gameOpening);
       }else{
-        triggerEnd("Game over! Final result: " + (mate > 0 ? "You are mated in " + mate : "You are mated in " + (-mate)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval, displayAccuracy/10);
+        triggerEnd("Game over! Final result: " + (mate > 0 ? "You are mated in " + mate : "You are mated in " + (-mate)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval, displayAccuracy/10, "Loss", gameOpening);
       }
       return;
     }
@@ -1235,9 +1242,9 @@ function App() {
       }
       console.log("Failure");
       if(evalA > 0){
-        triggerEnd("You win! Final stats: Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval + ", Final Eval: " + evalA, displayAccuracy/10);
+        triggerEnd("You win! Final stats: Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval + ", Final Eval: " + evalA, displayAccuracy/10, "Win", gameOpening);
       }else{
-        triggerEnd("Game over! Final stats: Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval + ", Final Eval: " + evalA, displayAccuracy/10);
+        triggerEnd("Game over! Final stats: Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval + ", Final Eval: " + evalA, displayAccuracy/10, "Loss", gameOpening);
       }
     }
   }
@@ -1604,8 +1611,9 @@ function App() {
                       setDaOpeningMoves(openingMoves);
                       setReqMove("none");
                     };
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    setGameOpening(opening);
                     const startFen = await chooseFirstFen(opening, plyLength);
-                    await new Promise(resolve => setTimeout(resolve, 1000));
                     newGame.load(startFen);
                     chessGameRef.current = newGame;
                     smallGameRef.current = new Chess(startFen);
@@ -1669,7 +1677,7 @@ function App() {
         <button onClick={() => setScreen("title")}>← Back</button>
         <h2>Analytics</h2>
         {gameHistory.map((game) => (
-          <li key={game.id}>{new Date(game.created_at).toLocaleDateString()} — {game.accuracy.toFixed(1)}%</li>
+          <li key={game.id}>{new Date(game.created_at).toLocaleDateString()} {game.result} — {game.accuracy.toFixed(1)}%, Opening {game.opening}</li>
         ))}
       </div>
     );
@@ -1794,7 +1802,7 @@ function App() {
           <ul>
             {gameHistory.map((game) => (
               <li key={game.id}>
-                {new Date(game.created_at).toLocaleDateString()} — Accuracy: {game.accuracy.toFixed(1)}%
+                {new Date(game.created_at).toLocaleDateString()} {game.result} — {game.accuracy.toFixed(1)}%, Opening {game.opening}
               </li>
             ))}
           </ul>
