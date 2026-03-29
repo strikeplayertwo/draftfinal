@@ -16,7 +16,7 @@ function splitPGNGames(pgnText: string, openingFilter: string): string[] {
 }
 
 
-export function extractFENsFromGames(pgnText: string, limit = 469, opening = "None", plyLength = 6) {
+export async function extractFENsFromGames(pgnText: string, limit = 469, opening = "None", plyLength = 6): Promise<string[]> {
   const gamesText = splitPGNGames(pgnText, opening).slice(0, limit);
   const fens: string[] = [];
 

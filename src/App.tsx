@@ -759,7 +759,7 @@ function App() {
   }
 
   async function chooseFiveFens(): Promise<string[]> {
-    const daDailyFens = extractFENsFromGames(pgnData,94, "None", 6);
+    let daDailyFens = await extractFENsFromGames(pgnData,94, "None", 6);
     let chosenFens: string[] = [];
     const chosenScores: number[] = [];
     const chosenStats: {fen: string, score: number, pieces: number, cpCount: number, addScore: number, attacked: number}[] = [];
@@ -838,8 +838,17 @@ function App() {
   }
 
   async function chooseFirstFen(opening: string = "None", plyLength: number = 6): Promise<string> {
-    const daFens = extractFENsFromGames(pgnData,94, opening, plyLength);
+    const daFens = await extractFENsFromGames(pgnData,94, opening, plyLength);
+
+    if (daFens.length === 0) {
+      console.warn("No FENs found for opening:", opening, "plyLength:", plyLength);
+      // Fall back to no filter
+      const fallback = await extractFENsFromGames(pgnData, 94, "None", plyLength);
+      if (fallback.length === 0) throw new Error("No FENs found at all");
+      daFens.push(...fallback);
+    }
     setFens(daFens);
+
     while (true) {
       const newFen = daFens[Math.floor(Math.random() * daFens.length)];
       const evalB = await workerA.getEval(newFen, 10);
@@ -981,194 +990,222 @@ function App() {
     if (!tryFenGame) return;
     let ourOldEval = oldEval;
     if (movesplayed === 0){
-      ourOldEval = await workerC.getEval(oldFen, 18);
+      ourOldEval = await workerC.getEval(oldFen, 18);//isnt this just the same as stockfishSetup?
       setStartingEval(ourOldEval);
       setEvalHistory(prev => [...prev, ourOldEval]);
       console.log("Starting Eval logged: " + oldFen);
     }
-    if (reqMove !== "none"){
-      if (playerMove !== reqMove){
-        setDif(-50);
-      }else{
-        setDif(50);
-      }
-    }else{
 
-    }
-    const [result, stockfishSetup] = await Promise.all([
-      workerC.getBestLine(chessGame.fen(), 18).then(r => { console.log("chooseFen workerA done", r); return r; }),
-      workerD.getBestLine(fenBeforeMove, 18).then(r => { console.log("chooseFen workerB done", r); return r; }),
-    ]);
-    const mate = result.mate;
-    const ourEval = -1 * await workerC.getEval(chessGame.fen(), 18);
-    let bestEval = ourEval;
-    let streaker = currentStreak;
-
-    const pvb = stockfishSetup.pv;
-    const stockfishMove = pvb?.split(" ")?.[0];
-    if(stockfishMove !== playerMove){
-      
-      tryFenGame.load(fenBeforeMove);
-      tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
-      bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 18);
-      console.log(stockfishMove + " not equals " + playerMove);
-    }else{
-      console.log(stockfishMove + " equals " + playerMove);
-    }
-    let doublemessage = false;
-    let bonus = 0;
-    let disHighestStreak = highestStreak;
+    let evalA = evalHistory[evalHistory.length - 1];
+    let displayAccuracy = 0;
     let disbrilcounter = brilcounter;
     let disbmcounter = bmcounter;
-    if(ourEval > bestEval){
-      console.log("Brilliant Move! " + ourEval + " " + bestEval);
-      bonus = 200;
-      setShowEffex("Brilliant Move ‼️ +200 eval, +2 streak");
-      setbrilcounter(prev => prev + 1);
-      disbrilcounter++;
-      doublemessage = true;
-      setCurrentStreak(prev => {
-        const next = prev + 3;
-        let fires = "";
-        for (let i = 0; i < next; i++){
-          fires += "🔥";
-        }
-        setStreakMsg("Current Streak: " + next + " " + fires);
-        if (next > highestStreak){
-          setHighestStreak(next);
-          disHighestStreak+= 3;
-        }
-        return next;
-      });
-      streaker += 3;
-    }else if (ourEval === bestEval){
-      console.log("Best Move!");
-      bonus = 25;
-      setShowEffex("Best Move⭐ +25 eval");
-      setbmcounter(prev => prev + 1);
-      disbmcounter++;
-      doublemessage = true;
-      //new Promise(resolve => setTimeout(resolve, 1000));
-      setCurrentStreak(prev => {
-        const next = prev + 1;
-        let fires = "";
-        for (let i = 0; i < next; i++){
-          fires += "🔥";
-        }
-        setStreakMsg("Current Streak: " + next + " " + fires);
-        if (next > highestStreak){
-          setHighestStreak(next);
-          disHighestStreak++; 
-        }
-        return next;
-      });
-      streaker++;
-    }else if (ourEval - bestEval >= -30 || ourEval >= bestEval * 0.85 || ourEval * 0.85 >= bestEval){
-      console.log("Excellent Move!");
-      setCurrentStreak(prev => {
-        const next = prev + 1;
-        let fires = "";
-        for (let i = 0; i < next; i++){
-          fires += "🔥";
-        }
-        setStreakMsg("Current Streak: " + next + " " + fires);
-        if (next > highestStreak){
-          disHighestStreak++;
-          setHighestStreak(next);
-        }
-        return next;
-      });
-      streaker++;
-    }else{
-      console.log("Bad Move!");
-      setCurrentStreak(0);
-      setStreakMsg("Current Streak: 0");
-      console.log("Streak ended: " + ourEval + " " + bestEval);
-      streaker = 0;
-    }
-    let thisaccuracy = Math.round((100 * Math.exp((ourEval - bestEval) / 200)) * 10);
-    if(thisaccuracy > 1100){
-      thisaccuracy = 1100;
-    }
-    if (thisaccuracy > 1000){
-      setBColors(prev => [...prev, "rgb(0, 251, 255)"]);
-    }else if (thisaccuracy === 1000){
-      setBColors(prev => [...prev, "rgb(0, 255, 55)"]);
-    }else if (thisaccuracy > 850){
-      setBColors(prev => [...prev, "rgb(0, 137, 7)"]);
-    }else if (thisaccuracy > 600){
-      setBColors(prev => [...prev, "rgb(255, 174, 0)"]);
-    }else{
-      setBColors(prev => [...prev, "rgb(255, 0, 0)"]);
-    }
-    const displayAccuracy = Math.round(((accuracy * (movesplayed) + thisaccuracy) / (movesplayed + 1)));
-    if (movesplayed !== 0){
-      setAccuracy(displayAccuracy);
-    }else{
-      setAccuracy(thisaccuracy);
-    }
-    console.log("Accuracy " + accuracy + " this: " + thisaccuracy + " Moves: " + movesplayed);
 
-    const bonuses: Record<number, number> = { 1: 25, 2: 50, 3: 80, 4: 125, 5: 200 };
-    const streakbonus = streaker >= 6 ? 300 : (bonuses[streaker] ?? 0);
-    let msg = "";
-    for (let i = 0; i < streaker; i++){
-      msg += "🔥";
-    }
-    if(streaker > 0){
-      if(doublemessage){
-        stopEffex(msg + " +" + streakbonus + " eval");
-      }else{
-        setShowEffex(msg + " +" + streakbonus + " eval");
-        stopEffex();
-      }
-    }
 
     if (reqMove !== "none"){
-      if (playerMove !== reqMove){
-        setDif(-50);
-      }else{
+
+      if (playerMove === reqMove){
         setDif(50);
+        setShowEffex("Correct ✅ +50 eval");
+        stopEffex();
+        let thisaccuracy = 1000;
+        setBColors(prev => [...prev, "rgb(221, 255, 0)"]);
+        displayAccuracy = Math.round(((accuracy * (movesplayed) + thisaccuracy) / (movesplayed + 1)));
+        if (movesplayed !== 0){
+          setAccuracy(displayAccuracy);
+        }else{
+          setAccuracy(thisaccuracy);
+        }
+        evalA += 50;
+        console.log("Checkpoint 1");
+      }else{
+        setDif(-50);
+        setShowEffex("Incorrect ❌ (" + reqMove + ") -50 eval");
+        stopEffex();
+        let thisaccuracy = 0;
+        setBColors(prev => [...prev, "rgb(125, 0, 0)"]);
+        displayAccuracy = Math.round(((accuracy * (movesplayed) + thisaccuracy) / (movesplayed + 1)));
+        if (movesplayed !== 0){
+          setAccuracy(displayAccuracy);
+        }else{
+          setAccuracy(thisaccuracy);
+        }
+        evalA -= 50;
       }
-    }
+      setEvalHistory(prev => [...prev, evalA]);
 
+    }else{
+      const [result, stockfishSetup] = await Promise.all([
+        workerC.getBestLine(chessGame.fen(), 18).then(r => { console.log("chooseFen workerA done", r); return r; }),
+        workerD.getBestLine(fenBeforeMove, 18).then(r => { console.log("chooseFen workerB done", r); return r; }),
+      ]);
+      const mate = result.mate;
+      const ourEval = -1 * await workerC.getEval(chessGame.fen(), 18);
+      let bestEval = ourEval;
+      let streaker = currentStreak;
 
-    
-    const evalA = (ourOldEval - bestEval + ourEval + bonus + streakbonus + dif);
-    console.log("EvalA: " + evalA + " ourOldEval: " + ourOldEval + " BestEval: " + bestEval + " OurEval: " + ourEval + " Bonus: " + bonus + " StreakBonus: " + streakbonus + " Dif: " + dif);
-    setEvalHistory(prev => [...prev, evalA]);
+      const pvb = stockfishSetup.pv;
+      const stockfishMove = pvb?.split(" ")?.[0];
+      if(stockfishMove !== playerMove){
+        
+        tryFenGame.load(fenBeforeMove);
+        tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
+        bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 18);
+        console.log(stockfishMove + " not equals " + playerMove);
+      }else{
+        console.log(stockfishMove + " equals " + playerMove);
+      }
+      let doublemessage = false;
+      let bonus = 0;
+      let disHighestStreak = highestStreak;
+      disbrilcounter = brilcounter;
+      disbmcounter = bmcounter;
+      if(ourEval > bestEval){
+        console.log("Brilliant Move! " + ourEval + " " + bestEval);
+        bonus = 200;
+        setShowEffex("Brilliant Move ‼️ +200 eval, +2 streak");
+        setbrilcounter(prev => prev + 1);
+        disbrilcounter++;
+        doublemessage = true;
+        setCurrentStreak(prev => {
+          const next = prev + 3;
+          let fires = "";
+          for (let i = 0; i < next; i++){
+            fires += "🔥";
+          }
+          setStreakMsg("Current Streak: " + next + " " + fires);
+          if (next > highestStreak){
+            setHighestStreak(next);
+            disHighestStreak+= 3;
+          }
+          return next;
+        });
+        streaker += 3;
+      }else if (ourEval === bestEval){
+        console.log("Best Move!");
+        bonus = 25;
+        setShowEffex("Best Move⭐ +25 eval");
+        setbmcounter(prev => prev + 1);
+        disbmcounter++;
+        doublemessage = true;
+        //new Promise(resolve => setTimeout(resolve, 1000));
+        setCurrentStreak(prev => {
+          const next = prev + 1;
+          let fires = "";
+          for (let i = 0; i < next; i++){
+            fires += "🔥";
+          }
+          setStreakMsg("Current Streak: " + next + " " + fires);
+          if (next > highestStreak){
+            setHighestStreak(next);
+            disHighestStreak++; 
+          }
+          return next;
+        });
+        streaker++;
+      }else if (ourEval - bestEval >= -30 || ourEval >= bestEval * 0.85 || ourEval * 0.85 >= bestEval){
+        console.log("Excellent Move!");
+        setCurrentStreak(prev => {
+          const next = prev + 1;
+          let fires = "";
+          for (let i = 0; i < next; i++){
+            fires += "🔥";
+          }
+          setStreakMsg("Current Streak: " + next + " " + fires);
+          if (next > highestStreak){
+            disHighestStreak++;
+            setHighestStreak(next);
+          }
+          return next;
+        });
+        streaker++;
+      }else{
+        console.log("Bad Move!");
+        setCurrentStreak(0);
+        setStreakMsg("Current Streak: 0");
+        console.log("Streak ended: " + ourEval + " " + bestEval);
+        streaker = 0;
+      }
+      let thisaccuracy = Math.round((100 * Math.exp((ourEval - bestEval) / 200)) * 10);
+      if(thisaccuracy > 1100){
+        thisaccuracy = 1100;
+      }
+      if (thisaccuracy > 1000){
+        setBColors(prev => [...prev, "rgb(0, 251, 255)"]);
+      }else if (thisaccuracy === 1000){
+        setBColors(prev => [...prev, "rgb(0, 255, 55)"]);
+      }else if (thisaccuracy > 850){
+        setBColors(prev => [...prev, "rgb(0, 137, 7)"]);
+      }else if (thisaccuracy > 600){
+        setBColors(prev => [...prev, "rgb(255, 174, 0)"]);
+      }else{
+        setBColors(prev => [...prev, "rgb(255, 0, 0)"]);
+      }
+      displayAccuracy = Math.round(((accuracy * (movesplayed) + thisaccuracy) / (movesplayed + 1)));
+      if (movesplayed !== 0){
+        setAccuracy(displayAccuracy);
+      }else{
+        setAccuracy(thisaccuracy);
+      }
+      console.log("Accuracy " + accuracy + " this: " + thisaccuracy + " Moves: " + movesplayed);
 
-    if (mate !== null){
-      const pv = result.pv;
-      for (let i = 0; i < Math.abs(mate) + 5; i++){
-        if (chessGame.isGameOver() === false){
-          setBigChessPosition(chessGame.fen());
-          await new Promise(resolve => setTimeout(resolve, 500));
-          const move = pv?.split(" ")?.[i];
-          chessGame.move({from: move?.substring(0, 2) as Square, to: move?.substring(2, 4) as Square, promotion: 'q'});
-          flushSync(() => {
-            setBigChessPosition(chessGame.fen());
-          });
-          await new Promise(resolve => setTimeout(resolve, 1000));
+      const bonuses: Record<number, number> = { 1: 25, 2: 50, 3: 80, 4: 125, 5: 200 };
+      const streakbonus = streaker >= 6 ? 300 : (bonuses[streaker] ?? 0);
+      let msg = "";
+      for (let i = 0; i < streaker; i++){
+        msg += "🔥";
+      }
+      if(streaker > 0){
+        if(doublemessage){
+          stopEffex(msg + " +" + streakbonus + " eval");
+        }else{
+          setShowEffex(msg + " +" + streakbonus + " eval");
+          stopEffex();
         }
       }
-      if (evalA > 0){
-        triggerEnd("You win! Final result: " + (mate > 0 ? "You mate in " + mate : "You mate in " + (-mate)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter) + ", Starting Eval: " + startingEval, displayAccuracy/10, "Win", gameOpening);
-      }else{
-        triggerEnd("Game over! Final result: " + (mate > 0 ? "You are mated in " + mate : "You are mated in " + (-mate)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval, displayAccuracy/10, "Loss", gameOpening);
+
+    
+      evalA = (ourOldEval - bestEval + ourEval + bonus + streakbonus + dif);
+      console.log("EvalA: " + evalA + " ourOldEval: " + ourOldEval + " BestEval: " + bestEval + " OurEval: " + ourEval + " Bonus: " + bonus + " StreakBonus: " + streakbonus + " Dif: " + dif);
+      setEvalHistory(prev => [...prev, evalA]);
+
+      if (mate !== null){
+        const pv = result.pv;
+        for (let i = 0; i < Math.abs(mate) + 5; i++){
+          if (chessGame.isGameOver() === false){
+            setBigChessPosition(chessGame.fen());
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const move = pv?.split(" ")?.[i];
+            chessGame.move({from: move?.substring(0, 2) as Square, to: move?.substring(2, 4) as Square, promotion: 'q'});
+            flushSync(() => {
+              setBigChessPosition(chessGame.fen());
+            });
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+        if (evalA > 0){
+          triggerEnd("You win! Final result: " + (mate > 0 ? "You mate in " + mate : "You mate in " + (-mate)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter) + ", Starting Eval: " + startingEval, displayAccuracy/10, "Win", gameOpening);
+        }else{
+          triggerEnd("Game over! Final result: " + (mate > 0 ? "You are mated in " + mate : "You are mated in " + (-mate)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval, displayAccuracy/10, "Loss", gameOpening);
+        }
+        return;
       }
-      return;
+
     }
-
-
+    console.log("Checkpoint 2");
     if(daOpeningFens.length > 0 && Math.random() < 0.5){
+      console.log("Checkpoint 3");
       const randnumb = Math.floor(Math.random() * (daOpeningFens.length - 1))
+      console.log("Checkpoint 3a");
       const newFens = daOpeningFens[randnumb];
-      const evalB = await workerA.getEval(newFens, 10);
+      console.log("Checkpoint 3ab" + newFens);
+      const evalB = await workerC.getEval(newFens, 10);
+      console.log("Checkpoint 3b" + evalB + " " + evalA);
       setBigChessPosition(newFens);
       chessGame.load(newFens);
       highlightKingSquare(chessGame, "big");
-      const newevalB = await workerB.getEval(newFens, 18);
+      console.log("Checkpoint 3c");
+      const newevalB = await workerD.getEval(newFens, 18);
       const difference = evalA - newevalB;
       setOldEval(newevalB);
       setDif(difference);
@@ -1177,19 +1214,22 @@ function App() {
       setBPosHistory(prev => [...prev, newFens]);
       return;
     }else{
+      console.log("Checkpoint 4");
       setReqMove("none");
       let attempts = 0;
       const MAX_ATTEMPTS = 400;
       while (attempts < MAX_ATTEMPTS) {
         const newFens = fens[Math.floor(Math.random() * fens.length)];
-        const evalB = await workerA.getEval(newFens, 10);
+        console.log("Checkpoint 4b " + newFens);
+        const evalB = await workerC.getEval(newFens, 10);
+        console.log("Checkpoint 4c " + evalB + " " + evalA);
         //if ((evalA - evalB <= 30) && (evalA - evalB >= -30)){ 
         if (Math.abs(evalA) < 50){
           if ((evalA - evalB <= 30) && (evalA - evalB >= -30)){
             setBigChessPosition(newFens);
             chessGame.load(newFens);
             highlightKingSquare(chessGame, "big");
-            const newevalB = await workerB.getEval(newFens, 18);
+            const newevalB = await workerD.getEval(newFens, 18);
             const difference = evalA - newevalB;
             setOldEval(newevalB);
             setDif(difference);
@@ -1198,7 +1238,7 @@ function App() {
             return;
           }
         }else if (((evalA < evalB / 0.6) && (evalA > evalB * 0.6) && (evalA >= 0)) || ((evalA > evalB / 0.6) && (evalA < evalB * 0.6) && (evalA <= 0))){
-          const newevalB = await workerB.getEval(newFens, 18);
+          const newevalB = await workerC.getEval(newFens, 18);
           if (((evalA < newevalB / 0.5) && (evalA > newevalB * 0.5) && (evalA >= 0)) || ((evalA > newevalB / 0.5) && (evalA < newevalB * 0.5) && (evalA <= 0))){
             setBigChessPosition(newFens);
             chessGame.load(newFens);
@@ -1213,7 +1253,7 @@ function App() {
             console.log("Inaccuracy error");
           }
         }else if (((Math.abs(evalA) < Math.abs(evalB) / 0.7) && (Math.abs(evalA) > Math.abs(evalB) * 0.7)) || ((Math.abs(evalA) > Math.abs(evalB) / 0.7) && (Math.abs(evalA) < Math.abs(evalB) * 0.7))){
-          const result4 = await workerA.getBestLine(newFens, 18);
+          const result4 = await workerC.getBestLine(newFens, 18);
           const pvswap = result4.pv;
           const swapMove = pvswap?.split(" ")?.[0];
           chessGame.load(newFens);
@@ -1320,6 +1360,8 @@ function App() {
           console.log("Requested move played");
           setBigChessPosition(chessGame.fen());
         }else{
+          setShowEffex("Incorrect ❌ (" + reqMove + ")");
+          stopEffex();
           console.log("Requested move not played: " + moveFrom + square + " reqMove: " + reqMove + "chesspos: " + bigChessPosition);
           setBigChessPosition(sendthatfen);
           chessGame.undo();
@@ -1579,6 +1621,8 @@ function App() {
                     };
                     const openingMoves = openingMoveMap[opening].split(" ");
                     const plyLength = openingPlyLengths[opening];
+                    /*const daFens = extractFENsFromGames(pgnData,94, opening, plyLength);
+                    setFens(daFens);*/
                     const newGame = new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
                     const openingFens = [newGame.fen()];
                     if(opening !== "None"){
@@ -1605,6 +1649,8 @@ function App() {
                           }
                           //console.log("Yes. Big Chess Position: " + bigChessPosition + " Opening Fen: " + openingFens[i + 1]);
                         }
+                        setShowEffex("Correct ✅");
+                        stopEffex();
                       }
                       await playerRunThru(openingFens);
                       setDaOpeningFens(openingFens);
@@ -1614,6 +1660,7 @@ function App() {
                     await new Promise(resolve => setTimeout(resolve, 2000));
                     setGameOpening(opening);
                     const startFen = await chooseFirstFen(opening, plyLength);
+                    console.log("startfen" + startFen);
                     newGame.load(startFen);
                     chessGameRef.current = newGame;
                     smallGameRef.current = new Chess(startFen);
@@ -1677,7 +1724,7 @@ function App() {
         <button onClick={() => setScreen("title")}>← Back</button>
         <h2>Analytics</h2>
         {gameHistory.map((game) => (
-          <li key={game.id}>{new Date(game.created_at).toLocaleDateString()} {game.result} — {game.accuracy.toFixed(1)}%, Opening {game.opening}</li>
+          <li key={game.id}>{new Date(game.created_at).toLocaleDateString()} ({game.result}) — {game.accuracy.toFixed(1)}%, {game.opening}</li>
         ))}
       </div>
     );
@@ -1802,7 +1849,7 @@ function App() {
           <ul>
             {gameHistory.map((game) => (
               <li key={game.id}>
-                {new Date(game.created_at).toLocaleDateString()} {game.result} — {game.accuracy.toFixed(1)}%, Opening {game.opening}
+                {new Date(game.created_at).toLocaleDateString()} ({game.result}) — {game.accuracy.toFixed(1)}%, {game.opening}
               </li>
             ))}
           </ul>
