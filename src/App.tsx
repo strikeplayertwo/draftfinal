@@ -292,10 +292,8 @@ function App() {
     if (!error) {
       setUserProgress({ level: newLevel, unlocked_openings: updated, beaten_openings: userProgress.beaten_openings });
       if (newUnlocks.length > 0) {
-        setGameResult(`Level ${newLevel}! Unlocked: ${newUnlocks.join(", ")} 🎉`);
-      } else {
-        setGameResult(`Level ${newLevel}! 🎉`);
-      }
+        setGameResult(prev => `${prev}Level ${newLevel}! Unlocked: ${newUnlocks.join(", ")}`);
+      } else {}
     }
   }
 
@@ -405,13 +403,24 @@ function App() {
 
   async function triggerEnd(finalmessage: string, accuracy: number, result: string, opening: string){
     if (result === "Win" && !userProgress.beaten_openings.includes(opening)) {
-      setUserProgress(prev => ({
-        ...prev,
-        beaten_openings: [...prev.beaten_openings, opening]
-      }));
+      await supabase
+      .from("user_progress")
+      .update({ beaten_openings: [...userProgress.beaten_openings, opening] })
+      .eq("user_id", user!.id);
+      if (userProgress.beaten_openings.length === 0){
+        setUserProgress(prev => ({
+          ...prev,
+          beaten_openings: [...prev.beaten_openings, opening, "Random"]
+        }));
+      }else{
+        setUserProgress(prev => ({
+          ...prev,
+          beaten_openings: [...prev.beaten_openings, opening]
+        }));
+      }
       if (userProgress.beaten_openings.length === 0 || userProgress.beaten_openings.length === 1 || userProgress.beaten_openings.length === 3 || userProgress.beaten_openings.length === 5 || userProgress.beaten_openings.length === 6){
         levelUp();
-        console.log("Level up!");
+        console.log("Level up!" + opening);
       }
     }
     setGameResult(finalmessage);
@@ -1322,7 +1331,7 @@ function App() {
           }else{
             console.log("Inaccuracy error");
           }
-        }else if (((Math.abs(evalA) < Math.abs(evalB) / 0.7) && (Math.abs(evalA) > Math.abs(evalB) * 0.7)) || ((Math.abs(evalA) > Math.abs(evalB) / 0.7) && (Math.abs(evalA) < Math.abs(evalB) * 0.7))){
+        }else if (((Math.abs(evalA) < Math.abs(evalB) / 0.75) && (Math.abs(evalA) > Math.abs(evalB) * 0.75)) || ((Math.abs(evalA) > Math.abs(evalB) / 0.75) && (Math.abs(evalA) < Math.abs(evalB) * 0.75))){
           const result4 = await workerC.getBestLine(newFens, 18);
           const pvswap = result4.pv;
           const swapMove = pvswap?.split(" ")?.[0];
@@ -1680,13 +1689,16 @@ function App() {
               minWidth: 200,
               padding: "8px 0"
             }}>
-              {openings.map(opening => {
-                const isUnlocked = userProgress.unlocked_openings.includes(opening);
+              {openings
+              .filter(opening => userProgress.unlocked_openings.includes(opening))
+              .map(opening => {
+                const isBeaten = userProgress.beaten_openings.includes(opening);
+                //const isUnlocked = userProgress.unlocked_openings.includes(opening);
                 return (
                   <div
                     key={opening}
                     onClick={async () => {
-                      if (!isUnlocked) return;
+                      //if (!isUnlocked) return;
                       setScreen("classic");
                       setShowOpeningSelect(false);
                       if(opening === "Random"){
@@ -1748,17 +1760,19 @@ function App() {
                   }}
                   style={{
                     padding: "10px 16px",
-                    cursor: isUnlocked ? "pointer" : "not-allowed",
-                    color: isUnlocked ? "#e6edf3" : "#8b949e",
+                    //cursor: isUnlocked ? "pointer" : "not-allowed",
+                    cursor: "pointer",
+                    color: isBeaten ? "rgb(0, 200, 0)" : "#e6edf3",
+                    //color: isUnlocked ? "#e6edf3" : "#8b949e",
                     fontSize: "0.9rem",
-                    opacity: isUnlocked ? 1 : 0.4,
+                    //opacity: isUnlocked ? 1 : 0.4,
                   }}
                   onMouseEnter={e => {
-                    if (isUnlocked) e.currentTarget.style.background = "#21262d";
+                    e.currentTarget.style.background = "#21262d";
                   }}
                   onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                 >
-                  {opening} {!isUnlocked}
+                  {opening} {isBeaten}
                 </div>
               );
               })}
