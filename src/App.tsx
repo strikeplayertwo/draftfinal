@@ -46,6 +46,20 @@ type RankInfo = {
   allTime: { rank: number; total: number };
 } | null;
 
+type UserProgress = {
+  level: number;
+  beaten_openings: string[];
+  unlocked_openings: string[];
+};
+
+const levelUnlocks: Record<number, string[]> = {
+  2: ["Random", "French", "Caro-Kann", "Benoni"],
+  3: ["English", "Giuoco Piano/Pianissimo", "Catalan"],
+  4: ["Queen's Pawn Game", "Queen's Bishop Game", "Queen's Gambit Declined"],
+  5: ["Queen's Indian", "King's Indian", "Gruenfeld"],
+  6: ["Ruy Lopez", "Reti", "Sicilian"],
+};
+
 
 function EvalGraph({ evals, bPosHistory, bColors, onJumpToMove }: EvalGraphProps) {
   if (evals.length < 2) return null;
@@ -162,6 +176,11 @@ function App() {
   const [reqMove, setReqMove] = useState<string>("none");
   const [daOpeningFens, setDaOpeningFens] = useState<string[]>([]);
   const [daOpeningMoves, setDaOpeningMoves] = useState<string[]>([]);
+  const [userProgress, setUserProgress] = useState<UserProgress>({
+    level: 1,
+    unlocked_openings: ["None"],
+    beaten_openings: []
+  });
   const openings = ["None", "Random", "Sicilian", "French", "Caro-Kann", "English", "Ruy Lopez", "King's Indian", "Queen's Pawn Game", "Queen's Bishop Game", "Queen's Indian", "Gruenfeld", "Queen's Gambit Declined", "Reti", "Benoni", "Catalan", "Giuoco Piano/Pianissimo"];
   const openingPlyLengths: Record<string, number> = { "None": 6, "Random": 6, "Sicilian": 2, "French": 4, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "Queen's Bishop Game": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 3, "Reti": 1, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Giuoco Piano/Pianissimo": 5 };
   const openingMoveMap: Record<string, string> = {
@@ -206,9 +225,29 @@ function App() {
       if (data) setDailyGameHistory(data);
     }
 
+    async function fetchProgress() {
+      const { data, error } = await supabase
+        .from("user_progress")
+        .select("level, unlocked_openings, beaten_openings")
+        .eq("user_id", user!.id)
+        .single();
+
+      if (error || !data) {
+        // First time user — create their row
+        await supabase.from("user_progress").insert({
+          user_id: user!.id,
+          level: 1,
+          unlocked_openings: ["None"],
+          beaten_openings: []
+        });
+      } else {
+        setUserProgress(data);
+      }
+    }
 
     fetchGameHistory();
     fetchDailyGameHistory();
+    fetchProgress();
     }, [user]);
 
   useEffect(() => {
@@ -237,6 +276,27 @@ function App() {
 
   async function signOut() {
     await supabase.auth.signOut();
+  }
+
+  async function levelUp() {
+    if (!user) return;
+    const newLevel = userProgress.level + 1;
+    const newUnlocks = levelUnlocks[newLevel] ?? []; // openings unlocked at this level
+    const updated = [...userProgress.unlocked_openings, ...newUnlocks];
+
+    const { error } = await supabase
+      .from("user_progress")
+      .update({ level: newLevel, unlocked_openings: updated })
+      .eq("user_id", user.id);
+
+    if (!error) {
+      setUserProgress({ level: newLevel, unlocked_openings: updated, beaten_openings: userProgress.beaten_openings });
+      if (newUnlocks.length > 0) {
+        setGameResult(`Level ${newLevel}! Unlocked: ${newUnlocks.join(", ")} 🎉`);
+      } else {
+        setGameResult(`Level ${newLevel}! 🎉`);
+      }
+    }
   }
 
   function highlightKingSquare(chessInstance: Chess, type: string) {
@@ -344,6 +404,16 @@ function App() {
   }
 
   async function triggerEnd(finalmessage: string, accuracy: number, result: string, opening: string){
+    if (result === "Win" && !userProgress.beaten_openings.includes(opening)) {
+      setUserProgress(prev => ({
+        ...prev,
+        beaten_openings: [...prev.beaten_openings, opening]
+      }));
+      if (userProgress.beaten_openings.length === 0 || userProgress.beaten_openings.length === 1 || userProgress.beaten_openings.length === 3 || userProgress.beaten_openings.length === 5 || userProgress.beaten_openings.length === 6){
+        levelUp();
+        console.log("Level up!");
+      }
+    }
     setGameResult(finalmessage);
     await saveGameResult(accuracy, result, opening);
   }
@@ -1017,7 +1087,7 @@ function App() {
           setAccuracy(thisaccuracy);
         }
         evalA += 50;
-        console.log("Checkpoint 1");
+        //console.log("Checkpoint 1");
       }else{
         setDif(-50);
         setShowEffex("Incorrect ❌ (" + reqMove + ") -50 eval");
@@ -1192,19 +1262,19 @@ function App() {
       }
 
     }
-    console.log("Checkpoint 2");
-    if(daOpeningFens.length > 0 && Math.random() < 0.5){
-      console.log("Checkpoint 3");
+    //console.log("Checkpoint 2");
+    if(daOpeningFens.length > 0 && Math.random() < 0.25){
+      //console.log("Checkpoint 3");
       const randnumb = Math.floor(Math.random() * (daOpeningFens.length - 1))
-      console.log("Checkpoint 3a");
+      //console.log("Checkpoint 3a");
       const newFens = daOpeningFens[randnumb];
-      console.log("Checkpoint 3ab" + newFens);
+      //console.log("Checkpoint 3ab" + newFens);
       const evalB = await workerC.getEval(newFens, 10);
-      console.log("Checkpoint 3b" + evalB + " " + evalA);
+      //console.log("Checkpoint 3b" + evalB + " " + evalA);
       setBigChessPosition(newFens);
       chessGame.load(newFens);
       highlightKingSquare(chessGame, "big");
-      console.log("Checkpoint 3c");
+      //console.log("Checkpoint 3c");
       const newevalB = await workerD.getEval(newFens, 18);
       const difference = evalA - newevalB;
       setOldEval(newevalB);
@@ -1214,15 +1284,15 @@ function App() {
       setBPosHistory(prev => [...prev, newFens]);
       return;
     }else{
-      console.log("Checkpoint 4");
+      //console.log("Checkpoint 4");
       setReqMove("none");
       let attempts = 0;
       const MAX_ATTEMPTS = 400;
       while (attempts < MAX_ATTEMPTS) {
         const newFens = fens[Math.floor(Math.random() * fens.length)];
-        console.log("Checkpoint 4b " + newFens);
+        //console.log("Checkpoint 4b " + newFens);
         const evalB = await workerC.getEval(newFens, 10);
-        console.log("Checkpoint 4c " + evalB + " " + evalA);
+        //console.log("Checkpoint 4c " + evalB + " " + evalA);
         //if ((evalA - evalB <= 30) && (evalA - evalB >= -30)){ 
         if (Math.abs(evalA) < 50){
           if ((evalA - evalB <= 30) && (evalA - evalB >= -30)){
@@ -1610,79 +1680,88 @@ function App() {
               minWidth: 200,
               padding: "8px 0"
             }}>
-              {openings.map(opening => (
-                <div
-                  key={opening}
-                  onClick={async () => {
-                    setScreen("classic");
-                    setShowOpeningSelect(false);
-                    if(opening === "Random"){
-                      opening = openings[Math.floor(Math.random() * (openings.length - 3)) + 2];
-                    };
-                    const openingMoves = openingMoveMap[opening].split(" ");
-                    const plyLength = openingPlyLengths[opening];
-                    /*const daFens = extractFENsFromGames(pgnData,94, opening, plyLength);
-                    setFens(daFens);*/
-                    const newGame = new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-                    const openingFens = [newGame.fen()];
-                    if(opening !== "None"){
-                      setBigChessPosition(newGame.fen());
-                      for (let i = 0; i < plyLength; i++){
-                        await new Promise(resolve => setTimeout(resolve, 1500));
-                        const move = openingMoves[i];
-                        if (!move) break;
-                        newGame.move(move);
+              {openings.map(opening => {
+                const isUnlocked = userProgress.unlocked_openings.includes(opening);
+                return (
+                  <div
+                    key={opening}
+                    onClick={async () => {
+                      if (!isUnlocked) return;
+                      setScreen("classic");
+                      setShowOpeningSelect(false);
+                      if(opening === "Random"){
+                        opening = openings[Math.floor(Math.random() * (openings.length - 3)) + 2];
+                      };
+                      const openingMoves = openingMoveMap[opening].split(" ");
+                      const plyLength = openingPlyLengths[opening];
+                      /*const daFens = extractFENsFromGames(pgnData,94, opening, plyLength);
+                      setFens(daFens);*/
+                      const newGame = new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+                      const openingFens = [newGame.fen()];
+                      if(opening !== "None"){
                         setBigChessPosition(newGame.fen());
-                        openingFens.push(newGame.fen());
-                      }
-                      await new Promise(resolve => setTimeout(resolve, 3000));
-                      newGame.load(openingFens[0]);
-                      setBigChessPosition(openingFens[0]);
-                      async function playerRunThru(openingFens: string[]){
-                        for (let i = 0; i < openingFens.length - 1; i++){
-                          newGame.load(openingFens[i]);
-                          chessGameRef.current = newGame;
-                          setReqMove(openingMoves[i]);
-                          while(chessGameRef.current.fen() !== openingFens[i + 1]){
-                            //console.log("No. Big Chess Position: " + bigChessPosition + " Opening Fen: " + openingFens[i + 1]);
-                            await new Promise(resolve => setTimeout(resolve, 50));
-                          }
-                          //console.log("Yes. Big Chess Position: " + bigChessPosition + " Opening Fen: " + openingFens[i + 1]);
+                        for (let i = 0; i < plyLength; i++){
+                          await new Promise(resolve => setTimeout(resolve, 1500));
+                          const move = openingMoves[i];
+                          if (!move) break;
+                          newGame.move(move);
+                          setBigChessPosition(newGame.fen());
+                          openingFens.push(newGame.fen());
                         }
-                        setShowEffex("Correct ✅");
-                        stopEffex();
+                        await new Promise(resolve => setTimeout(resolve, 3000));
+                        newGame.load(openingFens[0]);
+                        setBigChessPosition(openingFens[0]);
+                        async function playerRunThru(openingFens: string[]){
+                          for (let i = 0; i < openingFens.length - 1; i++){
+                            newGame.load(openingFens[i]);
+                            chessGameRef.current = newGame;
+                            setReqMove(openingMoves[i]);
+                            while(chessGameRef.current.fen() !== openingFens[i + 1]){
+                              //console.log("No. Big Chess Position: " + bigChessPosition + " Opening Fen: " + openingFens[i + 1]);
+                              await new Promise(resolve => setTimeout(resolve, 50));
+                            }
+                            //console.log("Yes. Big Chess Position: " + bigChessPosition + " Opening Fen: " + openingFens[i + 1]);
+                          }
+                          setShowEffex("Correct ✅");
+                          stopEffex();
+                        }
+                        await playerRunThru(openingFens);
+                        setDaOpeningFens(openingFens);
+                        setDaOpeningMoves(openingMoves);
+                        setReqMove("none");
+                      };
+                      if (opening !== "None"){
+                        await new Promise(resolve => setTimeout(resolve, 2000));
                       }
-                      await playerRunThru(openingFens);
-                      setDaOpeningFens(openingFens);
-                      setDaOpeningMoves(openingMoves);
-                      setReqMove("none");
-                    };
-                    await new Promise(resolve => setTimeout(resolve, 2000));
-                    setGameOpening(opening);
-                    const startFen = await chooseFirstFen(opening, plyLength);
-                    console.log("startfen" + startFen);
-                    newGame.load(startFen);
-                    chessGameRef.current = newGame;
-                    smallGameRef.current = new Chess(startFen);
-                    tryFenRef.current = new Chess(startFen);
-                    setChessPosition(newGame.fen());
-                    setBigChessPosition(newGame.fen());
-                    setOldFen(newGame.fen());
-                    highlightKingSquare(newGame, "big");
-                    setBPosHistory([newGame.fen()]);
+                      setGameOpening(opening);
+                      const startFen = await chooseFirstFen(opening, plyLength);
+                      console.log("startfen" + startFen);
+                      newGame.load(startFen);
+                      chessGameRef.current = newGame;
+                      smallGameRef.current = new Chess(startFen);
+                      tryFenRef.current = new Chess(startFen);
+                      setChessPosition(newGame.fen());
+                      setBigChessPosition(newGame.fen());
+                      setOldFen(newGame.fen());
+                      highlightKingSquare(newGame, "big");
+                      setBPosHistory([newGame.fen()]);
                   }}
                   style={{
                     padding: "10px 16px",
-                    cursor: "pointer",
-                    color: "#e6edf3",
+                    cursor: isUnlocked ? "pointer" : "not-allowed",
+                    color: isUnlocked ? "#e6edf3" : "#8b949e",
                     fontSize: "0.9rem",
+                    opacity: isUnlocked ? 1 : 0.4,
                   }}
-                  onMouseEnter={e => (e.currentTarget.style.background = "#21262d")}
+                  onMouseEnter={e => {
+                    if (isUnlocked) e.currentTarget.style.background = "#21262d";
+                  }}
                   onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                 >
-                  {opening}
+                  {opening} {!isUnlocked}
                 </div>
-              ))}
+              );
+              })}
             </div>
           )}
         </div>
