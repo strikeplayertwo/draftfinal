@@ -292,7 +292,10 @@ function App() {
     if (!error) {
       setUserProgress({ level: newLevel, unlocked_openings: updated, beaten_openings: userProgress.beaten_openings });
       if (newUnlocks.length > 0) {
-        setGameResult(prev => `${prev}Level ${newLevel}! Unlocked: ${newUnlocks.join(", ")}`);
+        //setGameResult(prev => `${prev}\nLevel ${newLevel}! Unlocked: ${newUnlocks.join(", ")}`);
+        setGameResult(prev => 
+          `${prev}\n Level <span style="color: #3cff00;">${newLevel}</span>! Unlocked: ${newUnlocks.join(", ")}`
+        );
       } else {}
     }
   }
@@ -841,7 +844,7 @@ function App() {
     let daDailyFens = await extractFENsFromGames(pgnData,94, "None", 6);
     let chosenFens: string[] = [];
     const chosenScores: number[] = [];
-    const chosenStats: {fen: string, score: number, pieces: number, cpCount: number, addScore: number, attacked: number}[] = [];
+    const chosenStats: {fen: string, score: number, pieces: number, cpCount: number, cp2Count: number, cp3Count: number, addScore: number, attacked: number}[] = [];
     for (let i = 0; i < 20; i++){
       const newFen = daDailyFens[Math.floor(Math.random() * daDailyFens.length)];
       if (!newFen){
@@ -849,7 +852,7 @@ function App() {
         continue;
       }
       let score = 0;
-      const lines = await workerA.getTop6Lines(newFen, 16);
+      const lines = await workerA.getTop6Lines(newFen, 18);
       //new pieces: amount of unguarded squares that side to move's bishops/knights/rooks/queen can move to, up to 50, .5 per square
       /*let pieces = newFen.split(" ")[0]
         .replace(/[^a-zA-Z]/g, "")
@@ -860,12 +863,68 @@ function App() {
       let cpCount = 0;
       lines.forEach((line) =>{
         if (line.cp > -9000 && line.cp < 9000){
-          if (line.cp - lines[0].cp > -81 && line.cp - lines[0].cp < -41){
+          if (line.cp - lines[0].cp > -71 && line.cp - lines[0].cp < -31){
             cpCount += 10;
           }
         }
       })
-      score += cpCount;
+      let cp2Count = 0;
+      let cp3Count = 0;
+      const bestMovePv = lines[0]?.pv?.split(" ")?.[0];
+          if (bestMovePv) {
+            const tempGame = new Chess(newFen);
+            try {
+              const move = tempGame.move(bestMovePv);
+              if (!move?.captured) {
+                cp2Count = 10;
+              }
+
+              // Check the piece that moved
+              if (move) {
+                const fenParts = newFen.split(" ");
+                const sideToMove = fenParts[1] as "w" | "b";
+                const opponent = sideToMove === "w" ? "b" : "w";
+
+                // Build opponent attack game from original position
+                const oppFenParts = [...fenParts];
+                oppFenParts[1] = opponent;
+                const oppGame = new Chess(oppFenParts.join(" "));
+
+                const movedPieceValue = PIECE_VALUES[move.piece];
+
+                // Get all opponent moves that attack the piece's original square
+                const attackersOnFrom = oppGame
+                  .moves({ verbose: true })
+                  .filter(m => m.to === move.from);
+
+                const isAttackedByLesser = attackersOnFrom.some(
+                  m => PIECE_VALUES[m.piece] < movedPieceValue
+                );
+
+                // Check if the piece on its original square is defended
+                const stmFenParts = [...fenParts];
+                stmFenParts[1] = sideToMove;
+                const stmGame = new Chess(stmFenParts.join(" "));
+                const isDefended = stmGame
+                  .moves({ verbose: true })
+                  .some(m => m.to === move.from && m.from !== move.from);
+
+                const isUndefendedAndAttacked =
+                  attackersOnFrom.length > 0 && !isDefended;
+
+                if (isAttackedByLesser || isUndefendedAndAttacked) {
+                  cp3Count = -10;
+                  cp2Count = 0;
+                }
+              }
+            } catch {
+              // ignore invalid move
+            }
+          }
+
+
+      //score += cpCount;
+      score = score + cpCount + cp2Count + cp3Count;
       let addScore = 25;
       if(lines[1] !== undefined){
         if(lines[1].cp - lines[0].cp < -81){
@@ -886,9 +945,9 @@ function App() {
         if(!chosenFens.includes(newFen)){
           chosenFens.push(newFen);
           chosenScores.push(score);
-          chosenStats.push({fen: newFen, score, pieces, cpCount, addScore, attacked});
+          chosenStats.push({fen: newFen, score, pieces, cpCount, cp2Count, cp3Count, addScore, attacked});
           console.log ("Chosen fen " + newFen + " with score " + score);
-          const formatted = chosenFens.map((fen, index) => `Score: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cpCount}/20 Clarity: ${chosenStats[index].addScore}/25 Onslaught: ${chosenStats[index].attacked}/30`)
+          const formatted = chosenFens.map((fen, index) => `Score: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cpCount}/20 ${chosenStats[index].cp2Count}${chosenStats[index].cp3Count}Clarity: ${chosenStats[index].addScore}/25 Onslaught: ${chosenStats[index].attacked}/30`)
             .join("\n");
           setPosList(formatted);
         }
@@ -898,8 +957,8 @@ function App() {
           chosenFens[minIndex] = newFen;
           console.log ("Replacing " + chosenScores[minIndex] + " with score " + score);
           chosenScores[minIndex] = score;
-          chosenStats[minIndex] = {fen: newFen, score, pieces, cpCount, addScore, attacked};
-          const formatted = chosenFens.map((fen, index) => `Score: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cpCount}/20 Clarity: ${chosenStats[index].addScore}/25 Onslaught: ${chosenStats[index].attacked}/30`)
+          chosenStats[minIndex] = {fen: newFen, score, pieces, cpCount, cp2Count, cp3Count, addScore, attacked};
+          const formatted = chosenFens.map((fen, index) => `Score: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cpCount}/20 ${chosenStats[index].cp2Count}${chosenStats[index].cp3Count}Clarity: ${chosenStats[index].addScore}/25 Onslaught: ${chosenStats[index].attacked}/30`)
             .join("\n");
           setPosList(formatted);
         }else {
