@@ -120,6 +120,7 @@ function App() {
   //const fens = extractFENsFromGames(pgnData,94, "All");
   const [fens, setFens] = useState<string[]>([]);
   const [dailyFens, setDailyFens] = useState<string[]>([]);
+  const [dailyBestMoves, setDailyBestMoves] = useState<string[]>([]);
   const [gameStatus, setGameStatus] = useState("Moves played: 0");
   const [movesplayed, setMovesPlayed] = useState(-1);
   const [gameResult, setGameResult] = useState("");
@@ -843,8 +844,9 @@ function App() {
   async function chooseFiveFens(): Promise<string[]> {
     let daDailyFens = await extractFENsFromGames(pgnData,94, "None", 6);
     let chosenFens: string[] = [];
+    let chosenMoves: string[] = [];
     const chosenScores: number[] = [];
-    const chosenStats: {fen: string, score: number, pieces: number, cpCount: number, cp2Count: number, cp3Count: number, addScore: number, attacked: number}[] = [];
+    const chosenStats: {fen: string, score: number, pieces: number, cps: number, cp2Count: number, cp3Count: number, addScore: number, attacked: number}[] = [];
     for (let i = 0; i < 20; i++){
       const newFen = daDailyFens[Math.floor(Math.random() * daDailyFens.length)];
       if (!newFen){
@@ -879,42 +881,42 @@ function App() {
                 cp2Count = 10;
               }
 
-              // Check the piece that moved
               if (move) {
                 const fenParts = newFen.split(" ");
                 const sideToMove = fenParts[1] as "w" | "b";
                 const opponent = sideToMove === "w" ? "b" : "w";
 
-                // Build opponent attack game from original position
                 const oppFenParts = [...fenParts];
                 oppFenParts[1] = opponent;
                 const oppGame = new Chess(oppFenParts.join(" "));
 
                 const movedPieceValue = PIECE_VALUES[move.piece];
 
-                // Get all opponent moves that attack the piece's original square
-                const attackersOnFrom = oppGame
-                  .moves({ verbose: true })
-                  .filter(m => m.to === move.from);
+                // Use isAttacked() for reliable attack detection
+                const isAttackedAtAll = oppGame.isAttacked(move.from as Square, opponent);
 
-                const isAttackedByLesser = attackersOnFrom.some(
-                  m => PIECE_VALUES[m.piece] < movedPieceValue
-                );
+                if (isAttackedAtAll) {
+                  // Find the lowest value attacker
+                  const attackers = oppGame
+                    .moves({ verbose: true })
+                    .filter(m => m.to === move.from);
 
-                // Check if the piece on its original square is defended
-                const stmFenParts = [...fenParts];
-                stmFenParts[1] = sideToMove;
-                const stmGame = new Chess(stmFenParts.join(" "));
-                const isDefended = stmGame
-                  .moves({ verbose: true })
-                  .some(m => m.to === move.from && m.from !== move.from);
+                  const isAttackedByLesser = attackers.some(
+                    m => PIECE_VALUES[m.piece] < movedPieceValue
+                  );
 
-                const isUndefendedAndAttacked =
-                  attackersOnFrom.length > 0 && !isDefended;
+                  // Check if defended using isAttacked() from side to move's perspective
+                  const stmFenParts = [...fenParts];
+                  stmFenParts[1] = sideToMove;
+                  const stmGame = new Chess(stmFenParts.join(" "));
+                  const isDefended = stmGame.isAttacked(move.from as Square, sideToMove);
 
-                if (isAttackedByLesser || isUndefendedAndAttacked) {
-                  cp3Count = -10;
-                  cp2Count = 0;
+                  const isUndefendedAndAttacked = !isDefended;
+
+                  if (isAttackedByLesser || isUndefendedAndAttacked) {
+                    cp3Count = -10;
+                    cp2Count = 0;
+                  }
                 }
               }
             } catch {
@@ -924,7 +926,10 @@ function App() {
 
 
       //score += cpCount;
-      score = score + cpCount + cp2Count + cp3Count;
+      let cps = cpCount + cp2Count + cp3Count;
+      if (cps > 20) cps = 20;
+      if (cps < 0) cps = 0;
+      score = score + cps;
       let addScore = 25;
       if(lines[1] !== undefined){
         if(lines[1].cp - lines[0].cp < -81){
@@ -945,9 +950,10 @@ function App() {
         if(!chosenFens.includes(newFen)){
           chosenFens.push(newFen);
           chosenScores.push(score);
-          chosenStats.push({fen: newFen, score, pieces, cpCount, cp2Count, cp3Count, addScore, attacked});
+          chosenMoves.push(lines[0]?.pv?.split(" ")?.[0] || "");
+          chosenStats.push({fen: newFen, score, pieces, cps, cp2Count, cp3Count, addScore, attacked});
           console.log ("Chosen fen " + newFen + " with score " + score);
-          const formatted = chosenFens.map((fen, index) => `Score: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cpCount}/20 ${chosenStats[index].cp2Count}${chosenStats[index].cp3Count}Clarity: ${chosenStats[index].addScore}/25 Onslaught: ${chosenStats[index].attacked}/30`)
+          const formatted = chosenFens.map((fen, index) => `Score: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cps}/20 ${chosenStats[index].cp2Count}${chosenStats[index].cp3Count}Clarity: ${chosenStats[index].addScore}/25 Onslaught: ${chosenStats[index].attacked}/30`)
             .join("\n");
           setPosList(formatted);
         }
@@ -957,8 +963,9 @@ function App() {
           chosenFens[minIndex] = newFen;
           console.log ("Replacing " + chosenScores[minIndex] + " with score " + score);
           chosenScores[minIndex] = score;
-          chosenStats[minIndex] = {fen: newFen, score, pieces, cpCount, cp2Count, cp3Count, addScore, attacked};
-          const formatted = chosenFens.map((fen, index) => `Score: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cpCount}/20 ${chosenStats[index].cp2Count}${chosenStats[index].cp3Count}Clarity: ${chosenStats[index].addScore}/25 Onslaught: ${chosenStats[index].attacked}/30`)
+          chosenMoves[minIndex] = lines[0]?.pv?.split(" ")?.[0] || "";
+          chosenStats[minIndex] = {fen: newFen, score, pieces, cps, cp2Count, cp3Count, addScore, attacked};
+          const formatted = chosenFens.map((fen, index) => `Score: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cps}/20 ${chosenStats[index].cp2Count}${chosenStats[index].cp3Count}Clarity: ${chosenStats[index].addScore}/25 Onslaught: ${chosenStats[index].attacked}/30`)
             .join("\n");
           setPosList(formatted);
         }else {
@@ -972,6 +979,7 @@ function App() {
     }
     setDailyFens(chosenFens);
     setFenScores(chosenScores.reduce((a, b) => a + b, 0));
+    setDailyBestMoves(chosenMoves);
     return chosenFens;
   }
 
@@ -1055,20 +1063,23 @@ function App() {
     if (!tryFenGame) {
       tryFenGame = new Chess(fenBeforeMove);
     }
-    let [ourEval, stockfishSetup] = await Promise.all([
-      workerC.getEval(chessGame.fen(), 18),
-      workerD.getBestLine(fenBeforeMove, 18).then(r => { console.log("chooseFen workerB done", r); return r; }),
-    ]);
+    /*let [ourEval, stockfishSetup] = await Promise.all([
+      workerC.getEval(chessGame.fen(), 20),
+      workerD.getBestLine(fenBeforeMove, 20).then(r => { console.log("chooseFen workerB done", r); return r; }),
+    ]);*/
+    let ourEval = await workerC.getEval(chessGame.fen(), 20);
+    const stockfishSetup = dailyBestMoves[fenIndex];
     ourEval = -1 * ourEval;
     let bestEval = ourEval;
 
-    const pvb = stockfishSetup.pv;
-    console.log("Stockfish PV: " + pvb);
-    let stockfishMove = pvb?.split(" ")?.[0];
+    //const pvb = stockfishSetup.pv;
+    //yconsole.log("Stockfish PV: " + pvb);
+    //let stockfishMove = pvb?.split(" ")?.[0];
+    let stockfishMove = stockfishSetup;
     if(stockfishMove !== playerMove){
       tryFenGame.load(fenBeforeMove);
       tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
-      bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 18);
+      bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 20);
       console.log(stockfishMove + " not equals " + playerMove);
     }else{
       console.log(stockfishMove + " equals " + playerMove);
