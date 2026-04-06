@@ -52,6 +52,20 @@ type UserProgress = {
   unlocked_openings: string[];
 };
 
+type CaroKannProgress = {
+  line_1: string;
+};
+
+type MoveInfo = {
+  san: string;
+  from: string;
+  to: string;
+  piece: string;
+  eval: number;        // from getEval
+};
+
+
+
 const levelUnlocks: Record<number, string[]> = {
   2: ["Random", "French", "Caro-Kann", "Benoni"],
   3: ["English", "Giuoco Piano/Pianissimo", "Catalan"],
@@ -172,6 +186,10 @@ function App() {
   const [rankInfo, setRankInfo] = useState<RankInfo>(null);
   
   //opening stuff
+  const daOpeningFensRef = useRef<string[]>([]);
+  const [caroKannProgress, setCaroKannProgress] = useState<CaroKannProgress>({
+    line_1: "e2e4 c7c6"
+  });
   const [showOpeningSelect, setShowOpeningSelect] = useState(false);
   const [gameOpening, setGameOpening] = useState("None");
   const [reqMove, setReqMove] = useState<string>("none");
@@ -246,9 +264,29 @@ function App() {
       }
     }
 
+    async function fetchCaroKannProgress() {
+      if (!user) return;
+      const { data, error } = await supabase
+        .from("caro_kann_progress")
+        .select("line_1")
+        .eq("user_id", user.id)
+        .single();
+
+      if (error || !data) {
+        // First time — create their row
+        await supabase.from("caro_kann_progress").insert({
+          user_id: user.id,
+          line_1: "e2e4 c7c6"
+        });
+      } else {
+        setCaroKannProgress(data);
+      }
+    }
+
     fetchGameHistory();
     fetchDailyGameHistory();
     fetchProgress();
+    fetchCaroKannProgress();
     }, [user]);
 
   useEffect(() => {
@@ -264,6 +302,10 @@ function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    daOpeningFensRef.current = daOpeningFens;
+  }, [daOpeningFens]);
 
   async function signInWithEmail(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -299,6 +341,39 @@ function App() {
         );
       } else {}
     }
+  }
+
+  async function addMoveToLine(move: string, lineKey: keyof CaroKannProgress) {
+    if (!user) return;
+    const updatedLine = caroKannProgress[lineKey] + " " + move;
+
+    await supabase
+      .from("caro_kann_progress")
+      .update({ [lineKey]: updatedLine })
+      .eq("user_id", user.id);
+
+    setCaroKannProgress(prev => ({
+      ...prev,
+      [lineKey]: updatedLine
+    }));
+  }
+
+  async function getMoveInfos(fen: string): Promise<MoveInfo[]> {
+    const game = new Chess(fen);
+    const lines = await workerA.getTop6Lines(fen, 16);
+    
+    return lines.map(line => {
+      const moveSan = line.pv.split(" ")[0];
+      const move = game.move(moveSan);
+      game.undo();
+      return {
+        san: move.san,
+        from: move.from,
+        to: move.to,
+        piece: move.piece,
+        eval: line.cp / 100,
+      };
+    });
   }
 
   function highlightKingSquare(chessInstance: Chess, type: string) {
@@ -338,6 +413,7 @@ function App() {
   const [arrows, setArrows] = useState<Arrow[]>([]);
   const [oldEval, setOldEval] = useState(-10000);
   const isAnalyzing = useRef(false);
+  const [moveInfos, setMoveInfos] = useState<MoveInfo[]>([]);
 
   useEffect(() => {
     // Prevent re-entrant calls
@@ -1473,7 +1549,7 @@ function App() {
     return true;
   }
 
-  function onSquareClick({
+  async function onSquareClick({
     square,
     piece
   }: SquareHandlerArgs){
@@ -1497,7 +1573,25 @@ function App() {
       return;
     }
     try {
-      if (reqMove !== "none" && daOpeningFens.length === 0){
+      if (reqMove === "add"){
+        chessGame.move({
+          from: moveFrom,
+          to: square,
+          promotion: 'q'
+        });
+        const ourNewFen = chessGame.fen();
+        const newMove = moveFrom + square;
+        daOpeningFensRef.current = [...daOpeningFensRef.current, ourNewFen];
+        setDaOpeningFens(daOpeningFensRef.current);
+        setDaOpeningMoves(prev => [...prev, newMove]);
+        setShowEffex("Position added to opening pool (" + daOpeningFensRef.current.length + ")");
+        stopEffex();
+        setBigChessPosition(ourNewFen);
+        await addMoveToLine(moveFrom + square, "line_1");
+        const infos = await getMoveInfos(ourNewFen);
+        setMoveInfos(infos);
+        //console.log("\Added fen: " + chessGame.fen() + " Move: " + moveFrom + square);
+      }else if (reqMove !== "none" && daOpeningFens.length === 0){
         const sendthatfen = chessGame.fen();
         chessGame.move({
           from: moveFrom,
@@ -1807,9 +1901,18 @@ function App() {
                           setShowEffex("Correct ✅");
                           stopEffex();
                         }
+                        async function waitAddMoves(minMoves: number) {
+                          while (daOpeningFensRef.current.length - 1 < minMoves) {
+                            await new Promise(resolve => setTimeout(resolve, 50));
+                          }
+                        }
                         await playerRunThru(openingFens);
                         setDaOpeningFens(openingFens);
                         setDaOpeningMoves(openingMoves);
+                        if (openingFens.length - 1 < 4){
+                          setReqMove("add");
+                          await waitAddMoves(4);
+                        }
                         setReqMove("none");
                       };
                       if (opening !== "None"){
