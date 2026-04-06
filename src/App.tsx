@@ -1862,16 +1862,19 @@ function App() {
                   <div
                     key={opening}
                     onClick={async () => {
-                      //if (!isUnlocked) return;
                       setScreen("classic");
                       setShowOpeningSelect(false);
                       if(opening === "Random"){
                         opening = openings[Math.floor(Math.random() * (openings.length - 3)) + 2];
                       };
-                      const openingMoves = openingMoveMap[opening].split(" ");
-                      const plyLength = openingPlyLengths[opening];
-                      /*const daFens = extractFENsFromGames(pgnData,94, opening, plyLength);
-                      setFens(daFens);*/
+                      let openingMoves: string[];
+                      let plyLength = openingPlyLengths[opening];
+                      if (opening === "Caro-Kann") {
+                        openingMoves = caroKannProgress.line_1.split(" ");
+                        plyLength = openingMoves.length;
+                      } else {
+                        openingMoves = openingMoveMap[opening].split(" ");
+                      }
                       const newGame = new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
                       const openingFens = [newGame.fen()];
                       if(opening !== "None"){
@@ -1909,9 +1912,13 @@ function App() {
                         await playerRunThru(openingFens);
                         setDaOpeningFens(openingFens);
                         setDaOpeningMoves(openingMoves);
+
                         if (openingFens.length - 1 < 4){
                           setReqMove("add");
+                          const infos = await getMoveInfos(openingFens[openingFens.length - 1]);
+                          setMoveInfos(infos);
                           await waitAddMoves(4);
+                          setMoveInfos([]);
                         }
                         setReqMove("none");
                       };
@@ -2122,6 +2129,48 @@ function App() {
         </div>
           {/* result UI */}
         </div>
+      {moveInfos.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(100px, 1fr))", gap: 10, padding: "1rem 0", }}>
+          {moveInfos.map(m => (
+            <div
+              key={m.san}
+              style={{
+                background: "var(--color-background-primary)",
+                border: "0.5px solid var(--color-border-tertiary)",
+                borderRadius: "var(--border-radius-lg)",
+                padding: 12,
+                cursor: "pointer",
+                fontSize: 13,
+              }}
+              onClick={async () => {
+                chessGameRef.current?.move({ from: m.from, to: m.to, promotion: "q" });
+                setBigChessPosition(chessGameRef.current?.fen() ?? "");
+                const ourNewFen = chessGameRef.current?.fen() ?? "";
+                const newMove = m.from + m.to;
+                daOpeningFensRef.current = [...daOpeningFensRef.current, ourNewFen];
+                setDaOpeningFens(daOpeningFensRef.current);
+                setDaOpeningMoves(prev => [...prev, newMove]);
+                setShowEffex("Position added to opening pool (" + daOpeningFensRef.current.length + ")");
+                stopEffex();
+                setBigChessPosition(ourNewFen);
+                await addMoveToLine(m.from + m.to, "line_1");
+                const infos = await getMoveInfos(ourNewFen);
+                setMoveInfos(infos);
+              }}
+            >
+              <div style={{ fontSize: 17, fontWeight: 500, color: "var(--color-text-primary)", marginBottom: 6 }}>
+                {m.san}
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", color: "var(--color-text-secondary)" }}>
+                <span>Eval</span>
+                <span style={{ fontWeight: 500, color: m.eval > 0 ? "#3B6D11" : "#A32D2D" }}>
+                  {m.eval > 0 ? "+" : ""}{m.eval.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}  
       </div>
       <button className="back-button" onClick={handleBack}>Back</button>
       <button className={`back2-button ${showBack2 ? "show" : "hide"}`} onClick={() => {setShowBack2(false); setGameResult(storeGameResult);}}>Back to Graph</button>
