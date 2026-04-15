@@ -63,6 +63,11 @@ type EnglishProgress = {
   main_line: string;
 }
 
+type FrenchProgress = {
+  line_1: string;
+  main_line: string;
+}
+
 type MoveInfo = {
   san: string;
   from: string;
@@ -203,6 +208,10 @@ function App() {
     line_1: "c2c4",
     main_line: "c2c4"
   });
+  const [frenchProgress, setFrenchProgress] = useState<FrenchProgress>({
+    line_1: "e2e4 e7e6 d2d4 d7d5",
+    main_line: "e2e4 e7e6 d2d4 d7d5"
+  });
 
   const [showOpeningSelect, setShowOpeningSelect] = useState(false);
   const [gameOpening, setGameOpening] = useState("None");
@@ -253,6 +262,12 @@ function App() {
       line: englishProgress.line_1,
       main_line: englishProgress.main_line,
       setter: setEnglishProgress,
+    },
+    "French": {
+      table: "french_progress",
+      line: frenchProgress.line_1,
+      main_line: frenchProgress.main_line,
+      setter: setFrenchProgress,
     },
     // add more openings here
   };
@@ -328,6 +343,7 @@ function App() {
     fetchProgress();
     fetchOpeningProgress("caro_kann_progress", { line_1: "e2e4 c7c6", main_line: "e2e4 c7c6 d2d4 d7d5" }, setCaroKannProgress);
     fetchOpeningProgress("english_progress", { line_1: "c2c4", main_line: "c2c4" }, setEnglishProgress);
+    fetchOpeningProgress("french_progress", { line_1: "e2e4 e7e6 d2d4 d7d5", main_line: "e2e4 e7e6 d2d4 d7d5" }, setFrenchProgress);
     }, [user]);
 
   useEffect(() => {
