@@ -57,16 +57,62 @@ type CaroKannProgress = {
   line_1: string;
   main_line: string;
 };
-
 type EnglishProgress = {
   line_1: string;
   main_line: string;
-}
-
+};
 type FrenchProgress = {
   line_1: string;
   main_line: string;
-}
+};
+type SicilianProgress = {
+  line_1: string;
+  main_line: string;
+};
+type SpanishProgress = {
+  line_1: string;
+  main_line: string;
+};
+type KingsIndianProgress = {
+  line_1: string;
+  main_line: string;
+};
+type QueensPawnGameProgress = {
+  line_1: string;
+  main_line: string;
+};
+type QueensBishopGameProgress = {
+  line_1: string;
+  main_line: string;
+};
+type QueensIndianProgress = {
+  line_1: string;
+  main_line: string;
+};
+type QueensGambitDeclinedProgress = {
+  line_1: string;
+  main_line: string;
+};
+type GruenfeldProgress = {
+  line_1: string;
+  main_line: string;
+};
+type RetiProgress = {
+  line_1: string;
+  main_line: string;
+};
+type BenoniProgress = {
+  line_1: string;
+  main_line: string;
+};
+type CatalanProgress = {
+  line_1: string;
+  main_line: string;
+};
+type ItalianProgress = {
+  line_1: string;
+  main_line: string;
+};
 
 type MoveInfo = {
   san: string;
@@ -212,6 +258,54 @@ function App() {
     line_1: "e2e4 e7e6 d2d4 d7d5",
     main_line: "e2e4 e7e6 d2d4 d7d5"
   });
+  const [sicilianProgress, setSicilianProgress] = useState<SicilianProgress>({
+    line_1: "e2e4 c7c5",
+    main_line: "e2e4 c7c5"
+  });
+  const [spanishProgress, setSpanishProgress] = useState<SpanishProgress>({
+    line_1: "e2e4 e7e5 g1f3 b8c6 f1b5",
+    main_line: "e2e4 e7e5 g1f3 b8c6 f1b5"
+  });
+  const [kingsIndianProgress, setKingsIndianProgress] = useState<KingsIndianProgress>({
+    line_1: "d2d4 g8f6 c2c4 g7g6",
+    main_line: "d2d4 g8f6 c2c4 g7g6"
+  });
+  const [queensPawnGameProgress, setQueensPawnGameProgress] = useState<QueensPawnGameProgress>({
+    line_1: "d2d4 d7d5",
+    main_line: "d2d4 d7d5"
+  });
+  const [queensBishopGameProgress, setQueensBishopGameProgress] = useState<QueensBishopGameProgress>({
+    line_1: "d2d4 d7d5 g1f3 g8f6 c1f4 c7c5 e2e3",
+    main_line: "d2d4 d7d5 g1f3 g8f6 c1f4 c7c5 e2e3"
+  });
+  const [queensIndianProgress, setQueensIndianProgress] = useState<QueensIndianProgress>({
+    line_1: "d2d4 g8f6 c2c4 e7e6 g1f3 b7b6",
+    main_line: "d2d4 g8f6 c2c4 e7e6 g1f3 b7b6"
+  });
+  const [queensGambitDeclinedProgress, setQueensGambitDeclinedProgress] = useState<QueensGambitDeclinedProgress>({
+    line_1: "d2d4 d7d5 c2c4",
+    main_line: "d2d4 d7d5 c2c4 e7e6"
+  });
+  const [gruenfeldProgress, setGruenfeldProgress] = useState<GruenfeldProgress>({
+    line_1: "d2d4 b8c6 c2c4 g7g6 g1f3 b8c6",
+    main_line: "d2d4 b8c6 c2c4 g7g6 g1f3 b8c6"
+  });
+  const [retiProgress, setRetiProgress] = useState<RetiProgress>({
+    line_1: "g1f3",
+    main_line: "g1f3"
+  });
+  const [benoniProgress, setBenoniProgress] = useState<BenoniProgress>({
+    line_1: "d2d4 g8f6 c2c4 c7c5",
+    main_line: "d2d4 g8f6 c2c4 c7c5 d2d5 f6e4"
+  });
+  const [catalanProgress, setCatalanProgress] = useState<CatalanProgress>({
+    line_1: "d2d4 g8f6 c2c4 e7e6 g2g3",
+    main_line: "d2d4 g8f6 c2c4 e7e6 g2g3 d7d5 c4d5 e6d5 g1f3"
+  });
+  const [italianProgress, setItalianProgress] = useState<ItalianProgress>({
+    line_1: "e2e4 e7e5 g1f3 b8c6 f1c4",
+    main_line: "e2e4 e7e5 g1f3 b8c6 f1c4"
+  });
 
   const [showOpeningSelect, setShowOpeningSelect] = useState(false);
   const [gameOpening, setGameOpening] = useState("None");
@@ -269,7 +363,78 @@ function App() {
       main_line: frenchProgress.main_line,
       setter: setFrenchProgress,
     },
-    // add more openings here
+    "Sicilian": {
+      table: "sicilian_progress",
+      line: sicilianProgress.line_1,
+      main_line: sicilianProgress.main_line,
+      setter: setSicilianProgress,
+    },
+    "Ruy Lopez": {
+      table: "spanish_progress",
+      line: spanishProgress.line_1,
+      main_line: spanishProgress.main_line,
+      setter: setSpanishProgress,
+    },
+    "King's Indian": {
+      table: "kings_indian_progress",
+      line: kingsIndianProgress.line_1,
+      main_line: kingsIndianProgress.main_line,
+      setter: setKingsIndianProgress,
+    },
+    "Queen's Pawn Game": {
+      table: "queens_pawn_game_progress",
+      line: queensPawnGameProgress.line_1,
+      main_line: queensPawnGameProgress.main_line,
+      setter: setQueensPawnGameProgress,
+    },
+    "Queen's Bishop Game": {
+      table: "queens_bishop_game_progress",
+      line: queensBishopGameProgress.line_1,
+      main_line: queensBishopGameProgress.main_line,
+      setter: setQueensBishopGameProgress,
+    },
+    "Queen's Indian": {
+      table: "queens_indian_progress",
+      line: queensIndianProgress.line_1,
+      main_line: queensIndianProgress.main_line,
+      setter: setQueensIndianProgress,
+    },
+    "Queen's Gambit Declined": {
+      table: "queens_gambit_declined_progress",
+      line: queensGambitDeclinedProgress.line_1,
+      main_line: queensGambitDeclinedProgress.main_line,
+      setter: setQueensGambitDeclinedProgress,
+    },
+    "Gruenfeld": {
+      table: "gruenfeld_progress",
+      line: gruenfeldProgress.line_1,
+      main_line: gruenfeldProgress.main_line,
+      setter: setGruenfeldProgress,
+    },
+    "Reti": {
+      table: "reti_progress",
+      line: retiProgress.line_1,
+      main_line: retiProgress.main_line,
+      setter: setRetiProgress,
+    },
+    "Benoni": {
+      table: "benoni_progress",
+      line: benoniProgress.line_1,
+      main_line: benoniProgress.main_line,
+      setter: setBenoniProgress,
+    },
+    "Catalan": {
+      table: "catalan_progress",
+      line: catalanProgress.line_1,
+      main_line: catalanProgress.main_line,
+      setter: setCatalanProgress,
+    },
+    "Italian": {
+      table: "italian_progress",
+      line: italianProgress.line_1,
+      main_line: italianProgress.main_line,
+      setter: setItalianProgress,
+    }
   };
   useEffect(() => {
     if (!user) return; // don't fetch if not logged in
@@ -344,6 +509,18 @@ function App() {
     fetchOpeningProgress("caro_kann_progress", { line_1: "e2e4 c7c6", main_line: "e2e4 c7c6 d2d4 d7d5" }, setCaroKannProgress);
     fetchOpeningProgress("english_progress", { line_1: "c2c4", main_line: "c2c4" }, setEnglishProgress);
     fetchOpeningProgress("french_progress", { line_1: "e2e4 e7e6 d2d4 d7d5", main_line: "e2e4 e7e6 d2d4 d7d5" }, setFrenchProgress);
+    fetchOpeningProgress("sicilian_progress", { line_1: "e2e4 c7c5", main_line: "e2e4 c7c5" }, setSicilianProgress);
+    fetchOpeningProgress("spanish_progress", { line_1: "e2e4 e7e5 g1f3 b8c6 f1b5", main_line: "e2e4 e7e5 g1f3 b8c6 f1b5" }, setSpanishProgress);
+    fetchOpeningProgress("kings_indian_progress", { line_1: "d2d4 g8f6 c2c4 g7g6", main_line: "d2d4 g8f6 c2c4 g7g6" }, setKingsIndianProgress);
+    fetchOpeningProgress("queens_pawn_game_progress", { line_1: "d2d4 d7d5", main_line: "d2d4 d7d5" }, setQueensPawnGameProgress);
+    fetchOpeningProgress("queens_bishop_game_progress", { line_1: "d2d4 d7d5 g1f3 g8f6 c1f4 c7c5 e2e3", main_line: "d2d4 d7d5 g1f3 g8f6 c1f4 c7c5 e2e3" }, setQueensBishopGameProgress);
+    fetchOpeningProgress("queens_indian_progress", { line_1: "d2d4 g8f6 c2c4 e7e6 g1f3 b7b6", main_line: "d2d4 g8f6 c2c4 e7e6 g1f3 b7b6" }, setQueensIndianProgress);
+    fetchOpeningProgress("queens_gambit_declined_progress", { line_1: "d2d4 d7d5 c2c4", main_line: "d2d4 d7d5 c2c4 e7e6" }, setQueensGambitDeclinedProgress);
+    fetchOpeningProgress("gruenfeld_progress", { line_1: "d2d4 b8c6 c2c4 g7g6 g1f3 b8c6", main_line: "d2d4 b8c6 c2c4 g7g6 g1f3 b8c6" }, setGruenfeldProgress);
+    fetchOpeningProgress("reti_progress", { line_1: "g1f3", main_line: "g1f3" }, setRetiProgress);
+    fetchOpeningProgress("benoni_progress", { line_1: "d2d4 g8f6 c2c4 c7c5", main_line: "d2d4 g8f6 c2c4 c7c5 d2d5 f6e4" }, setBenoniProgress);
+    fetchOpeningProgress("catalan_progress", { line_1: "d2d4 g8f6 c2c4 e7e6 g2g3", main_line: "d2d4 g8f6 c2c4 e7e6 g2g3 d7d5 c4d5 e6d5 g1f3" }, setCatalanProgress);
+    fetchOpeningProgress("italian_progress", { line_1: "e2e4 e7e5 g1f3 b8c6 f1c4", main_line: "e2e4 e7e5 g1f3 b8c6 f1c4" }, setItalianProgress);
     }, [user]);
 
   useEffect(() => {
