@@ -2109,7 +2109,7 @@ function App() {
               padding: "8px 0"
             }}>
               {openings
-              .filter(opening => userProgress.unlocked_openings.includes(opening))
+              .filter(opening => userProgress.unlocked_openings.includes(opening) || levelUnlocks[userProgress.level + 1].includes(opening))
               .map(opening => {
                 const isBeaten = userProgress.beaten_openings.includes(opening);
                 //const isUnlocked = userProgress.unlocked_openings.includes(opening);
@@ -2200,7 +2200,7 @@ function App() {
                     color: isBeaten ? "rgb(0, 200, 0)" : "#e6edf3",
                     //color: isUnlocked ? "#e6edf3" : "#8b949e",
                     fontSize: "0.9rem",
-                    //opacity: isUnlocked ? 1 : 0.4,
+                    opacity: levelUnlocks[userProgress.level + 1]?.includes(opening) ? 0.4 : 1,
                   }}
                   onMouseEnter={e => {
                     e.currentTarget.style.background = "#21262d";
