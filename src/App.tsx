@@ -55,6 +55,7 @@ type UserProgress = {
 
 type CaroKannProgress = {
   line_1: string;
+  main_line: string;
 };
 
 type MoveInfo = {
@@ -190,7 +191,8 @@ function App() {
   //opening stuff
   const daOpeningFensRef = useRef<string[]>([]);
   const [caroKannProgress, setCaroKannProgress] = useState<CaroKannProgress>({
-    line_1: "e2e4 c7c6"
+    line_1: "e2e4 c7c6",
+    main_line: "e2e4 c7c6 d2d4 d7d5"
   });
   const [showOpeningSelect, setShowOpeningSelect] = useState(false);
   const [gameOpening, setGameOpening] = useState("None");
@@ -271,7 +273,7 @@ function App() {
       if (!user) return;
       const { data, error } = await supabase
         .from("caro_kann_progress")
-        .select("line_1")
+        .select("line_1, main_line")
         .eq("user_id", user.id)
         .single();
 
@@ -370,10 +372,14 @@ function App() {
   async function getMoveInfos(fen: string): Promise<MoveInfo[]> {
     const game = new Chess(fen);
     const lines = await workerA.getTop6Lines(fen, 16);
-    
+
     return lines.map(line => {
       const moveSan = line.pv.split(" ")[0];
       const move = game.move(moveSan);
+      let isMain = false;
+      if (caroKannProgress.main_line.includes(moveSan)) {
+        isMain = true;
+      }
       game.undo();
       return {
         san: move.san,
@@ -381,7 +387,7 @@ function App() {
         to: move.to,
         piece: move.piece,
         eval: line.cp / 100,
-        main: false,//true if in main line on table
+        main: isMain,//true if in main line on table
       };
     });
   }
@@ -2176,6 +2182,9 @@ function App() {
                 <span style={{ fontWeight: 500, color: m.eval > 0 ? "#3B6D11" : "#A32D2D" }}>
                   {m.eval > 0 ? "+" : ""}{m.eval.toFixed(2)}
                 </span>
+              </div>
+              <div>
+                {m.main && <span style={{ fontSize: 12, fontWeight: 500, color: "var(--color-text-primary)" }}>Main Line</span>}
               </div>
             </div>
           ))}
