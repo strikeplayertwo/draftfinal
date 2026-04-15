@@ -50,6 +50,7 @@ type UserProgress = {
   level: number;
   beaten_openings: string[];
   unlocked_openings: string[];
+  userMinPly: number;
 };
 
 type CaroKannProgress = {
@@ -61,7 +62,8 @@ type MoveInfo = {
   from: string;
   to: string;
   piece: string;
-  eval: number;        // from getEval
+  eval: number;
+  main: boolean;
 };
 
 
@@ -198,7 +200,8 @@ function App() {
   const [userProgress, setUserProgress] = useState<UserProgress>({
     level: 1,
     unlocked_openings: ["None"],
-    beaten_openings: []
+    beaten_openings: [],
+    userMinPly: 4
   });
   const openings = ["None", "Random", "Sicilian", "French", "Caro-Kann", "English", "Ruy Lopez", "King's Indian", "Queen's Pawn Game", "Queen's Bishop Game", "Queen's Indian", "Gruenfeld", "Queen's Gambit Declined", "Reti", "Benoni", "Catalan", "Giuoco Piano/Pianissimo"];
   const openingPlyLengths: Record<string, number> = { "None": 6, "Random": 6, "Sicilian": 2, "French": 4, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "Queen's Bishop Game": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 3, "Reti": 1, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Giuoco Piano/Pianissimo": 5 };
@@ -247,7 +250,7 @@ function App() {
     async function fetchProgress() {
       const { data, error } = await supabase
         .from("user_progress")
-        .select("level, unlocked_openings, beaten_openings")
+        .select("level, unlocked_openings, beaten_openings, userMinPly")
         .eq("user_id", user!.id)
         .single();
 
@@ -326,14 +329,20 @@ function App() {
     const newLevel = userProgress.level + 1;
     const newUnlocks = levelUnlocks[newLevel] ?? []; // openings unlocked at this level
     const updated = [...userProgress.unlocked_openings, ...newUnlocks];
+    let minPly = userProgress.userMinPly;
+    if(newLevel === 6){
+      minPly = 7;
+    }else if (newLevel === 7){
+      minPly = 10;
+    }
 
     const { error } = await supabase
       .from("user_progress")
-      .update({ level: newLevel, unlocked_openings: updated })
+      .update({ level: newLevel, unlocked_openings: updated, userMinPly: minPly })
       .eq("user_id", user.id);
 
     if (!error) {
-      setUserProgress({ level: newLevel, unlocked_openings: updated, beaten_openings: userProgress.beaten_openings });
+      setUserProgress({ level: newLevel, unlocked_openings: updated, beaten_openings: userProgress.beaten_openings, userMinPly: minPly });
       if (newUnlocks.length > 0) {
         //setGameResult(prev => `${prev}\nLevel ${newLevel}! Unlocked: ${newUnlocks.join(", ")}`);
         setGameResult(prev => 
@@ -372,6 +381,7 @@ function App() {
         to: move.to,
         piece: move.piece,
         eval: line.cp / 100,
+        main: false,//true if in main line on table
       };
     });
   }
@@ -1913,11 +1923,11 @@ function App() {
                         setDaOpeningFens(openingFens);
                         setDaOpeningMoves(openingMoves);
 
-                        if (openingFens.length - 1 < 4){
+                        if (openingFens.length - 1 < userProgress.userMinPly){
                           setReqMove("add");
                           const infos = await getMoveInfos(openingFens[openingFens.length - 1]);
                           setMoveInfos(infos);
-                          await waitAddMoves(4);
+                          await waitAddMoves(userProgress.userMinPly);
                           setMoveInfos([]);
                         }
                         setReqMove("none");
