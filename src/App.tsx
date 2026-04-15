@@ -58,6 +58,11 @@ type CaroKannProgress = {
   main_line: string;
 };
 
+type EnglishProgress = {
+  line_1: string;
+  main_line: string;
+}
+
 type MoveInfo = {
   san: string;
   from: string;
@@ -194,6 +199,11 @@ function App() {
     line_1: "e2e4 c7c6",
     main_line: "e2e4 c7c6 d2d4 d7d5"
   });
+  const [englishProgress, setEnglishProgress] = useState<EnglishProgress>({
+    line_1: "c2c4",
+    main_line: "c2c4"
+  });
+
   const [showOpeningSelect, setShowOpeningSelect] = useState(false);
   const [gameOpening, setGameOpening] = useState("None");
   const [reqMove, setReqMove] = useState<string>("none");
@@ -225,6 +235,26 @@ function App() {
     "Benoni": "d2d4 g8f6 c2c4 c7c5",
     "Catalan": "d2d4 g8f6 c2c4 e7e6 g2g3",
     "Giuoco Piano/Pianissimo": "e2e4 e7e5 g1f3 b8c6 f1c4"
+  };
+  const openingProgressMap: Record<string, {
+    line: string;
+    main_line: string;
+    setter: (updater: (prev: any) => any) => void;
+    table: string;
+  }> = {
+    "Caro-Kann": {
+      table: "caro_kann_progress",
+      line: caroKannProgress.line_1,
+      main_line: caroKannProgress.main_line,
+      setter: setCaroKannProgress,
+    },
+    "English": {
+      table: "english_progress",
+      line: englishProgress.line_1,
+      main_line: englishProgress.main_line,
+      setter: setEnglishProgress,
+    },
+    // add more openings here
   };
   useEffect(() => {
     if (!user) return; // don't fetch if not logged in
@@ -269,29 +299,35 @@ function App() {
       }
     }
 
-    async function fetchCaroKannProgress() {
+    async function fetchOpeningProgress(
+      table: string,
+      defaults: Record<string, string>,
+      setter: (data: any) => void
+    ) {
       if (!user) return;
+      const columns = Object.keys(defaults).join(", ");
       const { data, error } = await supabase
-        .from("caro_kann_progress")
-        .select("line_1, main_line")
+        .from(table)
+        .select(columns)
         .eq("user_id", user.id)
         .single();
 
       if (error || !data) {
-        // First time — create their row
-        await supabase.from("caro_kann_progress").insert({
+        await supabase.from(table).insert({
           user_id: user.id,
-          line_1: "e2e4 c7c6"
+          ...defaults
         });
+        setter(defaults);
       } else {
-        setCaroKannProgress(data);
+        setter(data);
       }
     }
 
     fetchGameHistory();
     fetchDailyGameHistory();
     fetchProgress();
-    fetchCaroKannProgress();
+    fetchOpeningProgress("caro_kann_progress", { line_1: "e2e4 c7c6", main_line: "e2e4 c7c6 d2d4 d7d5" }, setCaroKannProgress);
+    fetchOpeningProgress("english_progress", { line_1: "c2c4", main_line: "c2c4" }, setEnglishProgress);
     }, [user]);
 
   useEffect(() => {
@@ -354,22 +390,28 @@ function App() {
     }
   }
 
-  async function addMoveToLine(move: string, lineKey: keyof CaroKannProgress) {
+  async function addMoveToLine(
+    move: string,
+    lineKey: string,
+    table: string,
+    currentLine: string,
+    setter: (updater: (prev: any) => any) => void
+  ) {
     if (!user) return;
-    const updatedLine = caroKannProgress[lineKey] + " " + move;
+    const updatedLine = currentLine + " " + move;
 
     await supabase
-      .from("caro_kann_progress")
+      .from(table)
       .update({ [lineKey]: updatedLine })
       .eq("user_id", user.id);
 
-    setCaroKannProgress(prev => ({
+    setter(prev => ({
       ...prev,
       [lineKey]: updatedLine
     }));
   }
 
-  async function getMoveInfos(fen: string): Promise<MoveInfo[]> {
+  async function getMoveInfos(fen: string, opening: string): Promise<MoveInfo[]> {
     const game = new Chess(fen);
     const lines = await workerA.getTop6Lines(fen, 16);
 
@@ -377,7 +419,8 @@ function App() {
       const moveSan = line.pv.split(" ")[0];
       const move = game.move(moveSan);
       let isMain = false;
-      if (caroKannProgress.main_line.includes(moveSan)) {
+      const prog = openingProgressMap[opening];
+      if (prog && prog.main_line.includes(moveSan)) {
         isMain = true;
       }
       game.undo();
@@ -1603,8 +1646,11 @@ function App() {
         setShowEffex("Position added to opening pool (" + daOpeningFensRef.current.length + ")");
         stopEffex();
         setBigChessPosition(ourNewFen);
-        await addMoveToLine(moveFrom + square, "line_1");
-        const infos = await getMoveInfos(ourNewFen);
+        const prog = openingProgressMap[gameOpening];
+        if (prog) {
+          await addMoveToLine(moveFrom + square, "line_1", prog.table, prog.line, prog.setter);
+        }
+        const infos = await getMoveInfos(ourNewFen, gameOpening);
         setMoveInfos(infos);
         //console.log("\Added fen: " + chessGame.fen() + " Move: " + moveFrom + square);
       }else if (reqMove !== "none" && daOpeningFens.length === 0){
@@ -1883,14 +1929,15 @@ function App() {
                       if(opening === "Random"){
                         opening = openings[Math.floor(Math.random() * (openings.length - 3)) + 2];
                       };
+                      setGameOpening(opening);
                       let openingMoves: string[];
                       let plyLength = openingPlyLengths[opening];
-                      if (opening === "Caro-Kann") {
-                        openingMoves = caroKannProgress.line_1.split(" ");
+                      openingMoves = openingMoveMap[opening].split(" ");
+                      const prog = openingProgressMap[opening];
+                      if (prog) {
+                        openingMoves = prog.line.split(" ");
                         plyLength = openingMoves.length;
-                      } else {
-                        openingMoves = openingMoveMap[opening].split(" ");
-                      }
+                      };
                       const newGame = new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
                       const openingFens = [newGame.fen()];
                       if(opening !== "None"){
@@ -1931,7 +1978,7 @@ function App() {
 
                         if (openingFens.length - 1 < userProgress.userMinPly){
                           setReqMove("add");
-                          const infos = await getMoveInfos(openingFens[openingFens.length - 1]);
+                          const infos = await getMoveInfos(openingFens[openingFens.length - 1], opening);
                           setMoveInfos(infos);
                           await waitAddMoves(userProgress.userMinPly);
                           setMoveInfos([]);
@@ -1941,7 +1988,6 @@ function App() {
                       if (opening !== "None"){
                         await new Promise(resolve => setTimeout(resolve, 2000));
                       }
-                      setGameOpening(opening);
                       const startFen = await chooseFirstFen(opening, plyLength);
                       console.log("startfen" + startFen);
                       newGame.load(startFen);
@@ -2169,8 +2215,11 @@ function App() {
                 setShowEffex("Position added to opening pool (" + daOpeningFensRef.current.length + ")");
                 stopEffex();
                 setBigChessPosition(ourNewFen);
-                await addMoveToLine(m.from + m.to, "line_1");
-                const infos = await getMoveInfos(ourNewFen);
+                const prog = openingProgressMap[gameOpening];
+                if (prog) {
+                  await addMoveToLine(m.from + m.to, "line_1", prog.table, prog.line, prog.setter);
+                }
+                const infos = await getMoveInfos(ourNewFen, gameOpening);
                 setMoveInfos(infos);
               }}
             >
