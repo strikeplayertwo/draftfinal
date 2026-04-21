@@ -9,7 +9,7 @@
     "esModuleInterop": true,
     "composite": true,
   },
-  "include": ["tools/**/*.ts"]
+  "include": ["tools/**/*.ts", "src/engine/generate-opening-fens.ts"]
 }/*
 {
   "compilerOptions": {

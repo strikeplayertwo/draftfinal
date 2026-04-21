@@ -9,6 +9,7 @@ import './App.css'
 import { workerA, workerB, workerC, workerD } from "./engine/stockfishWorker";
 import pgnData from "./assets/twic1326.pgn?raw";
 import { createClient, User } from "@supabase/supabase-js";
+import { C } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js';
 
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
 
@@ -127,7 +128,7 @@ type MoveInfo = {
 
 const levelUnlocks: Record<number, string[]> = {
   2: ["Random", "French", "Caro-Kann", "Benoni"],
-  3: ["English", "Giuoco Piano/Pianissimo", "Catalan"],
+  3: ["English", "Italian", "Catalan"],
   4: ["Queen's Pawn Game", "Queen's Bishop Game", "Queen's Gambit Declined"],
   5: ["Queen's Indian", "King's Indian", "Gruenfeld"],
   6: ["Ruy Lopez", "Reti", "Sicilian"],
@@ -295,8 +296,8 @@ function App() {
     main_line: "g1f3"
   });
   const [benoniProgress, setBenoniProgress] = useState<BenoniProgress>({
-    line_1: "d2d4 g8f6 c2c4 c7c5",
-    main_line: "d2d4 g8f6 c2c4 c7c5 d2d5 f6e4"
+    line_1: "d2d4 g8f6 c2c4 c7c5 d4d5",
+    main_line: "d2d4 g8f6 c2c4 c7c5 d4d5"
   });
   const [catalanProgress, setCatalanProgress] = useState<CatalanProgress>({
     line_1: "d2d4 g8f6 c2c4 e7e6 g2g3",
@@ -318,8 +319,8 @@ function App() {
     beaten_openings: [],
     userMinPly: 4
   });
-  const openings = ["None", "Random", "Sicilian", "French", "Caro-Kann", "English", "Ruy Lopez", "King's Indian", "Queen's Pawn Game", "Queen's Bishop Game", "Queen's Indian", "Gruenfeld", "Queen's Gambit Declined", "Reti", "Benoni", "Catalan", "Giuoco Piano/Pianissimo"];
-  const openingPlyLengths: Record<string, number> = { "None": 6, "Random": 6, "Sicilian": 2, "French": 4, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "Queen's Bishop Game": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 3, "Reti": 1, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Giuoco Piano/Pianissimo": 5 };
+  const openings = ["None", "Random", "Sicilian", "French", "Caro-Kann", "English", "Ruy Lopez", "King's Indian", "Queen's Pawn Game", "Queen's Bishop Game", "Queen's Indian", "Gruenfeld", "Queen's Gambit Declined", "Reti", "Benoni", "Catalan", "Italian"];
+  const openingPlyLengths: Record<string, number> = { "None": 6, "Random": 6, "Sicilian": 2, "French": 4, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "Queen's Bishop Game": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 3, "Reti": 1, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Italian": 5 };
   const openingMoveMap: Record<string, string> = {
     "None": "",
     "Random": "",
@@ -335,9 +336,9 @@ function App() {
     "Gruenfeld": "d2d4 b8c6 c2c4 g7g6 g1f3 b8c6",
     "Queen's Gambit Declined": "d2d4 d7d5 c2c4",
     "Reti": "g1f3",
-    "Benoni": "d2d4 g8f6 c2c4 c7c5",
+    "Benoni": "d2d4 g8f6 c2c4 c7c5 d4d5",
     "Catalan": "d2d4 g8f6 c2c4 e7e6 g2g3",
-    "Giuoco Piano/Pianissimo": "e2e4 e7e5 g1f3 b8c6 f1c4"
+    "Italian": "e2e4 e7e5 g1f3 b8c6 f1c4"
   };
   const openingProgressMap: Record<string, {
     line: string;
@@ -518,7 +519,7 @@ function App() {
     fetchOpeningProgress("queens_gambit_declined_progress", { line_1: "d2d4 d7d5 c2c4", main_line: "d2d4 d7d5 c2c4 e7e6" }, setQueensGambitDeclinedProgress);
     fetchOpeningProgress("gruenfeld_progress", { line_1: "d2d4 b8c6 c2c4 g7g6 g1f3 b8c6", main_line: "d2d4 b8c6 c2c4 g7g6 g1f3 b8c6" }, setGruenfeldProgress);
     fetchOpeningProgress("reti_progress", { line_1: "g1f3", main_line: "g1f3" }, setRetiProgress);
-    fetchOpeningProgress("benoni_progress", { line_1: "d2d4 g8f6 c2c4 c7c5", main_line: "d2d4 g8f6 c2c4 c7c5 d2d5 f6e4" }, setBenoniProgress);
+    fetchOpeningProgress("benoni_progress", { line_1: "d2d4 g8f6 c2c4 c7c5 d4d5", main_line: "d2d4 g8f6 c2c4 c7c5 d4d5" }, setBenoniProgress);
     fetchOpeningProgress("catalan_progress", { line_1: "d2d4 g8f6 c2c4 e7e6 g2g3", main_line: "d2d4 g8f6 c2c4 e7e6 g2g3 d7d5 c4d5 e6d5 g1f3" }, setCatalanProgress);
     fetchOpeningProgress("italian_progress", { line_1: "e2e4 e7e5 g1f3 b8c6 f1c4", main_line: "e2e4 e7e5 g1f3 b8c6 f1c4" }, setItalianProgress);
     }, [user]);
@@ -1311,8 +1312,87 @@ function App() {
     return chosenFens;
   }
 
+  async function generateFENsFromOpening(mainline: string): Promise<string[]> {
+    const fens: string[] = [];
+    let mainMoves = mainline.split(" ");
+    let genGame = new Chess();
+    for (let i = 1; i < 4; i++){
+      genGame.reset();
+        for (let j = 0; j < mainMoves.length; j++){
+          try{
+            genGame.move({from: mainMoves[j].substring(0, 2), to: mainMoves[j].substring(2, 4), promotion: 'q'});
+          }catch{
+
+          }
+        }
+        setBigChessPosition(genGame.fen());
+        while (fens.length < i * 20){
+            const lines = await workerA.getTop6Lines(genGame.fen(), 16);
+            let sidetomove = genGame.fen().split(" ")[1];
+            if (sidetomove === "b") {
+              //swap line 0 and 2
+              const temp = lines[0];
+              lines[0] = lines[2];
+              lines[2] = temp;
+            }
+            let secondaccuracy = 0;
+            let thirdaccuracy = 0;
+            if (sidetomove === "b"){
+              secondaccuracy = Math.round((100 * Math.exp((-(lines[1].cp - lines[0].cp)) / 200)));
+              thirdaccuracy = Math.round((100 * Math.exp((-(lines[2].cp - lines[0].cp)) / 200)));
+            }else{
+              secondaccuracy = Math.round((100 * Math.exp((lines[1].cp - lines[0].cp) / 200)));
+              thirdaccuracy = Math.round((100 * Math.exp((lines[2].cp - lines[0].cp) / 200)));
+            }
+            let thirdprobability = 0;
+            let probability = 50 + (100 - secondaccuracy);
+            if (probability > 100) probability = 100;
+            thirdprobability = 50 + (secondaccuracy - thirdaccuracy);
+            if (thirdprobability > 100) thirdprobability = 100;
+            if (Math.random() * 100 < probability){
+                genGame.move(lines[0].pv.split(" ")[0]);
+                fens.push(genGame.fen());
+                setBigChessPosition(genGame.fen());
+            } else {
+                //thirdaccuracy = Math.round((100 * Math.exp((lines[2].cp - lines[0].cp) / 200)) * 10);
+                if (Math.random() * 100 < thirdprobability){
+                    genGame.move(lines[1].pv.split(" ")[0]);
+                    fens.push(genGame.fen());
+                    setBigChessPosition(genGame.fen());
+                } else {
+                    genGame.move(lines[2].pv.split(" ")[0]);
+                    fens.push(genGame.fen());
+                    setBigChessPosition(genGame.fen());
+                }
+            }
+            console.log(fens.length);
+            /*if (sidetomove === "b") {
+              console.log("Move " + lines[0].pv.split(" ")[0] + ": " + lines[0].cp);
+            }else{
+              console.log("Move " + lines[2].pv.split(" ")[0] + ": " + lines[2].cp);
+            }*/
+            console.log("Move " + lines[0].pv.split(" ")[0] + ": " + lines[0].cp + " Probability: " + probability);
+            console.log("Move " + lines[1].pv.split(" ")[0] + ": " + lines[1].cp + " Accuracy: " + secondaccuracy + " Probability: " + ((100 - probability) * (thirdprobability / 100)));
+            console.log("Move " + lines[2].pv.split(" ")[0] + ": " + lines[2].cp + " Accuracy: " + thirdaccuracy + " Probability: " + ((100 - probability - ((100 - probability) * (thirdprobability / 100)))));
+            console.log("Chosen move: " + genGame.history({ verbose: true }).slice(-1)[0].san);
+        }
+    }
+    return fens;
+  }
+
   async function chooseFirstFen(opening: string = "None", plyLength: number = 6): Promise<string> {
     const daFens = await extractFENsFromGames(pgnData,94, opening, plyLength);
+    const prog = openingProgressMap[opening];
+    let mainline = "";
+    if (prog) {
+      mainline = prog.main_line;
+    }
+    if (opening !== "None"){
+      const generatedFens = await generateFENsFromOpening(mainline);
+      daFens.push(...generatedFens);
+    }
+    
+
 
     if (daFens.length === 0) {
       console.warn("No FENs found for opening:", opening, "plyLength:", plyLength);
