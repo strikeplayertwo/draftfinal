@@ -288,8 +288,8 @@ function App() {
     main_line: "d2d4 d7d5 c2c4 e7e6"
   });
   const [gruenfeldProgress, setGruenfeldProgress] = useState<GruenfeldProgress>({
-    line_1: "d2d4 b8c6 c2c4 g7g6 g1f3 b8c6",
-    main_line: "d2d4 b8c6 c2c4 g7g6 g1f3 b8c6"
+    line_1: "d2d4 g8f6 c2c4 g7g6 b1c3 d7d5",
+    main_line: "d2d4 g8f6 c2c4 g7g6 b1c3 d7d5"
   });
   const [retiProgress, setRetiProgress] = useState<RetiProgress>({
     line_1: "g1f3",
@@ -333,7 +333,7 @@ function App() {
     "Queen's Pawn Game": "d2d4 d7d5",
     "Queen's Bishop Game": "d2d4 d7d5 g1f3 g8f6 c1f4 c7c5 e2e3",
     "Queen's Indian": "d2d4 g8f6 c2c4 e7e6 g1f3 b7b6",
-    "Gruenfeld": "d2d4 b8c6 c2c4 g7g6 g1f3 b8c6",
+    "Gruenfeld": "d2d4 g8f6 c2c4 g7g6 b1c3 d7d5",
     "Queen's Gambit Declined": "d2d4 d7d5 c2c4",
     "Reti": "g1f3",
     "Benoni": "d2d4 g8f6 c2c4 c7c5 d4d5",
@@ -517,7 +517,7 @@ function App() {
     fetchOpeningProgress("queens_bishop_game_progress", { line_1: "d2d4 d7d5 g1f3 g8f6 c1f4 c7c5 e2e3", main_line: "d2d4 d7d5 g1f3 g8f6 c1f4 c7c5 e2e3" }, setQueensBishopGameProgress);
     fetchOpeningProgress("queens_indian_progress", { line_1: "d2d4 g8f6 c2c4 e7e6 g1f3 b7b6", main_line: "d2d4 g8f6 c2c4 e7e6 g1f3 b7b6" }, setQueensIndianProgress);
     fetchOpeningProgress("queens_gambit_declined_progress", { line_1: "d2d4 d7d5 c2c4", main_line: "d2d4 d7d5 c2c4 e7e6" }, setQueensGambitDeclinedProgress);
-    fetchOpeningProgress("gruenfeld_progress", { line_1: "d2d4 b8c6 c2c4 g7g6 g1f3 b8c6", main_line: "d2d4 b8c6 c2c4 g7g6 g1f3 b8c6" }, setGruenfeldProgress);
+    fetchOpeningProgress("gruenfeld_progress", { line_1: "d2d4 g8f6 c2c4 g7g6 b1c3 d7d5", main_line: "d2d4 g8f6 c2c4 g7g6 b1c3 d7d5" }, setGruenfeldProgress);
     fetchOpeningProgress("reti_progress", { line_1: "g1f3", main_line: "g1f3" }, setRetiProgress);
     fetchOpeningProgress("benoni_progress", { line_1: "d2d4 g8f6 c2c4 c7c5 d4d5", main_line: "d2d4 g8f6 c2c4 c7c5 d4d5" }, setBenoniProgress);
     fetchOpeningProgress("catalan_progress", { line_1: "d2d4 g8f6 c2c4 e7e6 g2g3", main_line: "d2d4 g8f6 c2c4 e7e6 g2g3 d7d5 c4d5 e6d5 g1f3" }, setCatalanProgress);
@@ -1328,6 +1328,17 @@ function App() {
         setBigChessPosition(genGame.fen());
         while (fens.length < i * 20){
             const lines = await workerA.getTop6Lines(genGame.fen(), 16);
+            let tester = 0;
+            try{
+              tester = lines[1].cp;
+            }catch{
+              lines[1] = lines[0];
+            }
+            try{
+              tester = lines[2].cp;
+            }catch{
+              lines[2] = lines[1];
+            }
             let sidetomove = genGame.fen().split(" ")[1];
             if (sidetomove === "b") {
               //swap line 0 and 2
@@ -1978,6 +1989,8 @@ function App() {
           }
         }else{
           chooseFen(sendthatfen, moveFrom + square);
+          setFens(fens.filter(f => f !== sendthatfen));
+          console.log("removed fen: " + sendthatfen);
         }
       }
     }catch {
