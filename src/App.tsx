@@ -562,9 +562,9 @@ function App() {
     const newUnlocks = levelUnlocks[newLevel] ?? []; // openings unlocked at this level
     const updated = [...userProgress.unlocked_openings, ...newUnlocks];
     let minPly = userProgress.userMinPly;
-    if(newLevel === 6){
+    if(newLevel === 7){
       minPly = 7;
-    }else if (newLevel === 7){
+    }else if (newLevel === 8){
       minPly = 10;
     }
 
@@ -1170,12 +1170,53 @@ function App() {
     return moveCount;
   }
 
+  function countPassedPawns(fen: string): { stm: number; opp: number } {
+    const fenParts = fen.split(" ");
+    const sideToMove = fenParts[1] as "w" | "b";
+    const opponent = sideToMove === "w" ? "b" : "w";
+    const game = new Chess(fen);
+    const board = game.board();
+    let stmPassed = 0;
+    let oppPassed = 0;
+
+    for (let rank = 0; rank < 8; rank++) {
+      for (let file = 0; file < 8; file++) {
+        const piece = board[rank][file];
+        if (!piece || piece.type !== "p") continue;
+
+        const color = piece.color;
+
+        const isPassed = (() => {
+          for (let r = 0; r < 8; r++) {
+            if (color === "w" && r >= rank) continue;
+            if (color === "b" && r <= rank) continue;
+            for (let f = file - 1; f <= file + 1; f++) {
+              if (f < 0 || f > 7) continue;
+              const blocker = board[r][f];
+              if (blocker && blocker.type === "p" && blocker.color !== color) {
+                return false;
+              }
+            }
+          }
+          return true;
+        })();
+
+        if (isPassed) {
+          if (color === sideToMove) stmPassed++;
+          else oppPassed++;
+        }
+      }
+    }
+
+    return { stm: stmPassed, opp: oppPassed };
+  }
+
   async function chooseFiveFens(): Promise<string[]> {
     let daDailyFens = await extractFENsFromGames(pgnData,94, "None", 6);
     let chosenFens: string[] = [];
     let chosenMoves: string[] = [];
     const chosenScores: number[] = [];
-    const chosenStats: {fen: string, score: number, pieces: number, cps: number, cp2Count: number, cp3Count: number, addScore: number, attacked: number}[] = [];
+    const chosenStats: {fen: string, score: number, pieces: number, cps: number, cp2Count: number, cp3Count: number, addScore: number, attacked: number, pps: number}[] = [];
     for (let i = 0; i < 20; i++){
       const newFen = daDailyFens[Math.floor(Math.random() * daDailyFens.length)];
       if (!newFen){
@@ -1271,18 +1312,21 @@ function App() {
       }
 
       let attacked = countAttackedPieces(newFen) * 10;
+      const { stm, opp } = countPassedPawns(newFen);
+      const pps = (stm + opp) * 10;
       if (attacked > 30){
         attacked = 30;
       }
+      attacked += pps;
       score += attacked;
       if (chosenFens.length < 5) {
         if(!chosenFens.includes(newFen)){
           chosenFens.push(newFen);
           chosenScores.push(score);
           chosenMoves.push(lines[0]?.pv?.split(" ")?.[0] || "");
-          chosenStats.push({fen: newFen, score, pieces, cps, cp2Count, cp3Count, addScore, attacked});
+          chosenStats.push({fen: newFen, score, pieces, cps, cp2Count, cp3Count, addScore, attacked, pps});
           console.log ("Chosen fen " + newFen + " with score " + score);
-          const formatted = chosenFens.map((fen, index) => `Score: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cps}/20 ${chosenStats[index].cp2Count}${chosenStats[index].cp3Count}Clarity: ${chosenStats[index].addScore}/25 Onslaught: ${chosenStats[index].attacked}/30`)
+          const formatted = chosenFens.map((fen, index) => `Score: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cps}/20 ${chosenStats[index].cp2Count}${chosenStats[index].cp3Count}Clarity: ${chosenStats[index].addScore}/25 Onslaught: ${chosenStats[index].attacked}/30 ${chosenStats[index].pps}`)
             .join("\n");
           setPosList(formatted);
         }
@@ -1293,8 +1337,8 @@ function App() {
           console.log ("Replacing " + chosenScores[minIndex] + " with score " + score);
           chosenScores[minIndex] = score;
           chosenMoves[minIndex] = lines[0]?.pv?.split(" ")?.[0] || "";
-          chosenStats[minIndex] = {fen: newFen, score, pieces, cps, cp2Count, cp3Count, addScore, attacked};
-          const formatted = chosenFens.map((fen, index) => `Score: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cps}/20 ${chosenStats[index].cp2Count}${chosenStats[index].cp3Count}Clarity: ${chosenStats[index].addScore}/25 Onslaught: ${chosenStats[index].attacked}/30`)
+          chosenStats[minIndex] = {fen: newFen, score, pieces, cps, cp2Count, cp3Count, addScore, attacked, pps};
+          const formatted = chosenFens.map((fen, index) => `Score: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cps}/20 ${chosenStats[index].cp2Count}${chosenStats[index].cp3Count}Clarity: ${chosenStats[index].addScore}/25 Onslaught: ${chosenStats[index].attacked}/30 ${chosenStats[index].pps}`)
             .join("\n");
           setPosList(formatted);
         }else {
