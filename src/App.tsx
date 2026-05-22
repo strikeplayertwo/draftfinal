@@ -1351,7 +1351,7 @@ function App() {
       let onslaughtSubtraction = 0;
       lines.forEach((line) =>{
         if (line.cp > -9000 && line.cp < 9000){
-          if (line.cp - lines[0].cp > -71 && line.cp - lines[0].cp < -31){
+          if (line.cp - lines[0].cp > -91 && line.cp - lines[0].cp < -31){
             cpCount += 10;
           }
           const firstMove = line.pv?.split(" ")?.[0];
@@ -1424,7 +1424,7 @@ function App() {
 
       //score += cpCount;
       let cps = cpCount + cp2Count + cp3Count;
-      if (cps > 20) cps = 20;
+      //if (cps > 20) cps = 20;
       if (cps < 0) cps = 0;
       score = score + cps;
       let addScore = 25;
@@ -1439,15 +1439,12 @@ function App() {
       }
       let attacked = -10;
       attacked += countAttackedPieces(newFen) * 10;
-      const { stm, opp } = countPassedPawns(newFen);
-      const pps = (stm + opp) * 10;
-      if (attacked > 30){
-        attacked = 30;
-      }
-      attacked += onslaughtSubtraction;
       if (attacked < 0){
         attacked = 0;
       }
+      const { stm, opp } = countPassedPawns(newFen);
+      const pps = (stm + opp) * 10;
+      attacked += onslaughtSubtraction;
       attacked += pps;
       score += attacked;
       if (chosenFens.length < 5) {
