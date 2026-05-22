@@ -1211,6 +1211,121 @@ function App() {
     return { stm: stmPassed, opp: oppPassed };
   }
 
+  function getFensFromPgn(pgn: string): string[] {
+    const game = new Chess();
+    game.loadPgn(pgn);
+    const history = game.history({ verbose: true });
+    
+    const fens: string[] = [];
+    const replay = new Chess();
+    
+    fens.push(replay.fen()); // starting position
+    for (const move of history) {
+      replay.move(move.san);
+      fens.push(replay.fen());
+    }
+    
+    return fens;
+  }
+
+  async function getScoresFromFens(fens: string[]): Promise<number[]> {
+    let scores: number[] = [];
+    for (const fen of fens) {
+      let score = 0;
+      const lines = await workerA.getTop6Lines(fen, 20);
+      let pieces = countPieceSquares(fen);
+      score += pieces;
+      let cpCount = 0;
+      lines.forEach((line) =>{
+        if (line.cp > -9000 && line.cp < 9000){
+          if (line.cp - lines[0].cp > -71 && line.cp - lines[0].cp < -31){
+            cpCount += 10;
+          }
+        }
+      })
+      let cp2Count = 0;
+      let cp3Count = 0;
+      const bestMovePv = lines[0]?.pv?.split(" ")?.[0];
+          if (bestMovePv) {
+            const tempGame = new Chess(fen);
+            try {
+              const move = tempGame.move(bestMovePv);
+              if (!move?.captured) {
+                cp2Count = 10;
+              }
+
+              if (move) {
+                const fenParts = fen.split(" ");
+                const sideToMove = fenParts[1] as "w" | "b";
+                const opponent = sideToMove === "w" ? "b" : "w";
+
+                const oppFenParts = [...fenParts];
+                oppFenParts[1] = opponent;
+                const oppGame = new Chess(oppFenParts.join(" "));
+
+                const movedPieceValue = PIECE_VALUES[move.piece];
+
+                // Use isAttacked() for reliable attack detection
+                const isAttackedAtAll = oppGame.isAttacked(move.from as Square, opponent);
+
+                if (isAttackedAtAll) {
+                  // Find the lowest value attacker
+                  const attackers = oppGame
+                    .moves({ verbose: true })
+                    .filter(m => m.to === move.from);
+
+                  const isAttackedByLesser = attackers.some(
+                    m => PIECE_VALUES[m.piece] < movedPieceValue
+                  );
+
+                  // Check if defended using isAttacked() from side to move's perspective
+                  const stmFenParts = [...fenParts];
+                  stmFenParts[1] = sideToMove;
+                  const stmGame = new Chess(stmFenParts.join(" "));
+                  const isDefended = stmGame.isAttacked(move.from as Square, sideToMove);
+
+                  const isUndefendedAndAttacked = !isDefended;
+
+                  if (isAttackedByLesser || isUndefendedAndAttacked) {
+                    cp3Count = -10;
+                    cp2Count = 0;
+                  }
+                }
+              }
+            } catch {}
+          }
+
+      let cps = cpCount + cp2Count + cp3Count;
+      if (cps > 20) cps = 20;
+      if (cps < 0) cps = 0;
+      score = score + cps;
+      let addScore = 25;
+      if(lines[1] !== undefined){
+        if(lines[1].cp - lines[0].cp < -81){
+          addScore = addScore - Math.trunc(((lines[0].cp - lines[1].cp) - 80) / 5);
+        }else if (lines[1].cp - lines[0].cp > -51){
+          addScore = addScore - Math.trunc((50 - (lines[0].cp - lines[1].cp)) / 5);
+        }
+        if (addScore < 0) addScore = 0;
+        score += addScore;
+      }
+      let attacked = -10;
+      attacked += countAttackedPieces(fen) * 10;
+      const { stm, opp } = countPassedPawns(fen);
+      const pps = (stm + opp) * 10;
+      if (attacked > 30){
+        attacked = 30;
+      }else if (attacked < 0){
+        attacked = 0;
+      }
+      attacked += pps;
+      score += attacked;
+
+      scores.push(score);
+    }
+    return scores;
+  }
+
   async function chooseFiveFens(): Promise<string[]> {
     let daDailyFens = await extractFENsFromGames(pgnData,94, "None", 6);
     let chosenFens: string[] = [];
@@ -1233,11 +1348,23 @@ function App() {
       let pieces = countPieceSquares(newFen);
       score += pieces;
       let cpCount = 0;
+      let onslaughtSubtraction = 0;
       lines.forEach((line) =>{
         if (line.cp > -9000 && line.cp < 9000){
           if (line.cp - lines[0].cp > -71 && line.cp - lines[0].cp < -31){
             cpCount += 10;
           }
+          const firstMove = line.pv?.split(" ")?.[0];
+          const tempGame = new Chess(newFen);
+          try {
+            const move = tempGame.move(firstMove);
+            if (move?.captured != undefined) {
+              onslaughtSubtraction -= 10;
+            }
+          }catch{
+
+          }
+          
         }
       })
       let cp2Count = 0;
@@ -1310,12 +1437,16 @@ function App() {
         if (addScore < 0) addScore = 0;
         score += addScore;
       }
-
-      let attacked = countAttackedPieces(newFen) * 10;
+      let attacked = -10;
+      attacked += countAttackedPieces(newFen) * 10;
       const { stm, opp } = countPassedPawns(newFen);
       const pps = (stm + opp) * 10;
       if (attacked > 30){
         attacked = 30;
+      }
+      attacked += onslaughtSubtraction;
+      if (attacked < 0){
+        attacked = 0;
       }
       attacked += pps;
       score += attacked;
@@ -2197,6 +2328,17 @@ function App() {
   };
 
   if (screen === "title") {
+    
+    /*let fens = getFensFromPgn("1.e4 c6 2.d4 d5 3.e5 Bf5 4.Nd2 e6 5.Nb3 Ne7 6.Nf3 Nd7 7.Be2 h6 8.O-O a5 9.a4 Bg6 10.Bd2 Nf5 11.Rc1 Bb4 12.Qe1 Bxd2 13.Qxd2 O-O 14.Bd3 Qb6 15.Rfe1 Rfc8 16.Ra1 Ne7 17.Bxg6 Nxg6 18.Ra3 c5 19.dxc5 Nxc5 20.Nxc5 Rxc5 21.Rc3 Rxc3 22.Qxc3 Ne7 23.Nd4 Rc8 24.Qd2 Qxb2 25.h3 Qb4 26.Qxb4 axb4 27.a5 Rc4 28.Rd1 Ng6 29.Nf3 Rxc2 30.Rb1 Rc4 31.Nd2 Rc5 32.Rxb4 Nxe5 33.Nb3 Rc7 34.Rb5 Nc4 35.Kf1 Kf8 36.Ke2 Ke7 37.f4 Nd6 38.Rb4 Rc4");
+    let scoreavg = 0;
+    let scores: number[] = [];
+    getScoresFromFens(fens).then((s) => {
+      scores = s;
+      scoreavg = scores.reduce((a, b) => a + b, 0) / scores.length;
+      console.log(scores);
+      console.log(scoreavg);
+    });*/
+
     return (
       <div className="title-screen">
         <div className="auth-bar">
