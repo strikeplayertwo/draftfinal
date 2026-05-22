@@ -1241,13 +1241,26 @@ function App() {
       let pieces = countPieceSquares(fen);
       score += pieces;
       let cpCount = 0;
+      let onslaughtSubtraction = 0;
       lines.forEach((line) =>{
         if (line.cp > -9000 && line.cp < 9000){
-          if (line.cp - lines[0].cp > -71 && line.cp - lines[0].cp < -31){
+          if (line.cp - lines[0].cp > -91 && line.cp - lines[0].cp < -41){
             cpCount += 10;
           }
+          const firstMove = line.pv?.split(" ")?.[0];
+          const tempGame = new Chess(fen);
+          try {
+            const move = tempGame.move(firstMove);
+            if (move?.captured != undefined) {
+              onslaughtSubtraction -= 20;
+            }
+          }catch{
+
+          }
+          
         }
       })
+      
       let cp2Count = 0;
       let cp3Count = 0;
       const bestMovePv = lines[0]?.pv?.split(" ")?.[0];
@@ -1300,31 +1313,33 @@ function App() {
             } catch {}
           }
 
-      let cps = cpCount + cp2Count + cp3Count;
-      if (cps > 20) cps = 20;
+      let cps = cpCount + cp2Count + cp3Count;   
+      //if (cps > 20) cps = 20;
       if (cps < 0) cps = 0;
       score = score + cps;
       let addScore = 25;
       if(lines[1] !== undefined){
+        //lines1-lines0 = negative, lines0-lines1 = positive
         if(lines[1].cp - lines[0].cp < -81){
           addScore = addScore - Math.trunc(((lines[0].cp - lines[1].cp) - 80) / 5);
-        }else if (lines[1].cp - lines[0].cp > -51){
-          addScore = addScore - Math.trunc((50 - (lines[0].cp - lines[1].cp)) / 5);
+        }else if (lines[1].cp - lines[0].cp > -41){
+          addScore = addScore - Math.trunc((40 - (lines[0].cp - lines[1].cp)) / 2);
         }
         if (addScore < 0) addScore = 0;
         score += addScore;
       }
+
       let attacked = -10;
       attacked += countAttackedPieces(fen) * 10;
-      const { stm, opp } = countPassedPawns(fen);
-      const pps = (stm + opp) * 10;
-      if (attacked > 30){
-        attacked = 30;
-      }else if (attacked < 0){
+      if (attacked < 0){
         attacked = 0;
       }
+      const { stm, opp } = countPassedPawns(fen);
+      const pps = (stm + opp) * 10;
+      attacked += onslaughtSubtraction;
       attacked += pps;
       score += attacked;
+
 
       scores.push(score);
     }
@@ -2332,7 +2347,8 @@ function App() {
 
   if (screen === "title") {
     
-    /*let fens = getFensFromPgn("1.e4 c6 2.d4 d5 3.e5 Bf5 4.Nd2 e6 5.Nb3 Ne7 6.Nf3 Nd7 7.Be2 h6 8.O-O a5 9.a4 Bg6 10.Bd2 Nf5 11.Rc1 Bb4 12.Qe1 Bxd2 13.Qxd2 O-O 14.Bd3 Qb6 15.Rfe1 Rfc8 16.Ra1 Ne7 17.Bxg6 Nxg6 18.Ra3 c5 19.dxc5 Nxc5 20.Nxc5 Rxc5 21.Rc3 Rxc3 22.Qxc3 Ne7 23.Nd4 Rc8 24.Qd2 Qxb2 25.h3 Qb4 26.Qxb4 axb4 27.a5 Rc4 28.Rd1 Ng6 29.Nf3 Rxc2 30.Rb1 Rc4 31.Nd2 Rc5 32.Rxb4 Nxe5 33.Nb3 Rc7 34.Rb5 Nc4 35.Kf1 Kf8 36.Ke2 Ke7 37.f4 Nd6 38.Rb4 Rc4");
+    /*let fens = getFensFromPgn("1. c4 Nf6 2. d4 e6 3. g3 d5 4. Bg2 dxc4 5. Nc3 c6 6. Qa4 Qxd4 7. Nf3 Qb6 8. Qxc4 Bc5 9. Na4 Bb4+ 10. Bd2 Bxd2+ 11. Nxd2 Qb5 12. O-O Qxc4 13. Nxc4 O-O 14. Rfd1 Nbd7 15. Rd2 Nb6 16. Naxb6 axb6 17. Nxb6 Ra6 18. Nxc8 Rxc8 19. a3 Kf8 20. Rad1 Ke7 21. e4 Raa8 22. e5 Nd5 23. Rd3 f6 24. exf6+ gxf6 25. Rb3 b5 26. Bxd5 exd5 27. Re3+ Kf7 28. Rde1 Re8 29. Rxe8 Rxe8 30. Rxe8 Kxe8 31. Kg2 Kd7 32. Kf3 Ke6 33. Ke3 c5 34. f3 d4+ 35. Kd3 Kd5 36. h3 c4+ 37. Kd2 f5 38. g4 f4 39. h4 Ke5 40. Ke2 Kf6 41. Kd2 Ke5");
+
     let scoreavg = 0;
     let scores: number[] = [];
     getScoresFromFens(fens).then((s) => {
