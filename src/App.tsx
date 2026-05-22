@@ -1156,7 +1156,12 @@ function App() {
         const piece = board[rank][file];
         if (!piece) continue;
         if(piece.color !== sideToMove) continue;
-        if(piece.type === "p" || piece.type === "k") continue;
+        if(piece.type === "p"){
+          moveCount++;
+          continue;
+        }else if(piece.type === "k"){
+          continue;
+        }
 
         const square = (String.fromCharCode(97 + file) + (8 - rank)) as Square;
         const moves = stmGame.moves({ verbose: true }).filter(m => m.from === square);
@@ -1331,7 +1336,7 @@ function App() {
     let chosenFens: string[] = [];
     let chosenMoves: string[] = [];
     const chosenScores: number[] = [];
-    const chosenStats: {fen: string, score: number, pieces: number, cps: number, cp2Count: number, cp3Count: number, addScore: number, attacked: number, pps: number}[] = [];
+    const chosenStats: {fen: string, score: number, pieces: number, cps: number, cp2Count: number, cp3Count: number, addScore: number, attacked: number, pps: number, onslaughtSubtraction: number}[] = [];
     for (let i = 0; i < 20; i++){
       const newFen = daDailyFens[Math.floor(Math.random() * daDailyFens.length)];
       if (!newFen){
@@ -1351,7 +1356,7 @@ function App() {
       let onslaughtSubtraction = 0;
       lines.forEach((line) =>{
         if (line.cp > -9000 && line.cp < 9000){
-          if (line.cp - lines[0].cp > -91 && line.cp - lines[0].cp < -31){
+          if (line.cp - lines[0].cp > -91 && line.cp - lines[0].cp < -41){
             cpCount += 10;
           }
           const firstMove = line.pv?.split(" ")?.[0];
@@ -1359,7 +1364,7 @@ function App() {
           try {
             const move = tempGame.move(firstMove);
             if (move?.captured != undefined) {
-              onslaughtSubtraction -= 10;
+              onslaughtSubtraction -= 20;
             }
           }catch{
 
@@ -1429,10 +1434,11 @@ function App() {
       score = score + cps;
       let addScore = 25;
       if(lines[1] !== undefined){
+        //lines1-lines0 = negative, lines0-lines1 = positive
         if(lines[1].cp - lines[0].cp < -81){
           addScore = addScore - Math.trunc(((lines[0].cp - lines[1].cp) - 80) / 5);
-        }else if (lines[1].cp - lines[0].cp > -51){
-          addScore = addScore - Math.trunc((50 - (lines[0].cp - lines[1].cp)) / 5);
+        }else if (lines[1].cp - lines[0].cp > -41){
+          addScore = addScore - Math.trunc((40 - (lines[0].cp - lines[1].cp)) / 2);
         }
         if (addScore < 0) addScore = 0;
         score += addScore;
@@ -1452,9 +1458,9 @@ function App() {
           chosenFens.push(newFen);
           chosenScores.push(score);
           chosenMoves.push(lines[0]?.pv?.split(" ")?.[0] || "");
-          chosenStats.push({fen: newFen, score, pieces, cps, cp2Count, cp3Count, addScore, attacked, pps});
+          chosenStats.push({fen: newFen, score, pieces, cps, cp2Count, cp3Count, addScore, attacked, pps, onslaughtSubtraction});
           console.log ("Chosen fen " + newFen + " with score " + score);
-          const formatted = chosenFens.map((fen, index) => `Score: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cps}/20 ${chosenStats[index].cp2Count}${chosenStats[index].cp3Count}Clarity: ${chosenStats[index].addScore}/25 Onslaught: ${chosenStats[index].attacked}/30 ${chosenStats[index].pps}`)
+          const formatted = chosenFens.map((fen, index) => `: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cps}/20 ${chosenStats[index].cp2Count}${chosenStats[index].cp3Count}Clarity: ${chosenStats[index].addScore}/25 Onslaught: ${chosenStats[index].attacked}/30 ${chosenStats[index].pps}${chosenStats[index].onslaughtSubtraction}`)
             .join("\n");
           setPosList(formatted);
         }
@@ -1465,8 +1471,8 @@ function App() {
           console.log ("Replacing " + chosenScores[minIndex] + " with score " + score);
           chosenScores[minIndex] = score;
           chosenMoves[minIndex] = lines[0]?.pv?.split(" ")?.[0] || "";
-          chosenStats[minIndex] = {fen: newFen, score, pieces, cps, cp2Count, cp3Count, addScore, attacked, pps};
-          const formatted = chosenFens.map((fen, index) => `Score: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cps}/20 ${chosenStats[index].cp2Count}${chosenStats[index].cp3Count}Clarity: ${chosenStats[index].addScore}/25 Onslaught: ${chosenStats[index].attacked}/30 ${chosenStats[index].pps}`)
+          chosenStats[minIndex] = {fen: newFen, score, pieces, cps, cp2Count, cp3Count, addScore, attacked, pps, onslaughtSubtraction};
+          const formatted = chosenFens.map((fen, index) => `: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cps}/20 ${chosenStats[index].cp2Count}${chosenStats[index].cp3Count}Clarity: ${chosenStats[index].addScore}/25 Onslaught: ${chosenStats[index].attacked}/30 ${chosenStats[index].pps}${chosenStats[index].onslaughtSubtraction}`)
             .join("\n");
           setPosList(formatted);
         }else {
