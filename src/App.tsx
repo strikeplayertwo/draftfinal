@@ -1475,7 +1475,7 @@ function App() {
         continue;
       }
 
-      let [score, pieces, cpCount, clarity, onslaught, multiplier, bestMove] = await predictCPL(newFen, 18, true, -91, -41, 10, -80, -40);
+      let [score, pieces, cpCount, clarity, onslaught, multiplier, bestMove] = await predictCPL(newFen, 20, true, -91, -41, 10, -80, -40);
 
       if (chosenFens.length < 5) {
         if(!chosenFens.includes(newFen)){
