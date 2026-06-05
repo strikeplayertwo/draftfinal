@@ -1237,7 +1237,7 @@ function App() {
     let scores: number[] = [];
     for (const fen of fens) {
       let score = 0;
-      const lines = await workerA.getTop6Lines(fen, 20);
+      const lines = await workerA.getTop6Lines(fen, 26);
       let pieces = countPieceSquares(fen);
       score += pieces;
       let cpCount = 0;
@@ -1342,8 +1342,124 @@ function App() {
 
 
       scores.push(score);
+      if (scores.length % 10 === 0) {
+        console.log(`Processed ${scores.length} FENs`);
+      }
     }
     return scores;
+  }
+
+  async function predictCPL(fen: string, depth: number, usemultipliers: boolean, cpVal1: number, cpVal2: number, cpAdd: number, clarityVal1: number, clarityVal2: number): Promise<[number, number, number, number, number, number, string]> {
+    //standard: depth = 18, usemultipliers = true, cpVal1=-91, cpVal2 = -41, cpAdd = 10, clarityVal1 = -80, clarityVal2 = -40
+    let score = 0;
+    let multiplier = 1;
+    const lines = await workerA.getTop6Lines(fen, depth);
+    let pieces = countPieceSquares(fen);
+    score += pieces;
+    let cpCount = 0;
+    lines.forEach((line) =>{
+      if (line.cp > -9000 && line.cp < 9000){
+        if (line.cp - lines[0].cp > cpVal1 && line.cp - lines[0].cp < cpVal2){
+          cpCount += cpAdd;
+        }
+
+        if (usemultipliers){
+          const firstMove = line.pv?.split(" ")?.[0];
+          const tempGame = new Chess(fen);
+          try {
+            const move = tempGame.move(firstMove);
+            if (move?.captured != undefined) {
+              multiplier *= 0.8; 
+            }
+            if (move?.from === "e1" || move?.from === "e8" && move?.piece === "k"){
+              multiplier *= 0.8;
+            }
+          }catch{} 
+        }
+      }
+    })
+    score += cpCount;
+
+    //below is sort of deletable code
+    const bestMovePv = lines[0]?.pv?.split(" ")?.[0];
+    if (bestMovePv) {
+      const tempGame = new Chess(fen);
+      try {
+        const move = tempGame.move(bestMovePv);
+
+        if (move) {
+          const fenParts = fen.split(" ");
+          const sideToMove = fenParts[1] as "w" | "b";
+          const opponent = sideToMove === "w" ? "b" : "w";
+
+          const oppFenParts = [...fenParts];
+          oppFenParts[1] = opponent;
+          const oppGame = new Chess(oppFenParts.join(" "));
+
+          const movedPieceValue = PIECE_VALUES[move.piece];
+
+          // Use isAttacked() for reliable attack detection
+          const isAttackedAtAll = oppGame.isAttacked(move.from as Square, opponent);
+
+          if (isAttackedAtAll) {
+            // Find the lowest value attacker
+            const attackers = oppGame
+              .moves({ verbose: true })
+              .filter(m => m.to === move.from);
+
+            const isAttackedByLesser = attackers.some(
+              m => PIECE_VALUES[m.piece] < movedPieceValue
+            );
+
+            // Check if defended using isAttacked() from side to move's perspective
+            const stmFenParts = [...fenParts];
+            stmFenParts[1] = sideToMove;
+            const stmGame = new Chess(stmFenParts.join(" "));
+            const isDefended = stmGame.isAttacked(move.from as Square, sideToMove);
+
+            const isUndefendedAndAttacked = !isDefended;
+
+            if (isAttackedByLesser) {
+              multiplier *= 0.9;
+            }//move involves moving piece attacked by opp piece of less value
+            if (isUndefendedAndAttacked){
+              multiplier *= 0.9;
+            }//move involves moving hanging piece
+          }
+        }
+      } catch {}
+    }
+    //above is sort of deletable code
+
+    let clarity = 25;
+    if(lines[1] !== undefined){
+      //lines1-lines0 = negative, lines0-lines1 = positive
+      if(lines[1].cp - lines[0].cp <= clarityVal1){
+        clarity = clarity - Math.trunc(((lines[0].cp - lines[1].cp) + clarityVal1) / 5);
+      }else if (lines[1].cp - lines[0].cp >= clarityVal2){
+        clarity = clarity - Math.trunc(((clarityVal2 * -1) - (lines[0].cp - lines[1].cp)) / 2);
+      }
+      if (clarity < 0) clarity = 0;
+      score += clarity;
+    }
+    //5 and 2 above are changeable as well
+
+    let onslaught = -10;
+    onslaught += countAttackedPieces(fen) * 10;
+    if (onslaught < 0){
+      onslaught = 0;
+    }
+    const { stm, opp } = countPassedPawns(fen);
+    const pps = (stm + opp) * 10;
+    onslaught += pps;//adds passed pawns
+    //-10, 10 and 10 are changeable as well
+    score += onslaught;
+
+    score = Math.round(score * multiplier);
+    multiplier = Math.round(multiplier * 100) / 100;
+
+    const bestMove = lines[0]?.pv?.split(" ")?.[0] || "";
+    return [score, pieces, cpCount, clarity, onslaught, multiplier, bestMove];
   }
 
   async function chooseFiveFens(): Promise<string[]> {
@@ -1351,131 +1467,24 @@ function App() {
     let chosenFens: string[] = [];
     let chosenMoves: string[] = [];
     const chosenScores: number[] = [];
-    const chosenStats: {fen: string, score: number, pieces: number, cps: number, cp2Count: number, cp3Count: number, addScore: number, attacked: number, pps: number, onslaughtSubtraction: number}[] = [];
+    const chosenStats: {fen: string, score: number, pieces: number, cpCount: number, clarity: number, onslaught: number, multiplier: number}[] = [];
     for (let i = 0; i < 20; i++){
       const newFen = daDailyFens[Math.floor(Math.random() * daDailyFens.length)];
       if (!newFen){
         console.log("No fen found, skipping iteration " + i);
         continue;
       }
-      let score = 0;
-      const lines = await workerA.getTop6Lines(newFen, 18);
-      //new pieces: amount of unguarded squares that side to move's bishops/knights/rooks/queen can move to, up to 50, .5 per square
-      /*let pieces = newFen.split(" ")[0]
-        .replace(/[^a-zA-Z]/g, "")
-        .length;
-      if (pieces > 25) pieces = 25;*/
-      let pieces = countPieceSquares(newFen);
-      score += pieces;
-      let cpCount = 0;
-      let onslaughtSubtraction = 0;
-      lines.forEach((line) =>{
-        if (line.cp > -9000 && line.cp < 9000){
-          if (line.cp - lines[0].cp > -91 && line.cp - lines[0].cp < -41){
-            cpCount += 10;
-          }
-          const firstMove = line.pv?.split(" ")?.[0];
-          const tempGame = new Chess(newFen);
-          try {
-            const move = tempGame.move(firstMove);
-            if (move?.captured != undefined) {
-              onslaughtSubtraction -= 20;
-            }
-          }catch{
 
-          }
-          
-        }
-      })
-      let cp2Count = 0;
-      let cp3Count = 0;
-      const bestMovePv = lines[0]?.pv?.split(" ")?.[0];
-          if (bestMovePv) {
-            const tempGame = new Chess(newFen);
-            try {
-              const move = tempGame.move(bestMovePv);
-              if (!move?.captured) {
-                cp2Count = 10;
-              }
+      let [score, pieces, cpCount, clarity, onslaught, multiplier, bestMove] = await predictCPL(newFen, 18, true, -91, -41, 10, -80, -40);
 
-              if (move) {
-                const fenParts = newFen.split(" ");
-                const sideToMove = fenParts[1] as "w" | "b";
-                const opponent = sideToMove === "w" ? "b" : "w";
-
-                const oppFenParts = [...fenParts];
-                oppFenParts[1] = opponent;
-                const oppGame = new Chess(oppFenParts.join(" "));
-
-                const movedPieceValue = PIECE_VALUES[move.piece];
-
-                // Use isAttacked() for reliable attack detection
-                const isAttackedAtAll = oppGame.isAttacked(move.from as Square, opponent);
-
-                if (isAttackedAtAll) {
-                  // Find the lowest value attacker
-                  const attackers = oppGame
-                    .moves({ verbose: true })
-                    .filter(m => m.to === move.from);
-
-                  const isAttackedByLesser = attackers.some(
-                    m => PIECE_VALUES[m.piece] < movedPieceValue
-                  );
-
-                  // Check if defended using isAttacked() from side to move's perspective
-                  const stmFenParts = [...fenParts];
-                  stmFenParts[1] = sideToMove;
-                  const stmGame = new Chess(stmFenParts.join(" "));
-                  const isDefended = stmGame.isAttacked(move.from as Square, sideToMove);
-
-                  const isUndefendedAndAttacked = !isDefended;
-
-                  if (isAttackedByLesser || isUndefendedAndAttacked) {
-                    cp3Count = -10;
-                    cp2Count = 0;
-                  }
-                }
-              }
-            } catch {
-              // ignore invalid move
-            }
-          }
-
-
-      //score += cpCount;
-      let cps = cpCount + cp2Count + cp3Count;
-      //if (cps > 20) cps = 20;
-      if (cps < 0) cps = 0;
-      score = score + cps;
-      let addScore = 25;
-      if(lines[1] !== undefined){
-        //lines1-lines0 = negative, lines0-lines1 = positive
-        if(lines[1].cp - lines[0].cp < -81){
-          addScore = addScore - Math.trunc(((lines[0].cp - lines[1].cp) - 80) / 5);
-        }else if (lines[1].cp - lines[0].cp > -41){
-          addScore = addScore - Math.trunc((40 - (lines[0].cp - lines[1].cp)) / 2);
-        }
-        if (addScore < 0) addScore = 0;
-        score += addScore;
-      }
-      let attacked = -10;
-      attacked += countAttackedPieces(newFen) * 10;
-      if (attacked < 0){
-        attacked = 0;
-      }
-      const { stm, opp } = countPassedPawns(newFen);
-      const pps = (stm + opp) * 10;
-      attacked += onslaughtSubtraction;
-      attacked += pps;
-      score += attacked;
       if (chosenFens.length < 5) {
         if(!chosenFens.includes(newFen)){
           chosenFens.push(newFen);
           chosenScores.push(score);
-          chosenMoves.push(lines[0]?.pv?.split(" ")?.[0] || "");
-          chosenStats.push({fen: newFen, score, pieces, cps, cp2Count, cp3Count, addScore, attacked, pps, onslaughtSubtraction});
+          chosenMoves.push(bestMove);
+          chosenStats.push({fen: newFen, score, pieces, cpCount, clarity, onslaught, multiplier});
           console.log ("Chosen fen " + newFen + " with score " + score);
-          const formatted = chosenFens.map((fen, index) => `: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cps}/20 ${chosenStats[index].cp2Count}${chosenStats[index].cp3Count}Clarity: ${chosenStats[index].addScore}/25 Onslaught: ${chosenStats[index].attacked}/30 ${chosenStats[index].pps}${chosenStats[index].onslaughtSubtraction}`)
+          const formatted = chosenFens.map((fen, index) => `: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cpCount}/20 Clarity: ${chosenStats[index].clarity}/25 Onslaught: ${chosenStats[index].onslaught}/30 Mult: ${chosenStats[index].multiplier}`)
             .join("\n");
           setPosList(formatted);
         }
@@ -1485,9 +1494,9 @@ function App() {
           chosenFens[minIndex] = newFen;
           console.log ("Replacing " + chosenScores[minIndex] + " with score " + score);
           chosenScores[minIndex] = score;
-          chosenMoves[minIndex] = lines[0]?.pv?.split(" ")?.[0] || "";
-          chosenStats[minIndex] = {fen: newFen, score, pieces, cps, cp2Count, cp3Count, addScore, attacked, pps, onslaughtSubtraction};
-          const formatted = chosenFens.map((fen, index) => `: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cps}/20 ${chosenStats[index].cp2Count}${chosenStats[index].cp3Count}Clarity: ${chosenStats[index].addScore}/25 Onslaught: ${chosenStats[index].attacked}/30 ${chosenStats[index].pps}${chosenStats[index].onslaughtSubtraction}`)
+          chosenMoves[minIndex] = bestMove;
+          chosenStats[minIndex] = {fen: newFen, score, pieces, cpCount, clarity, onslaught, multiplier};
+          const formatted = chosenFens.map((fen, index) => `: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cpCount}/20 Clarity: ${chosenStats[index].clarity}/25 Onslaught: ${chosenStats[index].onslaught}/30 Mult: ${chosenStats[index].multiplier}`)
             .join("\n");
           setPosList(formatted);
         }else {
@@ -1496,7 +1505,7 @@ function App() {
       }else{
         //console.log (score + " was not higher than " + Math.min(...chosenScores));
       }
-      console.log(score + " " + pieces + " " + cpCount + " " + addScore + " " + attacked + " " + newFen);
+      console.log(score + " " + pieces + " " + cpCount + " " + clarity + " " + onslaught + " " + multiplier + " " + newFen);
       console.log(i);
     }
     setDailyFens(chosenFens);
@@ -2347,7 +2356,7 @@ function App() {
 
   if (screen === "title") {
     
-    /*let fens = getFensFromPgn("1. c4 Nf6 2. d4 e6 3. g3 d5 4. Bg2 dxc4 5. Nc3 c6 6. Qa4 Qxd4 7. Nf3 Qb6 8. Qxc4 Bc5 9. Na4 Bb4+ 10. Bd2 Bxd2+ 11. Nxd2 Qb5 12. O-O Qxc4 13. Nxc4 O-O 14. Rfd1 Nbd7 15. Rd2 Nb6 16. Naxb6 axb6 17. Nxb6 Ra6 18. Nxc8 Rxc8 19. a3 Kf8 20. Rad1 Ke7 21. e4 Raa8 22. e5 Nd5 23. Rd3 f6 24. exf6+ gxf6 25. Rb3 b5 26. Bxd5 exd5 27. Re3+ Kf7 28. Rde1 Re8 29. Rxe8 Rxe8 30. Rxe8 Kxe8 31. Kg2 Kd7 32. Kf3 Ke6 33. Ke3 c5 34. f3 d4+ 35. Kd3 Kd5 36. h3 c4+ 37. Kd2 f5 38. g4 f4 39. h4 Ke5 40. Ke2 Kf6 41. Kd2 Ke5");
+    /*let fens = getFensFromPgn("1. c4 e5 2. g3 d6 3. Bg2 c6 4. Nc3 Nf6 5. d4 Qc7 6. Bg5 Nbd7 7. Nf3 Be7 8. O-O h6 9. Bxf6 Nxf6 10. d5 c5 11. e4 Bd7 12. a3 a6 13. Qd3 Rb8 14. Rad1 Qa5 15. Nd2 b5 16. cxb5 axb5 17. f4 exf4 18. gxf4 b4 19. Nc4 Qa7 20. Nb1 bxa3 21. Nbxa3 O-O 22. e5 dxe5 23. fxe5 Ng4 24. Rfe1 Bh4 25. Re2 Ba4 26. Rf1 Rb3 27. Qe4 h5 28. h3 Bd7 29. e6 Qb8 30. hxg4 fxe6 31. Rxf8+ Qxf8 32. gxh5 exd5 33. Qxh4 dxc4 34. Qxc4+ Qf7 35. Bd5");
 
     let scoreavg = 0;
     let scores: number[] = [];
