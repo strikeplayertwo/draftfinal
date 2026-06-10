@@ -1076,7 +1076,11 @@ function App() {
     p: 1, n: 3, b: 3, r: 5, q: 9, k: 99
   };
 
-  function countAttackedPieces(fen: string): number {
+  const PIECE2_VALUES: Record<string, number> = {
+    p: 1, n: 3.2, b: 3.3, r: 5.1, q: 8.8, k: 0
+  };
+
+  function countAttackedPieces(fen: string): number[] {
     const fenParts = fen.split(" ");
     const sideToMove = fenParts[1] as "w" | "b";
     const opponent = sideToMove === "w" ? "b" : "w";
@@ -1097,12 +1101,50 @@ function App() {
     const board = stmGame.board();
     let attackedCount = 0;
 
+    let multiplier = 1;
+    let stmMaterial = 0;
+    let oppMaterial = 0;
+    let pieces: string[] = [];
+    let side = "s";
+
     for (let rank = 0; rank < 8; rank++) {
       for (let file = 0; file < 8; file++) {
         const piece = board[rank][file];
-        if (!piece) continue;
-
         const square = (String.fromCharCode(97 + file) + (8 - rank)) as Square;
+
+        //multiplier code
+        if(square === "a1" || square === "h1" || square === "a8" || square === "h8"){
+          if(piece?.type !== "r"){
+            multiplier *= 1.05;
+            console.log("rook not on edge: " + square + " multiplier: " + multiplier);
+          }
+        }
+        if (!piece) continue;
+        if(piece.color === sideToMove){
+          side = "s";
+        }else{
+          side = "o";
+        }
+        pieces.push((piece.type + square[0] + side));
+        /*if(piece.type === "r"){
+          if(square === "a1" || square === "h1" || square === "a8" || square === "h8"){
+            multiplier *= 0.95;
+            console.log("rook on edge: " + square + " multiplier: " + multiplier);
+          }*/
+        if (piece.type === "n"){
+          if((square[0] === "b" || square[0] === "g" || square[0] === "a" || square[0] === "h" || square[1] === "2" || square[1] === "7" || square[1] === "1" || square[1] === "8")){
+            multiplier *= 0.95;
+            console.log("knight not in center: " + square + " multiplier: " + multiplier);
+          }
+        }
+
+        const piece2Value = PIECE2_VALUES[piece.type];
+        if(piece.color === sideToMove){
+          stmMaterial += piece2Value;
+        }else{
+          oppMaterial += piece2Value;
+        }
+
         const pieceValue = PIECE_VALUES[piece.type];
 
         // isAttacked() correctly checks all attacked squares including pawn defense
@@ -1129,8 +1171,44 @@ function App() {
         }
       }
     }
+    stmMaterial = Math.round(stmMaterial * 10)
+    oppMaterial = Math.round(oppMaterial * 10)
+    if (Math.abs(stmMaterial - oppMaterial) > 7) {
+      multiplier *= 1.1;
+      console.log("material imbalance: stm " + stmMaterial + " vs opp " + oppMaterial + " multiplier: " + multiplier);
+    }
+    if (stmMaterial % 10 !== oppMaterial % 10) {
+      multiplier *= 1.1;
+      console.log("material difference: stm " + stmMaterial + " vs opp " + oppMaterial + " multiplier: " + multiplier);
+    }
+    pieces.sort(a => {
+      if (a[0] === "p") return 1;
+      if (a[0] === "n") return 2;
+      if (a[0] === "b") return 3;
+      if (a[0] === "r") return 4;
+      if (a[0] === "q") return 5;
+      return 0;
+    });
+    let matchpiececount = 0;
+    const piecesNoPawns = pieces.filter(p => p[0] !== "p");
+    piecesNoPawns.forEach(p => {
+      piecesNoPawns.filter(other => {
+        if (p === other) return false;
+        if (p[0] !== other[0]) return false;
+        if (p[2] === other[2]) return false;
+        if (p[1] !== other[1]) return false;
+        return true; 
+      //note: put in console.logs for multipliers
+      }).forEach(match => {
+        matchpiececount++;
+        console.log("symmetry match: " + p + " vs " + match);
+      });
+    });
+    console.log("total pieces: " + piecesNoPawns.length + " matchpiececount: " + matchpiececount);
+    multiplier *= (1 - (matchpiececount / piecesNoPawns.length) * 0.2);
+    console.log("symmetry multiplier: " + (1 - (matchpiececount / piecesNoPawns.length) * 0.2) + " multiplier: " + multiplier);
 
-    return attackedCount;
+    return [attackedCount, multiplier];
   }
 
   function countPieceSquares(fen: string): number {
@@ -1260,17 +1338,29 @@ function App() {
         }
 
         if (usemultipliers){
-          const firstMove = line.pv?.split(" ")?.[0];
-          const tempGame = new Chess(fen);
-          try {
-            const move = tempGame.move(firstMove);
-            if (move?.captured != undefined) {
-              multiplier *= 0.8; 
-            }
-            if (move?.from === "e1" || move?.from === "e8" && move?.piece === "k"){
-              multiplier *= 0.8;
-            }
-          }catch{} 
+          if (line === lines[0] || line.cp + 100 > lines[0].cp){
+            const firstMove = line.pv?.split(" ")?.[0];
+            const tempGame = new Chess(fen);
+            try {
+              const move = tempGame.move(firstMove);
+              if (move?.captured != undefined) {
+                multiplier *= 0.8; 
+                console.log("capture multiplier: " + move.san);
+                if(line.cp + 30 > lines[0].cp){
+                  multiplier *= 0.8;
+                  console.log("best move capture multiplier: " + move.san);
+                }
+              }
+              if ((move?.from === "e1" || move?.from === "e8") && move?.piece === "k"){
+                multiplier *= 0.8;
+                console.log("castle/kingmove multiplier: " + move.san);
+                if(line.cp + 30 > lines[0].cp){
+                  multiplier *= 0.8;
+                  console.log("best move castle/kingmove multiplier: " + move.san);
+                }
+              }
+            }catch{} 
+          }
         }
       }
     })
@@ -1316,10 +1406,11 @@ function App() {
             const isUndefendedAndAttacked = !isDefended;
 
             if (isAttackedByLesser) {
-              multiplier *= 0.9;
-            }//move involves moving piece attacked by opp piece of less value
-            if (isUndefendedAndAttacked){
-              multiplier *= 0.9;
+              multiplier *= 0.8;
+              console.log("attacked piece multiplier: " + move.san);
+            }else if (isUndefendedAndAttacked){//move involves moving piece attacked by opp piece of less value
+              multiplier *= 0.8;
+              console.log("hanging piece multiplier: " + move.san);
             }//move involves moving hanging piece
           }
         }
@@ -1341,7 +1432,10 @@ function App() {
     //5 and 2 above are changeable as well
 
     let onslaught = -10;
-    onslaught += countAttackedPieces(fen) * 10;
+    const [attackedCount, mults] = countAttackedPieces(fen);
+    //console.log("mults: " + mults);
+    multiplier *= mults;
+    onslaught += attackedCount * 10;
     if (onslaught < 0){
       onslaught = 0;
     }
@@ -1371,7 +1465,7 @@ function App() {
         continue;
       }
 
-      let [score, pieces, cpCount, clarity, onslaught, multiplier, bestMove] = await predictCPL(newFen, 20, true, -91, -41, 10, -80, -40);
+      let [score, pieces, cpCount, clarity, onslaught, multiplier, bestMove] = await predictCPL(newFen, 18, true, -91, -41, 10, -80, -40);
 
       if (chosenFens.length < 5) {
         if(!chosenFens.includes(newFen)){
@@ -1584,7 +1678,7 @@ function App() {
       workerC.getEval(chessGame.fen(), 20),
       workerD.getBestLine(fenBeforeMove, 20).then(r => { console.log("chooseFen workerB done", r); return r; }),
     ]);*/
-    let ourEval = await workerC.getEval(chessGame.fen(), 20);
+    let ourEval = await workerC.getEval(chessGame.fen(), 22);
     const stockfishSetup = dailyBestMoves[fenIndex];
     ourEval = -1 * ourEval;
     let bestEval = ourEval;
@@ -1596,15 +1690,18 @@ function App() {
     if(stockfishMove !== playerMove){
       tryFenGame.load(fenBeforeMove);
       tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
-      bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 20);
+      bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 22);
       console.log(stockfishMove + " not equals " + playerMove);
     }else{
       console.log(stockfishMove + " equals " + playerMove);
     }
 
     let thisaccuracy = Math.round((100 * Math.exp((ourEval - bestEval) / 200)) * 10);
-    if(thisaccuracy > 1100){
-      thisaccuracy = 1100;
+    if(thisaccuracy > 1000){
+      console.log("Brilliant move! " + playerMove + " Eval: " + ourEval + " Best Eval: " + bestEval + " Accuracy: " + thisaccuracy/10);
+      if (thisaccuracy > 1100 && Math.abs(bestEval) < 200){
+        thisaccuracy = 1100;
+      }else thisaccuracy = 1000;
     }
     if (thisaccuracy > 1000){
       setBColors(prev => [...prev, "rgb(0, 251, 255)"]);
