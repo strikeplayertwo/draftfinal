@@ -1413,10 +1413,29 @@ function App() {
             const stmFenParts = [...fenParts];
             stmFenParts[1] = sideToMove;
             const stmGame = new Chess(stmFenParts.join(" "));
-            const defenders = stmGame
+            
+            const afterFenParts = tempGame.fen().split(" ");
+            afterFenParts[1] = sideToMove;
+            const stmGameAfter = new Chess(afterFenParts.join(" "));
+
+            const defenders = stmGameAfter
               .moves({ verbose: true })
-              .filter(m => m.to === move.from && m.from !== move.from); 
+              .filter(m => m.to === move.from);
+
+            console.log("attackers:", attackers.map(m => m.piece + " from " + m.from));
+            console.log("defenders:", defenders.map(m => m.piece + " from " + m.from));
+          
+            // m.from !== move.to excludes the piece that just moved from being its own defender
+
+            /*const defenders = oppGame // oppGame has opponent to move
+              .moves({ verbose: true })
+              .filter(m => m.to === move.from); // these are opponent moves TO the square = attackers*/
+
+            // For defenders, flip: stmGame has sideToMove to move
+            // but we need pieces that COVER move.from, not pieces ON move.from
+            // Use the oppFen but ask which stm pieces attack that square:
             const isDefended = stmGame.isAttacked(move.from as Square, sideToMove);
+            
 
             const isUndefendedAndAttacked = !isDefended;
 
@@ -1427,26 +1446,47 @@ function App() {
               multiplier *= 0.8;
               console.log("hanging piece multiplier: " + move.san);
             }else{//move involves moving hanging piece
-              const numberOfAttackers = attackers.length;
+              /*const numberOfDefenders = isDefended
+              ? stmGame.moves({ verbose: true }).filter(m => m.to === move.from).length
+              : 0;*/
               const numberOfDefenders = defenders.length;
+              const numberOfAttackers = attackers.length;
               if (numberOfAttackers > numberOfDefenders) {
                 multiplier *= 0.8;
                 console.log("overwhelmed piece multiplier: " + move.san + " attackers: " + attackers.map((m) => m.piece).join(", ") + " defenders: " + defenders.map((m) => m.piece).join(", "));
+              }else{
+                console.log("piece not overwhelmed: " + move.san + " attackers: " + attackers.map((m) => m.piece).join(", ") + " defenders: " + defenders.map((m) => m.piece).join(", "));
               }
             }
           }
           //if move threatens a capture of an opponent piece
-          const stmFenParts = [...fenParts];
-          stmFenParts[1] = sideToMove;
-          const stmGame = new Chess(stmFenParts.join(" "));
-          const threatenedSquares = stmGame.moves({ verbose: true }).filter(m => m.from === move.to).map(m => m.to);
+          const afterFenParts = tempGame.fen().split(" ");
+          afterFenParts[1] = sideToMove;
+          const afterGame = new Chess(afterFenParts.join(" "));
+
+          const allMovesFromTo = afterGame.moves({ verbose: true }).filter(m => m.from === move.to);
+          //console.log("allMovesFromTo:", allMovesFromTo);
+
+          const threatenedSquares = allMovesFromTo.map(m => m.to);
+
           const isThreateningCapture = threatenedSquares.some(sq => {
-            const targetPiece = oppGame.get(sq);
-            return targetPiece && PIECE_VALUES[targetPiece.type] > movedPieceValue;
+            const targetPiece = afterGame.get(sq as Square);
+            if(targetPiece?.type === "k") return false; // don't consider moves that threaten the king as threatening captures for this multiplier
+            return targetPiece &&
+              targetPiece.color !== sideToMove &&
+              PIECE_VALUES[targetPiece.type] > movedPieceValue;
           });
+
           if (isThreateningCapture) {
+
             multiplier *= 0.8;
             console.log("threatening capture multiplier: " + move.san);
+            console.log("threatened squares:", threatenedSquares);
+            console.log("pieces on threatened squares:", threatenedSquares.map(sq => ({ sq, piece: tempGame.get(sq as Square) })));
+          }else{
+            console.log("not threatening capture: " + move.san);
+            console.log("threatened squares:", threatenedSquares);
+            console.log("pieces on threatened squares:", threatenedSquares.map(sq => ({ sq, piece: tempGame.get(sq as Square) })));
           }
         }
       } catch {}
