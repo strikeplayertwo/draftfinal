@@ -1350,13 +1350,6 @@ function App() {
                   multiplier *= 0.8;
                   console.log("best move capture multiplier: " + move.san);
                 }
-              }else if(move.san.includes("+")){
-                multiplier *= 0.9;
-                console.log("check multiplier: " + move.san);
-                if(line.cp + 30 > lines[0].cp){
-                  multiplier *= 0.9;
-                  console.log("best move check multiplier: " + move.san);
-                }
               }
               if ((move?.from === "e1" || move?.from === "e8") && move?.piece === "k"){
                 multiplier *= 0.8;
@@ -1374,11 +1367,6 @@ function App() {
     score += cpCount;
 
     //below is sort of deletable code
-    if (Math.abs(lines[0].cp) > 300){
-      multiplier *= 1 - (Math.abs(lines[0].cp) - 300) / 1000;
-      if (multiplier < 0.6) multiplier = 0.6;
-      console.log("cp multiplier: " + multiplier);
-    }
     const bestMovePv = lines[0]?.pv?.split(" ")?.[0];
     if (bestMovePv) {
       const tempGame = new Chess(fen);
@@ -1423,24 +1411,7 @@ function App() {
             }else if (isUndefendedAndAttacked){//move involves moving piece attacked by opp piece of less value
               multiplier *= 0.8;
               console.log("hanging piece multiplier: " + move.san);
-            }else{//move involves moving hanging piece
-              const numberOfAttackers = attackers.length;
-              const numberOfDefenders = stmGame.moves({ verbose: true }).filter(m => m.to === move.from).length;
-              if (numberOfAttackers > numberOfDefenders) {
-                multiplier *= 0.8;
-                console.log("overwhelmed piece multiplier: " + move.san);
-              }
-            }
-            //if move threatens a capture of an opponent piece
-            const threatenedSquares = stmGame.moves({ verbose: true }).filter(m => m.from === move.to).map(m => m.to);
-            const isThreateningCapture = threatenedSquares.some(sq => {
-              const targetPiece = oppGame.get(sq);
-              return targetPiece && PIECE_VALUES[targetPiece.type] > movedPieceValue;
-            });
-            if (isThreateningCapture) {
-              multiplier *= 0.8;
-              console.log("threatening capture multiplier: " + move.san);
-            }
+            }//move involves moving hanging piece
           }
         }
       } catch {}
