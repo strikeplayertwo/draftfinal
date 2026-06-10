@@ -1412,10 +1412,7 @@ function App() {
             // Check if defended using isAttacked() from side to move's perspective
             const stmFenParts = [...fenParts];
             stmFenParts[1] = sideToMove;
-            const stmGame = new Chess(stmFenParts.join(" "));          
-            const defenders = stmGame
-              .moves({ verbose: true })
-              .filter(m => m.to === move.from && m.from !== move.from);
+            const stmGame = new Chess(stmFenParts.join(" "));
             const isDefended = stmGame.isAttacked(move.from as Square, sideToMove);
 
             const isUndefendedAndAttacked = !isDefended;
@@ -1428,25 +1425,22 @@ function App() {
               console.log("hanging piece multiplier: " + move.san);
             }else{//move involves moving hanging piece
               const numberOfAttackers = attackers.length;
-              const numberOfDefenders = defenders.length;
+              const numberOfDefenders = stmGame.moves({ verbose: true }).filter(m => m.to === move.from).length;
               if (numberOfAttackers > numberOfDefenders) {
                 multiplier *= 0.8;
-                console.log("overwhelmed piece multiplier: " + move.san + " attackers: " + attackers.map((m) => m.piece).join(", ") + " defenders: " + defenders.map((m) => m.piece).join(", "));
+                console.log("overwhelmed piece multiplier: " + move.san);
               }
             }
-          }
-          //if move threatens a capture of an opponent piece
-          const stmFenParts = [...fenParts];
-          stmFenParts[1] = sideToMove;
-          const stmGame = new Chess(stmFenParts.join(" "));
-          const threatenedSquares = stmGame.moves({ verbose: true }).filter(m => m.from === move.to).map(m => m.to);
-          const isThreateningCapture = threatenedSquares.some(sq => {
-            const targetPiece = oppGame.get(sq);
-            return targetPiece && PIECE_VALUES[targetPiece.type] > movedPieceValue;
-          });
-          if (isThreateningCapture) {
-            multiplier *= 0.8;
-            console.log("threatening capture multiplier: " + move.san);
+            //if move threatens a capture of an opponent piece
+            const threatenedSquares = stmGame.moves({ verbose: true }).filter(m => m.from === move.to).map(m => m.to);
+            const isThreateningCapture = threatenedSquares.some(sq => {
+              const targetPiece = oppGame.get(sq);
+              return targetPiece && PIECE_VALUES[targetPiece.type] > movedPieceValue;
+            });
+            if (isThreateningCapture) {
+              multiplier *= 0.8;
+              console.log("threatening capture multiplier: " + move.san);
+            }
           }
         }
       } catch {}
