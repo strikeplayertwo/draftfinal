@@ -1533,15 +1533,23 @@ function App() {
     let chosenMoves: string[] = [];
     const chosenScores: number[] = [];
     const chosenStats: {fen: string, score: number, pieces: number, cpCount: number, clarity: number, onslaught: number, multiplier: number}[] = [];
-    for (let i = 0; i < 20; i++){
+    for (let i = 0; i < 200; i++){
       const newFen = daDailyFens[Math.floor(Math.random() * daDailyFens.length)];
-      if (!newFen){
-        console.log("No fen found, skipping iteration " + i);
+      if ((!newFen) || (chosenFens.includes(newFen))){
+        console.log("No fen/duplicate fen found, skipping iteration " + i);
         continue;
       }
 
-      let [score, pieces, cpCount, clarity, onslaught, multiplier, bestMove] = await predictCPL(newFen, 18, true, -91, -41, 10, -80, -40);
-
+      let [score, pieces, cpCount, clarity, onslaught, multiplier, bestMove] = await predictCPL(newFen, 8, true, -91, -41, 10, -80, -40);
+      if (score > 60 && score > Math.min(...chosenScores)){
+        [score, pieces, cpCount, clarity, onslaught, multiplier] = await predictCPL(newFen, 18, true, -91, -41, 10, -80, -40);
+      }
+      if (score > 60 && score > Math.min(...chosenScores)){
+        [score, pieces, cpCount, clarity, onslaught, multiplier] = await predictCPL(newFen, 21, true, -91, -41, 10, -80, -40);
+      }
+      if (score > 60 && score > Math.min(...chosenScores)){
+        [score, pieces, cpCount, clarity, onslaught, multiplier] = await predictCPL(newFen, 24, true, -91, -41, 10, -80, -40);
+      }
       if (chosenFens.length < 5) {
         if(!chosenFens.includes(newFen)){
           chosenFens.push(newFen);
@@ -1753,7 +1761,7 @@ function App() {
       workerC.getEval(chessGame.fen(), 20),
       workerD.getBestLine(fenBeforeMove, 20).then(r => { console.log("chooseFen workerB done", r); return r; }),
     ]);*/
-    let ourEval = await workerC.getEval(chessGame.fen(), 22);
+    let ourEval = await workerC.getEval(chessGame.fen(), 24);
     const stockfishSetup = dailyBestMoves[fenIndex];
     ourEval = -1 * ourEval;
     let bestEval = ourEval;
@@ -1765,7 +1773,7 @@ function App() {
     if(stockfishMove !== playerMove){
       tryFenGame.load(fenBeforeMove);
       tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
-      bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 22);
+      bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 24);
       console.log(stockfishMove + " not equals " + playerMove);
     }else{
       console.log(stockfishMove + " equals " + playerMove);
