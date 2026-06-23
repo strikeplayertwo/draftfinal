@@ -593,7 +593,31 @@ function App() {
   ) {
     //fix
     if (!user) return;
-    const updatedLine = currentLine + " " + move;
+    let updatedLine = currentLine;
+    const length = currentLine.split(" ").length;
+    if (length % 3 === 0) {
+      updatedLine += " " + length / 3 + ".";
+    }
+    const openingMover = new Chess;
+    let moves = currentLine.trim().split(" ");
+    for (let i = 0; i < moves.length; i++) {
+      if (moves[i].includes(".")) continue; // skip move numbers
+      openingMover.move(moves[i]);
+    }
+    function sanToUci(sanMove: string): string {
+      try {
+        // verbose: true returns an object containing 'from', 'to', and 'promotion'
+        const moveData = openingMover.move(sanMove);
+
+        if (!moveData) return "";
+
+        // Build the Long Algebraic Notation string (e.g., e7e8q)
+        return `${moveData.from}${moveData.to}${moveData.promotion || ''}`;
+      } catch (e) {
+        return ""; // Illegal move or incorrect notation format
+      }
+    }
+    updatedLine += " " + sanToUci(move);
 
     await supabase
       .from(table)
