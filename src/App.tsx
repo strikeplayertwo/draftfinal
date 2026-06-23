@@ -67,8 +67,37 @@ type FrenchProgress = {
   main_line: string;
 };
 type SicilianProgress = {
-  line_1: string;
+  line_1?: string;
   main_line: string;
+  najdorf?: string;
+  najdorf_english_attack?: string;
+  najdorf_main_line?: string;
+  najdorf_classical?: string;
+  dragon?: string;
+  dragon_yugoslav_attack?: string;
+  dragon_classical?: string;
+  dragon_fianchetto?: string;
+  dragon_levenfish?: string;
+  sveshnikov?: string;
+  sveshnikov_main_line?: string;
+  scheveningen?: string;
+  scheveningen_keres_attack?: string;
+  scheveningen_english_attack?: string;
+  accelerated_dragon?: string;
+  alapin?: string;
+  alapin_barmen_defense?: string;
+  alapin_main_line?: string;
+  alapin_nc6?: string;
+  rossolimo_attack?: string;
+  rossolimo_attack_g6?: string;
+  rossolimo_attack_e6?: string;
+  rossolimo_attack_d6?: string;
+  rossolimo_attack_nf6?: string;
+  closed?: string;
+  closed_e6?: string;
+  closed_a6?: string;
+  grand_prix?: string;
+  grand_prix_accelerated?: string;
 };
 type SpanishProgress = {
   line_1: string;
@@ -102,6 +131,10 @@ type RetiProgress = {
   line_1: string;
   main_line: string;
 };
+type PetrovsProgress = {
+  line_1: string;
+  main_line: string;
+};
 type BenoniProgress = {
   line_1: string;
   main_line: string;
@@ -131,7 +164,7 @@ const levelUnlocks: Record<number, string[]> = {
   3: ["English", "Italian", "Catalan"],
   4: ["Queen's Pawn Game", "Queen's Bishop Game", "Queen's Gambit Declined"],
   5: ["Queen's Indian", "King's Indian", "Gruenfeld"],
-  6: ["Ruy Lopez", "Reti", "Sicilian"],
+  6: ["Ruy Lopez", "Reti", "Sicilian, Petrov's"],
 };
 
 
@@ -295,6 +328,10 @@ function App() {
     line_1: "1. Nf3",
     main_line: "1. Nf3"
   });
+  const [petrovsProgress, setPetrovsProgress] = useState<PetrovsProgress>({
+    line_1: "1. e4 e5 2. Nf3 Nf6",
+    main_line: "1. e4 e5 2. Nf3 Nf6"
+  });
   const [benoniProgress, setBenoniProgress] = useState<BenoniProgress>({
     line_1: "1. d4 Nf6 2. c4 c5 3. d5",
     main_line: "1. d4 Nf6 2. c4 c5 3. d5"
@@ -319,8 +356,8 @@ function App() {
     beaten_openings: [],
     userMinPly: 4
   });
-  const openings = ["None", "Random", "Sicilian", "French", "Caro-Kann", "English", "Ruy Lopez", "King's Indian", "Queen's Pawn Game", "Queen's Bishop Game", "Queen's Indian", "Gruenfeld", "Queen's Gambit Declined", "Reti", "Benoni", "Catalan", "Italian"];
-  const openingPlyLengths: Record<string, number> = { "None": 6, "Random": 6, "Sicilian": 2, "French": 4, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "Queen's Bishop Game": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 3, "Reti": 1, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Italian": 5 };
+  const openings = ["None", "Random", "Sicilian", "French", "Caro-Kann", "English", "Ruy Lopez", "King's Indian", "Queen's Pawn Game", "Queen's Bishop Game", "Queen's Indian", "Gruenfeld", "Queen's Gambit Declined", "Reti", "Petrov's", "Benoni", "Catalan", "Italian"];
+  const openingPlyLengths: Record<string, number> = { "None": 6, "Random": 6, "Sicilian": 2, "French": 4, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "Queen's Bishop Game": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 3, "Reti": 1, "Petrov's": 4, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Italian": 5 };
   const openingMoveMap: Record<string, string> = {
     "None": "",
     "Random": "",
@@ -336,6 +373,7 @@ function App() {
     "Gruenfeld": "1. d4 Nf6 2. c4 g6 3. Nc3 d5",
     "Queen's Gambit Declined": "1. d4 d5 2. c4",
     "Reti": "1. Nf3",
+    "Petrov's": "1. e4 e5 2. Nf3 Nf6",
     "Benoni": "1. d4 Nf6 2. c4 c5 3. d5",
     "Catalan": "1. d4 Nf6 2. c4 e6 3. g3",
     "Italian": "1. e4 e5 2. Nf3 Nc6 3. Bc4"
@@ -366,8 +404,8 @@ function App() {
     },
     "Sicilian": {
       table: "sicilian_progress",
-      line: sicilianProgress.line_1,
-      main_line: sicilianProgress.main_line,
+      line: sicilianProgress.line_1 ?? "",
+      main_line: sicilianProgress.main_line ?? "",
       setter: setSicilianProgress,
     },
     "Ruy Lopez": {
@@ -417,6 +455,12 @@ function App() {
       line: retiProgress.line_1,
       main_line: retiProgress.main_line,
       setter: setRetiProgress,
+    },
+    "Petrov's": {
+      table: "petrovs_progress",
+      line: petrovsProgress.line_1,
+      main_line: petrovsProgress.main_line,
+      setter: setPetrovsProgress,
     },
     "Benoni": {
       table: "benoni_progress",
@@ -519,6 +563,7 @@ function App() {
     fetchOpeningProgress("queens_gambit_declined_progress", { line_1: "1. d4 d5 2. c4", main_line: "1. d4 d5 2. c4 e7e6" }, setQueensGambitDeclinedProgress);
     fetchOpeningProgress("gruenfeld_progress", { line_1: "1. d4 Nf6 2. c4 g6 3. Nc3 d5", main_line: "1. d4 Nf6 2. c4 g6 3. Nc3 d5" }, setGruenfeldProgress);
     fetchOpeningProgress("reti_progress", { line_1: "1. Nf3", main_line: "1. Nf3" }, setRetiProgress);
+    fetchOpeningProgress("petrovs_progress", { line_1: "1. e4 e5 2. Nf3 Nf6", main_line: "1. e4 e5 2. Nf3 Nf6" }, setPetrovsProgress);
     fetchOpeningProgress("benoni_progress", { line_1: "1. d4 Nf6 2. c4 c5 3. d5", main_line: "1. d4 Nf6 2. c4 c5 3. d5" }, setBenoniProgress);
     fetchOpeningProgress("catalan_progress", { line_1: "1. d4 Nf6 2. c4 e6 3. g3", main_line: "1. d4 Nf6 2. c4 e6 3. g3 d7d5 c4d5 e6d5 g1f3" }, setCatalanProgress);
     fetchOpeningProgress("italian_progress", { line_1: "1. e4 e5 2. Nf3 Nc6 3. Bc4", main_line: "1. e4 e5 2. Nf3 Nc6 3. Bc4" }, setItalianProgress);
