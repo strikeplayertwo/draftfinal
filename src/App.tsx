@@ -9,7 +9,7 @@ import './App.css'
 import { workerA, workerB, workerC, workerD } from "./engine/stockfishWorker";
 import pgnData from "./assets/twic1326.pgn?raw";
 import { createClient, User } from "@supabase/supabase-js";
-import { C } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js';
+//import { C } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js';
 
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
 
@@ -59,8 +59,10 @@ type CaroKannProgress = {
   main_line: string;
 };
 type EnglishProgress = {
-  line_1: string;
+  line_1?: string;
   main_line: string;
+  agincourt?: string;
+  neo_catalan?: string;
 };
 type FrenchProgress = {
   line_1: string;
@@ -100,8 +102,13 @@ type SicilianProgress = {
   grand_prix_accelerated?: string;
 };
 type SpanishProgress = {
-  line_1: string;
+  line_1?: string;
   main_line: string;
+  closed?: string;
+  berlin?: string;
+  exchange?: string;
+  open?: string;
+  marshall?: string;
 };
 type KingsIndianProgress = {
   line_1: string;
@@ -120,8 +127,16 @@ type QueensIndianProgress = {
   main_line: string;
 };
 type QueensGambitDeclinedProgress = {
-  line_1: string;
+  line_1?: string;
   main_line: string;
+  charousek?: string;
+  three_knights?: string;
+  ragozin_defense?: string;
+  barmen?: string;
+  modern?: string;
+  semi_tarrasch?: string;
+  semi_slav?: string;
+  harrwitz_attack?: string;
 };
 type GruenfeldProgress = {
   line_1: string;
@@ -132,16 +147,21 @@ type RetiProgress = {
   main_line: string;
 };
 type PetrovsProgress = {
-  line_1: string;
+  line_1?: string;
   main_line: string;
+  modern?: string;
+  paulsen_attack?: string;
+  classical_karklins_martinovsky?: string;
+  kaufmann_attack?: string;
 };
 type BenoniProgress = {
   line_1: string;
   main_line: string;
 };
 type CatalanProgress = {
-  line_1: string;
+  line_1?: string;
   main_line: string;
+  closed_main_line?: string;
 };
 type ItalianProgress = {
   line_1: string;
@@ -392,8 +412,8 @@ function App() {
     },
     "English": {
       table: "english_progress",
-      line: englishProgress.line_1,
-      main_line: englishProgress.main_line,
+      line: englishProgress.line_1 ?? "",
+      main_line: englishProgress.main_line ?? "",
       setter: setEnglishProgress,
     },
     "French": {
@@ -410,8 +430,8 @@ function App() {
     },
     "Ruy Lopez": {
       table: "spanish_progress",
-      line: spanishProgress.line_1,
-      main_line: spanishProgress.main_line,
+      line: spanishProgress.line_1 ?? "",
+      main_line: spanishProgress.main_line ?? "",
       setter: setSpanishProgress,
     },
     "King's Indian": {
@@ -440,8 +460,8 @@ function App() {
     },
     "Queen's Gambit Declined": {
       table: "queens_gambit_declined_progress",
-      line: queensGambitDeclinedProgress.line_1,
-      main_line: queensGambitDeclinedProgress.main_line,
+      line: queensGambitDeclinedProgress.line_1 ?? "",
+      main_line: queensGambitDeclinedProgress.main_line ?? "",
       setter: setQueensGambitDeclinedProgress,
     },
     "Gruenfeld": {
@@ -458,8 +478,8 @@ function App() {
     },
     "Petrov's": {
       table: "petrovs_progress",
-      line: petrovsProgress.line_1,
-      main_line: petrovsProgress.main_line,
+      line: petrovsProgress.line_1 ?? "",
+      main_line: petrovsProgress.main_line ?? "",
       setter: setPetrovsProgress,
     },
     "Benoni": {
@@ -470,8 +490,8 @@ function App() {
     },
     "Catalan": {
       table: "catalan_progress",
-      line: catalanProgress.line_1,
-      main_line: catalanProgress.main_line,
+      line: catalanProgress.line_1 ?? "",
+      main_line: catalanProgress.main_line ?? "",
       setter: setCatalanProgress,
     },
     "Italian": {
