@@ -1758,6 +1758,10 @@ function App() {
 
   async function chooseFirstFen(opening: string = "None", plyLength: number = 6): Promise<string> {
     const daFens = await extractFENsFromGames(pgnData,94, opening, plyLength);
+    if(daFens.length < 94){
+      const makeupFens = await extractFENsFromGames(pgnData, 94 - daFens.length, "None", plyLength);
+      daFens.push(...makeupFens);
+    }
     const prog = openingProgressMap[opening];
     let mainline = "";
     if (prog) {
