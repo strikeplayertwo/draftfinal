@@ -248,64 +248,64 @@ function App() {
   //opening stuff
   const daOpeningFensRef = useRef<string[]>([]);
   const [caroKannProgress, setCaroKannProgress] = useState<CaroKannProgress>({
-    line_1: "e2e4 c7c6",
-    main_line: "e2e4 c7c6 d2d4 d7d5"
+    line_1: "1. e4 c6",
+    main_line: "1. e4 c6 2. d4 d5"
   });
   const [englishProgress, setEnglishProgress] = useState<EnglishProgress>({
-    line_1: "c2c4",
-    main_line: "c2c4"
+    line_1: "1. c4",
+    main_line: "1. c4"
   });
   const [frenchProgress, setFrenchProgress] = useState<FrenchProgress>({
-    line_1: "e2e4 e7e6 d2d4 d7d5",
-    main_line: "e2e4 e7e6 d2d4 d7d5"
+    line_1: "1. e4 e6 2. d4 d5",
+    main_line: "1. e4 e6 2. d4 d5"
   });
   const [sicilianProgress, setSicilianProgress] = useState<SicilianProgress>({
-    line_1: "e2e4 c7c5",
-    main_line: "e2e4 c7c5"
+    line_1: "1. e4 c5",
+    main_line: "1. e4 c5"
   });
   const [spanishProgress, setSpanishProgress] = useState<SpanishProgress>({
-    line_1: "e2e4 e7e5 g1f3 b8c6 f1b5",
-    main_line: "e2e4 e7e5 g1f3 b8c6 f1b5"
+    line_1: "1. e4 e5 2. Nf3 Nc6 3. Bb5",
+    main_line: "1. e4 e5 2. Nf3 Nc6 3. Bb5"
   });
   const [kingsIndianProgress, setKingsIndianProgress] = useState<KingsIndianProgress>({
-    line_1: "d2d4 g8f6 c2c4 g7g6",
-    main_line: "d2d4 g8f6 c2c4 g7g6"
+    line_1: "1. d4 Nf6 2. c4 g6",
+    main_line: "1. d4 Nf6 2. c4 g6"
   });
   const [queensPawnGameProgress, setQueensPawnGameProgress] = useState<QueensPawnGameProgress>({
-    line_1: "d2d4 d7d5",
-    main_line: "d2d4 d7d5"
+    line_1: "1. d4 d5",
+    main_line: "1. d4 d5"
   });
   const [queensBishopGameProgress, setQueensBishopGameProgress] = useState<QueensBishopGameProgress>({
-    line_1: "d2d4 d7d5 g1f3 g8f6 c1f4 c7c5 e2e3",
-    main_line: "d2d4 d7d5 g1f3 g8f6 c1f4 c7c5 e2e3"
+    line_1: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3",
+    main_line: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3"
   });
   const [queensIndianProgress, setQueensIndianProgress] = useState<QueensIndianProgress>({
-    line_1: "d2d4 g8f6 c2c4 e7e6 g1f3 b7b6",
-    main_line: "d2d4 g8f6 c2c4 e7e6 g1f3 b7b6"
+    line_1: "1. d4 Nf6 2. c4 e6 3. Nf3 b6",
+    main_line: "1. d4 Nf6 2. c4 e6 3. Nf3 b6"
   });
   const [queensGambitDeclinedProgress, setQueensGambitDeclinedProgress] = useState<QueensGambitDeclinedProgress>({
-    line_1: "d2d4 d7d5 c2c4",
-    main_line: "d2d4 d7d5 c2c4 e7e6"
+    line_1: "1. d4 d5 2. c4",
+    main_line: "1. d4 d5 2. c4 e6"
   });
   const [gruenfeldProgress, setGruenfeldProgress] = useState<GruenfeldProgress>({
-    line_1: "d2d4 g8f6 c2c4 g7g6 b1c3 d7d5",
-    main_line: "d2d4 g8f6 c2c4 g7g6 b1c3 d7d5"
+    line_1: "1. d4 Nf6 2. c4 g6 3. Nc3 d5",
+    main_line: "1. d4 Nf6 2. c4 g6 3. Nc3 d5"
   });
   const [retiProgress, setRetiProgress] = useState<RetiProgress>({
-    line_1: "g1f3",
-    main_line: "g1f3"
+    line_1: "1. Nf3",
+    main_line: "1. Nf3"
   });
   const [benoniProgress, setBenoniProgress] = useState<BenoniProgress>({
-    line_1: "d2d4 g8f6 c2c4 c7c5 d4d5",
-    main_line: "d2d4 g8f6 c2c4 c7c5 d4d5"
+    line_1: "1. d4 Nf6 2. c4 c5 3. d5",
+    main_line: "1. d4 Nf6 2. c4 c5 3. d5"
   });
   const [catalanProgress, setCatalanProgress] = useState<CatalanProgress>({
-    line_1: "d2d4 g8f6 c2c4 e7e6 g2g3",
-    main_line: "d2d4 g8f6 c2c4 e7e6 g2g3 d7d5 c4d5 e6d5 g1f3"
+    line_1: "1. d4 Nf6 2. c4 e6 3. g3",
+    main_line: "1. d4 Nf6 2. c4 e6 3. g3 d5 4. cxd5 exd5 5. Nf3"
   });
   const [italianProgress, setItalianProgress] = useState<ItalianProgress>({
-    line_1: "e2e4 e7e5 g1f3 b8c6 f1c4",
-    main_line: "e2e4 e7e5 g1f3 b8c6 f1c4"
+    line_1: "1. e4 e5 2. Nf3 Nc6 3. Bc4",
+    main_line: "1. e4 e5 2. Nf3 Nc6 3. Bc4"
   });
 
   const [showOpeningSelect, setShowOpeningSelect] = useState(false);
@@ -324,21 +324,21 @@ function App() {
   const openingMoveMap: Record<string, string> = {
     "None": "",
     "Random": "",
-    "Sicilian": "e2e4 c7c5",
-    "French": "e2e4 e7e6 d2d4 d7d5",
-    "Caro-Kann": "e2e4 c7c6",
-    "English": "c2c4",
-    "Ruy Lopez": "e2e4 e7e5 g1f3 b8c6 f1b5",
-    "King's Indian": "d2d4 g8f6 c2c4 g7g6",
-    "Queen's Pawn Game": "d2d4 d7d5",
-    "Queen's Bishop Game": "d2d4 d7d5 g1f3 g8f6 c1f4 c7c5 e2e3",
-    "Queen's Indian": "d2d4 g8f6 c2c4 e7e6 g1f3 b7b6",
-    "Gruenfeld": "d2d4 g8f6 c2c4 g7g6 b1c3 d7d5",
-    "Queen's Gambit Declined": "d2d4 d7d5 c2c4",
-    "Reti": "g1f3",
-    "Benoni": "d2d4 g8f6 c2c4 c7c5 d4d5",
-    "Catalan": "d2d4 g8f6 c2c4 e7e6 g2g3",
-    "Italian": "e2e4 e7e5 g1f3 b8c6 f1c4"
+    "Sicilian": "1. e4 c5",
+    "French": "1. e4 e6 2. d4 d5",
+    "Caro-Kann": "1. e4 c6",
+    "English": "1. c4",
+    "Ruy Lopez": "1. e4 e5 2. Nf3 Nc6 3. Bb5",
+    "King's Indian": "1. d4 Nf6 2. c4 g6",
+    "Queen's Pawn Game": "1. d4 d5",
+    "Queen's Bishop Game": "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3",
+    "Queen's Indian": "1. d4 Nf6 2. c4 e6 3. Nf3 b6",
+    "Gruenfeld": "1. d4 Nf6 2. c4 g6 3. Nc3 d5",
+    "Queen's Gambit Declined": "1. d4 d5 2. c4",
+    "Reti": "1. Nf3",
+    "Benoni": "1. d4 Nf6 2. c4 c5 3. d5",
+    "Catalan": "1. d4 Nf6 2. c4 e6 3. g3",
+    "Italian": "1. e4 e5 2. Nf3 Nc6 3. Bc4"
   };
   const openingProgressMap: Record<string, {
     line: string;
@@ -507,21 +507,21 @@ function App() {
     fetchGameHistory();
     fetchDailyGameHistory();
     fetchProgress();
-    fetchOpeningProgress("caro_kann_progress", { line_1: "e2e4 c7c6", main_line: "e2e4 c7c6 d2d4 d7d5" }, setCaroKannProgress);
-    fetchOpeningProgress("english_progress", { line_1: "c2c4", main_line: "c2c4" }, setEnglishProgress);
-    fetchOpeningProgress("french_progress", { line_1: "e2e4 e7e6 d2d4 d7d5", main_line: "e2e4 e7e6 d2d4 d7d5" }, setFrenchProgress);
-    fetchOpeningProgress("sicilian_progress", { line_1: "e2e4 c7c5", main_line: "e2e4 c7c5" }, setSicilianProgress);
-    fetchOpeningProgress("spanish_progress", { line_1: "e2e4 e7e5 g1f3 b8c6 f1b5", main_line: "e2e4 e7e5 g1f3 b8c6 f1b5" }, setSpanishProgress);
-    fetchOpeningProgress("kings_indian_progress", { line_1: "d2d4 g8f6 c2c4 g7g6", main_line: "d2d4 g8f6 c2c4 g7g6" }, setKingsIndianProgress);
-    fetchOpeningProgress("queens_pawn_game_progress", { line_1: "d2d4 d7d5", main_line: "d2d4 d7d5" }, setQueensPawnGameProgress);
-    fetchOpeningProgress("queens_bishop_game_progress", { line_1: "d2d4 d7d5 g1f3 g8f6 c1f4 c7c5 e2e3", main_line: "d2d4 d7d5 g1f3 g8f6 c1f4 c7c5 e2e3" }, setQueensBishopGameProgress);
-    fetchOpeningProgress("queens_indian_progress", { line_1: "d2d4 g8f6 c2c4 e7e6 g1f3 b7b6", main_line: "d2d4 g8f6 c2c4 e7e6 g1f3 b7b6" }, setQueensIndianProgress);
-    fetchOpeningProgress("queens_gambit_declined_progress", { line_1: "d2d4 d7d5 c2c4", main_line: "d2d4 d7d5 c2c4 e7e6" }, setQueensGambitDeclinedProgress);
-    fetchOpeningProgress("gruenfeld_progress", { line_1: "d2d4 g8f6 c2c4 g7g6 b1c3 d7d5", main_line: "d2d4 g8f6 c2c4 g7g6 b1c3 d7d5" }, setGruenfeldProgress);
-    fetchOpeningProgress("reti_progress", { line_1: "g1f3", main_line: "g1f3" }, setRetiProgress);
-    fetchOpeningProgress("benoni_progress", { line_1: "d2d4 g8f6 c2c4 c7c5 d4d5", main_line: "d2d4 g8f6 c2c4 c7c5 d4d5" }, setBenoniProgress);
-    fetchOpeningProgress("catalan_progress", { line_1: "d2d4 g8f6 c2c4 e7e6 g2g3", main_line: "d2d4 g8f6 c2c4 e7e6 g2g3 d7d5 c4d5 e6d5 g1f3" }, setCatalanProgress);
-    fetchOpeningProgress("italian_progress", { line_1: "e2e4 e7e5 g1f3 b8c6 f1c4", main_line: "e2e4 e7e5 g1f3 b8c6 f1c4" }, setItalianProgress);
+    fetchOpeningProgress("caro_kann_progress", { line_1: "1. e4 c6", main_line: "1. e4 c6 2. d4 d5" }, setCaroKannProgress);
+    fetchOpeningProgress("english_progress", { line_1: "1. c4", main_line: "1. c4" }, setEnglishProgress);
+    fetchOpeningProgress("french_progress", { line_1: "1. e4 e6 2. d4 d5", main_line: "1. e4 e6 2. d4 d5" }, setFrenchProgress);
+    fetchOpeningProgress("sicilian_progress", { line_1: "1. e4 c5", main_line: "1. e4 c5" }, setSicilianProgress);
+    fetchOpeningProgress("spanish_progress", { line_1: "1. e4 e5 2. Nf3 Nc6 3. Bb5", main_line: "1. e4 e5 2. Nf3 Nc6 3. Bb5" }, setSpanishProgress);
+    fetchOpeningProgress("kings_indian_progress", { line_1: "1. d4 Nf6 2. c4 g6", main_line: "1. d4 Nf6 2. c4 g6" }, setKingsIndianProgress);
+    fetchOpeningProgress("queens_pawn_game_progress", { line_1: "1. d4 d5", main_line: "1. d4 d5" }, setQueensPawnGameProgress);
+    fetchOpeningProgress("queens_bishop_game_progress", { line_1: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3", main_line: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3" }, setQueensBishopGameProgress);
+    fetchOpeningProgress("queens_indian_progress", { line_1: "1. d4 Nf6 2. c4 e6 3. Nf3 b6", main_line: "1. d4 Nf6 2. c4 e6 3. Nf3 b6" }, setQueensIndianProgress);
+    fetchOpeningProgress("queens_gambit_declined_progress", { line_1: "1. d4 d5 2. c4", main_line: "1. d4 d5 2. c4 e7e6" }, setQueensGambitDeclinedProgress);
+    fetchOpeningProgress("gruenfeld_progress", { line_1: "1. d4 Nf6 2. c4 g6 3. Nc3 d5", main_line: "1. d4 Nf6 2. c4 g6 3. Nc3 d5" }, setGruenfeldProgress);
+    fetchOpeningProgress("reti_progress", { line_1: "1. Nf3", main_line: "1. Nf3" }, setRetiProgress);
+    fetchOpeningProgress("benoni_progress", { line_1: "1. d4 Nf6 2. c4 c5 3. d5", main_line: "1. d4 Nf6 2. c4 c5 3. d5" }, setBenoniProgress);
+    fetchOpeningProgress("catalan_progress", { line_1: "1. d4 Nf6 2. c4 e6 3. g3", main_line: "1. d4 Nf6 2. c4 e6 3. g3 d7d5 c4d5 e6d5 g1f3" }, setCatalanProgress);
+    fetchOpeningProgress("italian_progress", { line_1: "1. e4 e5 2. Nf3 Nc6 3. Bc4", main_line: "1. e4 e5 2. Nf3 Nc6 3. Bc4" }, setItalianProgress);
     }, [user]);
 
   useEffect(() => {
@@ -591,6 +591,7 @@ function App() {
     currentLine: string,
     setter: (updater: (prev: any) => any) => void
   ) {
+    //fix
     if (!user) return;
     const updatedLine = currentLine + " " + move;
 
@@ -2508,10 +2509,39 @@ function App() {
                       setGameOpening(opening);
                       let openingMoves: string[];
                       let plyLength = openingPlyLengths[opening];
-                      openingMoves = openingMoveMap[opening].split(" ");
+                      //openingMoves = openingMoveMap[opening].split(" ");
+                      let openingMovesSAN = openingMoveMap[opening].split(" ");
+                      openingMoves = openingMovesSAN.filter(m => {
+                        if (m.startsWith("1") || m.startsWith("2") || m.startsWith("3") || m.startsWith("4") || m.startsWith("5") || m.startsWith("6") || m.startsWith("7") || m.startsWith("8") || m.startsWith("9")) {
+                          return false;
+                        }
+                        return sanToUci(m);
+                      });
                       const prog = openingProgressMap[opening];
+                      const openingMover = new Chess();
+                      function sanToUci(sanMove: string): string {
+                        try {
+                          // verbose: true returns an object containing 'from', 'to', and 'promotion'
+                          const moveData = openingMover.move(sanMove);
+
+                          if (!moveData) return "";
+
+                          // Build the Long Algebraic Notation string (e.g., e7e8q)
+                          return `${moveData.from}${moveData.to}${moveData.promotion || ''}`;
+                        } catch (e) {
+                          return ""; // Illegal move or incorrect notation format
+                        }
+                      }
                       if (prog) {
-                        openingMoves = prog.line.split(" ");
+                        openingMovesSAN = prog.line.split(" ");
+                        openingMoves = openingMovesSAN.filter(m => {
+                          if (m.startsWith("1") || m.startsWith("2") || m.startsWith("3") || m.startsWith("4") || m.startsWith("5") || m.startsWith("6") || m.startsWith("7") || m.startsWith("8") || m.startsWith("9")) {
+                            return false;
+                          }
+                          return sanToUci(m);
+                        });
+
+                        
                         plyLength = openingMoves.length;
                       };
                       const newGame = new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
