@@ -1854,7 +1854,13 @@ function App() {
     return;
   }
 
+  function uciToSan(uciMove: string, fen: string): string {
+    const chesssGame = new Chess(fen);
+    const move = chesssGame.move({ from: uciMove.substring(0, 2), to: uciMove.substring(2, 4), promotion: 'q' });
+    return move.san;
+  }
   async function chooseFen(fenBeforeMove: string, playerMove: string) {
+    playerMove = uciToSan(playerMove, fenBeforeMove);
     const chessGame = chessGameRef.current;
     if (!chessGame) return;
     const tryFenGame = tryFenRef.current;
@@ -2247,7 +2253,8 @@ function App() {
           to: square,
           promotion: 'q'
         });
-        if(moveFrom + square === reqMove){
+        let playMove = uciToSan(moveFrom + square, sendthatfen);
+        if(playMove === reqMove){
           chessGameRef.current = chessGame;
           console.log("Requested move played");
           setBigChessPosition(chessGame.fen());
