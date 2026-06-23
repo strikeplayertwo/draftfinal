@@ -661,7 +661,7 @@ function App() {
     let updatedLine = currentLine;
     const length = currentLine.split(" ").length;
     if (length % 3 === 0) {
-      updatedLine += " " + length / 3 + ".";
+      updatedLine += " " + (length / 3 + 1) + ".";
     }
     const openingMover = new Chess;
     let moves = currentLine.trim().split(" ");
@@ -669,20 +669,12 @@ function App() {
       if (moves[i].includes(".")) continue; // skip move numbers
       openingMover.move(moves[i]);
     }
-    function sanToUci(sanMove: string): string {
-      try {
-        // verbose: true returns an object containing 'from', 'to', and 'promotion'
-        const moveData = openingMover.move(sanMove);
-
-        if (!moveData) return "";
-
-        // Build the Long Algebraic Notation string (e.g., e7e8q)
-        return `${moveData.from}${moveData.to}${moveData.promotion || ''}`;
-      } catch (e) {
-        return ""; // Illegal move or incorrect notation format
-      }
-    }
-    updatedLine += " " + sanToUci(move);
+    function uciToSan(uciMove: string, fen: string): string {
+      const chesssGame = new Chess(fen);
+      const move = chesssGame.move({ from: uciMove.substring(0, 2), to: uciMove.substring(2, 4), promotion: 'q' });
+      return move.san;
+    } 
+    updatedLine += " " + uciToSan(move, openingMover.fen());
 
     await supabase
       .from(table)
@@ -1762,7 +1754,7 @@ function App() {
       const makeupFens = await extractFENsFromGames(pgnData, 94 - daFens.length, "None", plyLength);
       daFens.push(...makeupFens);
     }
-    const prog = openingProgressMap[opening];
+    /*const prog = openingProgressMap[opening];
     let mainline = "";
     if (prog) {
       mainline = prog.main_line;
@@ -1770,17 +1762,8 @@ function App() {
     if (opening !== "None"){
       const generatedFens = await generateFENsFromOpening(mainline);
       daFens.push(...generatedFens);
-    }
+    }*/
     
-
-
-    if (daFens.length === 0) {
-      console.warn("No FENs found for opening:", opening, "plyLength:", plyLength);
-      // Fall back to no filter
-      const fallback = await extractFENsFromGames(pgnData, 94, "None", plyLength);
-      if (fallback.length === 0) throw new Error("No FENs found at all");
-      daFens.push(...fallback);
-    }
     setFens(daFens);
 
     while (true) {
