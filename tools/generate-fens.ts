@@ -3,6 +3,14 @@ import {Chess} from "chess.js";
 
 
 function splitPGNGames(pgnText: string, openingFilter: string): string[] {
+  if(openingFilter.toLowerCase() === "petrov's"){
+    openingFilter = "Petrov";
+  }else if(openingFilter.toLowerCase() === "queen's pawn game"){
+    openingFilter = "Queen's pawn";
+  }else if(openingFilter.toLowerCase() === "italian"){
+    openingFilter = "Giuoco";
+  }
+  console.log("Opening filter: " + openingFilter)
   return pgnText
     .split(/\r?\n\r?\n(?=\[Event )/)
     .filter(g => g.trim().length > 0)
