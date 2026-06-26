@@ -2337,11 +2337,15 @@ function App() {
 
     let openingMoves: string[];
     let plyLength = openingPlyLengths[opening];
+    console.log(openingMoveMap[opening])
     let openingMovesSAN = openingMoveMap[opening].split(" ");
+    console.log(openingMovesSAN);
     openingMoves = openingMovesSAN.filter(m => {
       if (/^[1-9]/.test(m)) return false;
-      return sanToUci(m);
+      console.log(m);
+      return m;
     });
+    console.log(openingMoves);
     
 
     // Use selected line(s) if the player picked any, else fall back to default line
@@ -2363,8 +2367,9 @@ function App() {
       openingMovesSAN = chosenLine.split(" ");
       openingMoves = openingMovesSAN.filter(m => {
         if (/^[1-9]/.test(m)) return false;
-        return sanToUci(m);
+        return m;
       });
+      console.log(openingMoves);
       plyLength = openingMoves.length;
     }
 
