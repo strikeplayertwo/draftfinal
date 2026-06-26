@@ -2142,9 +2142,51 @@ function App() {
       console.log("eligible lines: " + eligible);
       return eligible.map(l => l.line);
     }
-    if (daOpeningFens.length > 0){
-
+    function getLineUCIs(line: string): string[] {
+      const lineMovesSAN = line.split(" ");
+      const lineMovesUCI = lineMovesSAN.filter(m => {
+        if (/^[1-9]/.test(m)) return false;
+        return sanToUci(m);
+      });
+      return lineMovesUCI
     }
+    const lines = getActiveLines(gameOpening);
+    if (daOpeningFens.length > 0){
+      if (lines.length > 2){
+        if (Math.random() < 0.25){
+          const randLine = lines[Math.floor(Math.random() * lines.length)];
+          console.log("line: " + randLine);
+
+          const randChess = new Chess();
+          const lineUCIs = getLineUCIs(randLine);
+          for(let i = 0; i < lineUCIs.length; i++){
+            randChess.move({from: lineUCIs[i].substring(0, 2), to: lineUCIs[i].substring(2, 4), promotion: 'q'});
+          }
+          console.log("randchess fen: " + randChess.fen());
+
+          if (randLine.startsWith("challenge")){
+            posType = "challenge line";
+          }else{
+
+            const challengeChance = (userProgress.userMinPly - lineUCIs.length)/userProgress.userMinPly;
+            console.log("Chance for challenge move: " + challengeChance + " " + userProgress.userMinPly + " " + lineUCIs.length);
+
+            if(Math.random() < challengeChance){
+              posType = "new challenge line";
+            }else{
+              posType = "random line position";
+            }
+          }
+        }
+      }else{
+        console.log("Alternate lines disallowed");
+        if (Math.random() < 0.25){
+          posType = "choose random opening"
+        }
+      }
+    }
+
+    console.log(posType);
 
     //console.log("Checkpoint 2");
     if(daOpeningFens.length > 0 && Math.random() < 0.25){
@@ -2278,6 +2320,17 @@ function App() {
     return true;
   }
 
+  function sanToUci(sanMove: string): string {
+    const openingMover = new Chess();
+    try {
+      const moveData = openingMover.move(sanMove);
+      if (!moveData) return "";
+      return `${moveData.from}${moveData.to}${moveData.promotion || ''}`;
+    } catch {
+      return "";
+    }
+  }
+
   async function startOpening(opening: string) {
     setScreen("classic");
     setGameOpening(opening);
@@ -2289,18 +2342,7 @@ function App() {
       if (/^[1-9]/.test(m)) return false;
       return sanToUci(m);
     });
-
     
-    const openingMover = new Chess();
-    function sanToUci(sanMove: string): string {
-      try {
-        const moveData = openingMover.move(sanMove);
-        if (!moveData) return "";
-        return `${moveData.from}${moveData.to}${moveData.promotion || ''}`;
-      } catch {
-        return "";
-      }
-    }
 
     // Use selected line(s) if the player picked any, else fall back to default line
     const prog = openingProgressMap[opening];
