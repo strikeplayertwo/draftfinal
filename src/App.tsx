@@ -245,6 +245,9 @@ function EvalGraph({ evals, bPosHistory, bColors, onJumpToMove }: EvalGraphProps
 
 function App() {
   //const fens = extractFENsFromGames(pgnData,94, "All");
+  const [selectedLines, setSelectedLines] = useState<string[]>([]);
+  const [showLineSelect, setShowLineSelect] = useState(false);
+  const [pendingOpening, setPendingOpening] = useState<string>("");
   const [fens, setFens] = useState<string[]>([]);
   const [dailyFens, setDailyFens] = useState<string[]>([]);
   const [dailyBestMoves, setDailyBestMoves] = useState<string[]>([]);
@@ -399,105 +402,88 @@ function App() {
     "Italian": "1. e4 e5 2. Nf3 Nc6 3. Bc4"
   };
   const openingProgressMap: Record<string, {
-    line: string;
-    main_line: string;
-    setter: (updater: (prev: any) => any) => void;
     table: string;
+    allLines: Record<string, string | undefined>;
+    setter: (updater: (prev: any) => any) => void;
   }> = {
     "Caro-Kann": {
       table: "caro_kann_progress",
-      line: caroKannProgress.line_1,
-      main_line: caroKannProgress.main_line,
+      allLines: caroKannProgress,
       setter: setCaroKannProgress,
     },
     "English": {
       table: "english_progress",
-      line: englishProgress.line_1 ?? "",
-      main_line: englishProgress.main_line ?? "",
+      allLines: englishProgress,
       setter: setEnglishProgress,
     },
     "French": {
       table: "french_progress",
-      line: frenchProgress.line_1,
-      main_line: frenchProgress.main_line,
+      allLines: frenchProgress,
       setter: setFrenchProgress,
     },
     "Sicilian": {
       table: "sicilian_progress",
-      line: sicilianProgress.line_1 ?? "",
-      main_line: sicilianProgress.main_line ?? "",
+      allLines: sicilianProgress,
       setter: setSicilianProgress,
     },
     "Ruy Lopez": {
       table: "spanish_progress",
-      line: spanishProgress.line_1 ?? "",
-      main_line: spanishProgress.main_line ?? "",
+      allLines: spanishProgress,
       setter: setSpanishProgress,
     },
     "King's Indian": {
       table: "kings_indian_progress",
-      line: kingsIndianProgress.line_1,
-      main_line: kingsIndianProgress.main_line,
+      allLines: kingsIndianProgress,
       setter: setKingsIndianProgress,
     },
     "Queen's Pawn Game": {
       table: "queens_pawn_game_progress",
-      line: queensPawnGameProgress.line_1,
-      main_line: queensPawnGameProgress.main_line,
+      allLines: queensPawnGameProgress,
       setter: setQueensPawnGameProgress,
     },
     "Queen's Bishop Game": {
       table: "queens_bishop_game_progress",
-      line: queensBishopGameProgress.line_1,
-      main_line: queensBishopGameProgress.main_line,
+      allLines: queensBishopGameProgress,
       setter: setQueensBishopGameProgress,
     },
     "Queen's Indian": {
       table: "queens_indian_progress",
-      line: queensIndianProgress.line_1,
-      main_line: queensIndianProgress.main_line,
+      allLines: queensIndianProgress,
       setter: setQueensIndianProgress,
     },
     "Queen's Gambit Declined": {
       table: "queens_gambit_declined_progress",
-      line: queensGambitDeclinedProgress.line_1 ?? "",
-      main_line: queensGambitDeclinedProgress.main_line ?? "",
+      allLines: queensGambitDeclinedProgress,
       setter: setQueensGambitDeclinedProgress,
     },
     "Gruenfeld": {
       table: "gruenfeld_progress",
-      line: gruenfeldProgress.line_1,
-      main_line: gruenfeldProgress.main_line,
+      allLines: gruenfeldProgress,
       setter: setGruenfeldProgress,
     },
     "Reti": {
       table: "reti_progress",
-      line: retiProgress.line_1,
-      main_line: retiProgress.main_line,
+      allLines: retiProgress,
       setter: setRetiProgress,
     },
     "Petrov's": {
       table: "petrovs_progress",
-      line: petrovsProgress.line_1 ?? "",
-      main_line: petrovsProgress.main_line ?? "",
+      allLines: petrovsProgress,
       setter: setPetrovsProgress,
     },
     "Benoni": {
       table: "benoni_progress",
-      line: benoniProgress.line_1,
-      main_line: benoniProgress.main_line,
+      allLines: benoniProgress,
       setter: setBenoniProgress,
     },
     "Catalan": {
       table: "catalan_progress",
-      line: catalanProgress.line_1 ?? "",
-      main_line: catalanProgress.main_line ?? "",
+      allLines: catalanProgress,
       setter: setCatalanProgress,
     },
     "Italian": {
       table: "italian_progress",
-      line: italianProgress.line_1,
-      main_line: italianProgress.main_line,
+      allLines: italianProgress,
       setter: setItalianProgress,
     }
   };
@@ -585,7 +571,7 @@ function App() {
     fetchOpeningProgress("reti_progress", { line_1: "1. Nf3", main_line: "1. Nf3" }, setRetiProgress);
     fetchOpeningProgress("petrovs_progress", { line_1: "1. e4 e5 2. Nf3 Nf6", main_line: "1. e4 e5 2. Nf3 Nf6" }, setPetrovsProgress);
     fetchOpeningProgress("benoni_progress", { line_1: "1. d4 Nf6 2. c4 c5 3. d5", main_line: "1. d4 Nf6 2. c4 c5 3. d5" }, setBenoniProgress);
-    fetchOpeningProgress("catalan_progress", { line_1: "1. d4 Nf6 2. c4 e6 3. g3", main_line: "1. d4 Nf6 2. c4 e6 3. g3 d7d5 c4d5 e6d5 g1f3" }, setCatalanProgress);
+    fetchOpeningProgress("catalan_progress", { line_1: "1. d4 Nf6 2. c4 e6 3. g3", main_line: "1. d4 Nf6 2. c4 e6 3. g3 d5 4. cxd5 exd5 5. Nf3" }, setCatalanProgress);
     fetchOpeningProgress("italian_progress", { line_1: "1. e4 e5 2. Nf3 Nc6 3. Bc4", main_line: "1. e4 e5 2. Nf3 Nc6 3. Bc4" }, setItalianProgress);
     }, [user]);
 
@@ -696,8 +682,9 @@ function App() {
       const move = game.move(moveSan);
       let isMain = false;
       const prog = openingProgressMap[opening];
-      if (prog && prog.main_line.includes(moveSan)) {
-        isMain = true;
+      if (prog && prog.allLines.main_line !== null) {
+        if (prog.allLines.main_line?.includes(moveSan)){
+          isMain = true;}
       }
       game.undo();
       return {
@@ -709,6 +696,28 @@ function App() {
         main: isMain,//true if in main line on table
       };
     });
+  }
+
+  function getPlyLength(line: string): number {
+    return line
+      .replace(/\d+\.\s*/g, "")
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean).length;
+  }
+
+  function getOpeningLines(opening: string): { key: string; label: string; line: string; plyLength: number }[] {
+    const progress = openingProgressMap[opening];
+    if (!progress?.allLines) return [];
+
+    return Object.entries(progress.allLines)
+      .filter(([_, line]) => typeof line === "string" && line.length > 0)
+      .map(([key, line]) => ({
+        key,
+        label: key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()),
+        line: line as string,
+        plyLength: getPlyLength(line as string),
+      }));
   }
 
   function highlightKingSquare(chessInstance: Chess, type: string) {
@@ -1975,14 +1984,15 @@ function App() {
 
       const pvb = stockfishSetup.pv;
       const stockfishMove = pvb?.split(" ")?.[0];
-      if(stockfishMove !== playerMove){
+      const stockfishMoveSAN = uciToSan(stockfishMove, fenBeforeMove);
+      if(stockfishMoveSAN !== playerMove){
         
         tryFenGame.load(fenBeforeMove);
         tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
         bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 18);
         console.log(stockfishMove + " not equals " + playerMove);
       }else{
-        console.log(stockfishMove + " equals " + playerMove);
+        console.log(stockfishMoveSAN + " equals " + playerMove);
       }
       let doublemessage = false;
       let bonus = 0;
@@ -2121,6 +2131,21 @@ function App() {
       }
 
     }
+    
+    let posType = "choose random";
+    function getActiveLines(opening: string): string[] {
+      const allLines = getOpeningLines(opening);
+      const eligible = selectedLines.length > 0
+        ? allLines.filter(l => selectedLines.includes(l.key))
+        : allLines.filter(l => !(userProgress.level === 1 && l.plyLength >= 7)); // default: all unlocked lines
+
+      console.log("eligible lines: " + eligible);
+      return eligible.map(l => l.line);
+    }
+    if (daOpeningFens.length > 0){
+
+    }
+
     //console.log("Checkpoint 2");
     if(daOpeningFens.length > 0 && Math.random() < 0.25){
       //console.log("Checkpoint 3");
@@ -2253,6 +2278,117 @@ function App() {
     return true;
   }
 
+  async function startOpening(opening: string) {
+    setScreen("classic");
+    setGameOpening(opening);
+
+    let openingMoves: string[];
+    let plyLength = openingPlyLengths[opening];
+    let openingMovesSAN = openingMoveMap[opening].split(" ");
+    openingMoves = openingMovesSAN.filter(m => {
+      if (/^[1-9]/.test(m)) return false;
+      return sanToUci(m);
+    });
+
+    
+    const openingMover = new Chess();
+    function sanToUci(sanMove: string): string {
+      try {
+        const moveData = openingMover.move(sanMove);
+        if (!moveData) return "";
+        return `${moveData.from}${moveData.to}${moveData.promotion || ''}`;
+      } catch {
+        return "";
+      }
+    }
+
+    // Use selected line(s) if the player picked any, else fall back to default line
+    const prog = openingProgressMap[opening];
+
+    if (prog) {
+      const allLines = getOpeningLines(opening);
+      const eligibleLines = selectedLines.length > 0
+        ? allLines.filter(l => selectedLines.includes(l.key))
+        : allLines.filter(l => !(userProgress.level === 1 && l.plyLength >= 7));
+
+      // Fallback if no eligible lines: use line_1 directly from allLines, not prog.line
+      const fallbackLine = prog.allLines.line_1 ?? "";
+
+      const chosenLine = eligibleLines.length > 0
+        ? eligibleLines[Math.floor(Math.random() * eligibleLines.length)].line
+        : fallbackLine;
+
+      openingMovesSAN = chosenLine.split(" ");
+      openingMoves = openingMovesSAN.filter(m => {
+        if (/^[1-9]/.test(m)) return false;
+        return sanToUci(m);
+      });
+      plyLength = openingMoves.length;
+    }
+
+    const newGame = new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    const openingFens = [newGame.fen()];
+    if(opening !== "None"){
+      setBigChessPosition(newGame.fen());
+      for (let i = 0; i < plyLength; i++){
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        const move = openingMoves[i];
+        if (!move) break;
+        newGame.move(move);
+        setBigChessPosition(newGame.fen());
+        openingFens.push(newGame.fen());
+      }
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      newGame.load(openingFens[0]);
+      setBigChessPosition(openingFens[0]);
+      async function playerRunThru(openingFens: string[]){
+        for (let i = 0; i < openingFens.length - 1; i++){
+          newGame.load(openingFens[i]);
+          chessGameRef.current = newGame;
+          setReqMove(openingMoves[i]);
+          while(chessGameRef.current.fen() !== openingFens[i + 1]){
+            //console.log("No. Big Chess Position: " + bigChessPosition + " Opening Fen: " + openingFens[i + 1]);
+            await new Promise(resolve => setTimeout(resolve, 50));
+          }
+          //console.log("Yes. Big Chess Position: " + bigChessPosition + " Opening Fen: " + openingFens[i + 1]);
+        }
+        setShowEffex("Correct ✅");
+        stopEffex();
+      }
+      async function waitAddMoves(minMoves: number) {
+        while (daOpeningFensRef.current.length - 1 < minMoves) {
+          await new Promise(resolve => setTimeout(resolve, 50));
+        }
+      }
+      await playerRunThru(openingFens);
+      setDaOpeningFens(openingFens);
+      setDaOpeningMoves(openingMoves);
+
+      if (openingFens.length - 1 < userProgress.userMinPly){
+        setReqMove("add");
+        const infos = await getMoveInfos(openingFens[openingFens.length - 1], opening);
+        setMoveInfos(infos);
+        await waitAddMoves(userProgress.userMinPly);
+        setMoveInfos([]);
+      }
+      setReqMove("none");
+    };
+    if (opening !== "None"){
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+    const startFen = await chooseFirstFen(opening, plyLength);
+    console.log("startfen" + startFen);
+    newGame.load(startFen);
+    chessGameRef.current = newGame;
+    smallGameRef.current = new Chess(startFen);
+    tryFenRef.current = new Chess(startFen);
+    setChessPosition(newGame.fen());
+    setBigChessPosition(newGame.fen());
+    setOldFen(newGame.fen());
+    highlightKingSquare(newGame, "big");
+    setBPosHistory([newGame.fen()]);
+  }
+
   async function onSquareClick({
     square,
     piece
@@ -2293,7 +2429,11 @@ function App() {
         setBigChessPosition(ourNewFen);
         const prog = openingProgressMap[gameOpening];
         if (prog) {
-          await addMoveToLine(moveFrom + square, "line_1", prog.table, prog.line, prog.setter);
+          let line = "";
+          if (prog.allLines.line_1){
+            line = prog.allLines.line_1;
+          }
+          await addMoveToLine(moveFrom + square, "line_1", prog.table, line, prog.setter);
         }
         const infos = await getMoveInfos(ourNewFen, gameOpening);
         setMoveInfos(infos);
@@ -2584,6 +2724,14 @@ function App() {
                   <div
                     key={opening}
                     onClick={async () => {
+                      setShowOpeningSelect(false);
+                      if (opening === "Random") {
+                        opening = openings[Math.floor(Math.random() * (openings.length - 3)) + 2];
+                      }
+                      setPendingOpening(opening);
+                      setShowLineSelect(true); // ← show picker instead of running immediately
+                    }}
+                    /*onClick={async () => {
                       setScreen("classic");
                       setShowOpeningSelect(false);
                       if(opening === "Random"){
@@ -2688,7 +2836,7 @@ function App() {
                       setOldFen(newGame.fen());
                       highlightKingSquare(newGame, "big");
                       setBPosHistory([newGame.fen()]);
-                  }}
+                  }}*/
                   style={{
                     padding: "10px 16px",
                     //cursor: isUnlocked ? "pointer" : "not-allowed",
@@ -2709,6 +2857,66 @@ function App() {
               })}
             </div>
           )}
+          {showLineSelect && (
+            <div style={{
+              position: "absolute",
+              top: "100%",
+              left: 0,
+              background: "#161b22",
+              border: "1px solid #30363d",
+              borderRadius: 8,
+              zIndex: 100,
+              minWidth: 280,
+              padding: "12px 16px",
+            }}>
+              <p style={{ fontSize: 14, fontWeight: 500, margin: "0 0 10px", color: "#e6edf3" }}>
+                Select lines for {pendingOpening}
+              </p>
+              {getOpeningLines(pendingOpening).map(({ key, label, plyLength }) => {
+                const isLocked = userProgress.level === 1 && plyLength >= 7;
+                const isSelected = selectedLines.includes(key);
+                return (
+                  <label
+                    key={key}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 8,
+                      padding: "6px 0",
+                      cursor: isLocked ? "not-allowed" : "pointer",
+                      opacity: isLocked ? 0.4 : 1,
+                      fontSize: 13,
+                      color: "#e6edf3",
+                    }}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={isSelected}
+                      disabled={isLocked}
+                      onChange={() => {
+                        setSelectedLines(prev =>
+                          isSelected ? prev.filter(k => k !== key) : [...prev, key]
+                        );
+                      }}
+                    />
+                    <span style={{ flex: 1 }}>{label}</span>
+                    <span style={{ fontSize: 11, color: "#8b949e" }}>{plyLength} plies</span>
+                    {isLocked && <span style={{ fontSize: 12 }}>🔒</span>}
+                  </label>
+                );
+              })}
+              <button
+                style={{ marginTop: 10, width: "100%" }}
+                onClick={async () => {
+                  setShowLineSelect(false);
+                  await startOpening(pendingOpening); // ← extracted function, see Step 4
+                }}
+              >
+                Start
+              </button>
+            </div>
+          )}
+
         </div>
         <button onClick={async () => {
           setScreen("daily");
@@ -2906,7 +3114,11 @@ function App() {
                 setBigChessPosition(ourNewFen);
                 const prog = openingProgressMap[gameOpening];
                 if (prog) {
-                  await addMoveToLine(m.from + m.to, "line_1", prog.table, prog.line, prog.setter);
+                  let line = "";
+                  if (prog.allLines.line_1){
+                    line = prog.allLines.line_1;
+                  }
+                  await addMoveToLine(m.from + m.to, "line_1", prog.table, line, prog.setter);
                 }
                 const infos = await getMoveInfos(ourNewFen, gameOpening);
                 setMoveInfos(infos);
