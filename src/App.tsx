@@ -55,54 +55,54 @@ type UserProgress = {
 };
 
 type CaroKannProgress = {
-  line_1: string;
+  base_line: string;
   main_line: string;
 };
 type EnglishProgress = {
-  line_1?: string;
+  base_line?: string;
   main_line: string;
   agincourt?: string;
   neo_catalan?: string;
 };
 type FrenchProgress = {
-  line_1: string;
+  base_line: string;
   main_line: string;
 };
 type SicilianProgress = {
-  line_1?: string;
+  base_line?: string;
   main_line: string;
-  najdorf?: string;
-  najdorf_english_attack?: string;
-  najdorf_main_line?: string;
-  najdorf_classical?: string;
-  dragon?: string;
-  dragon_yugoslav_attack?: string;
-  dragon_classical?: string;
-  dragon_fianchetto?: string;
-  dragon_levenfish?: string;
+  Najdorf?: string;
+  Najdorf_English_Attack?: string;
+  Najdorf_Main_Line?: string;
+  Najdorf_Classical?: string;
+  Dragon?: string;
+  Dragon_Yugoslav_Attack?: string;
+  Dragon_Classical?: string;
+  Dragon_Fianchetto?: string;
+  Dragon_Levenfish?: string;
   sveshnikov?: string;
-  sveshnikov_main_line?: string;
+  Sveshnikov_Main_Line?: string;
   scheveningen?: string;
-  scheveningen_keres_attack?: string;
-  scheveningen_english_attack?: string;
-  accelerated_dragon?: string;
+  Scheveningen_Keres_Attack?: string;
+  Scheveningen_English_Attack?: string;
+  Accelerated_Dragon?: string;
   alapin?: string;
-  alapin_barmen_defense?: string;
-  alapin_main_line?: string;
-  alapin_nc6?: string;
-  rossolimo_attack?: string;
-  rossolimo_attack_g6?: string;
-  rossolimo_attack_e6?: string;
-  rossolimo_attack_d6?: string;
-  rossolimo_attack_nf6?: string;
+  Alapin_Barmen_Defense?: string;
+  Alapin_Main_Line?: string;
+  Alapin_nc6?: string;
+  rossolimo_Attack?: string;
+  Rossolimo_Attack_g6?: string;
+  Rossolimo_Attack_e6?: string;
+  Rossolimo_Attack_d6?: string;
+  Rossolimo_Attack_Nf6?: string;
   closed?: string;
-  closed_e6?: string;
-  closed_a6?: string;
-  grand_prix?: string;
-  grand_prix_accelerated?: string;
+  Closed_e6?: string;
+  Closed_a6?: string;
+  Grand_Prix?: string;
+  Grand_Prix_Accelerated?: string;
 };
 type SpanishProgress = {
-  line_1?: string;
+  base_line?: string;
   main_line: string;
   closed?: string;
   berlin?: string;
@@ -111,23 +111,23 @@ type SpanishProgress = {
   marshall?: string;
 };
 type KingsIndianProgress = {
-  line_1: string;
+  base_line: string;
   main_line: string;
 };
 type QueensPawnGameProgress = {
-  line_1: string;
+  base_line: string;
   main_line: string;
 };
 type QueensBishopGameProgress = {
-  line_1: string;
+  base_line: string;
   main_line: string;
 };
 type QueensIndianProgress = {
-  line_1: string;
+  base_line: string;
   main_line: string;
 };
 type QueensGambitDeclinedProgress = {
-  line_1?: string;
+  base_line?: string;
   main_line: string;
   charousek?: string;
   three_knights?: string;
@@ -139,15 +139,15 @@ type QueensGambitDeclinedProgress = {
   harrwitz_attack?: string;
 };
 type GruenfeldProgress = {
-  line_1: string;
+  base_line: string;
   main_line: string;
 };
 type RetiProgress = {
-  line_1: string;
+  base_line: string;
   main_line: string;
 };
 type PetrovsProgress = {
-  line_1?: string;
+  base_line?: string;
   main_line: string;
   modern?: string;
   paulsen_attack?: string;
@@ -155,16 +155,16 @@ type PetrovsProgress = {
   kaufmann_attack?: string;
 };
 type BenoniProgress = {
-  line_1: string;
+  base_line: string;
   main_line: string;
 };
 type CatalanProgress = {
-  line_1?: string;
+  base_line?: string;
   main_line: string;
   closed_main_line?: string;
 };
 type ItalianProgress = {
-  line_1: string;
+  base_line: string;
   main_line: string;
 };
 
@@ -304,67 +304,67 @@ function App() {
   //opening stuff
   const daOpeningFensRef = useRef<string[]>([]);
   const [caroKannProgress, setCaroKannProgress] = useState<CaroKannProgress>({
-    line_1: "1. e4 c6",
+    base_line: "1. e4 c6",
     main_line: "1. e4 c6 2. d4 d5"
   });
   const [englishProgress, setEnglishProgress] = useState<EnglishProgress>({
-    line_1: "1. c4",
+    base_line: "1. c4",
     main_line: "1. c4"
   });
   const [frenchProgress, setFrenchProgress] = useState<FrenchProgress>({
-    line_1: "1. e4 e6 2. d4 d5",
+    base_line: "1. e4 e6 2. d4 d5",
     main_line: "1. e4 e6 2. d4 d5"
   });
   const [sicilianProgress, setSicilianProgress] = useState<SicilianProgress>({
-    line_1: "1. e4 c5",
+    base_line: "1. e4 c5",
     main_line: "1. e4 c5"
   });
   const [spanishProgress, setSpanishProgress] = useState<SpanishProgress>({
-    line_1: "1. e4 e5 2. Nf3 Nc6 3. Bb5",
+    base_line: "1. e4 e5 2. Nf3 Nc6 3. Bb5",
     main_line: "1. e4 e5 2. Nf3 Nc6 3. Bb5"
   });
   const [kingsIndianProgress, setKingsIndianProgress] = useState<KingsIndianProgress>({
-    line_1: "1. d4 Nf6 2. c4 g6",
+    base_line: "1. d4 Nf6 2. c4 g6",
     main_line: "1. d4 Nf6 2. c4 g6"
   });
   const [queensPawnGameProgress, setQueensPawnGameProgress] = useState<QueensPawnGameProgress>({
-    line_1: "1. d4 d5",
+    base_line: "1. d4 d5",
     main_line: "1. d4 d5"
   });
   const [queensBishopGameProgress, setQueensBishopGameProgress] = useState<QueensBishopGameProgress>({
-    line_1: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3",
+    base_line: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3",
     main_line: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3"
   });
   const [queensIndianProgress, setQueensIndianProgress] = useState<QueensIndianProgress>({
-    line_1: "1. d4 Nf6 2. c4 e6 3. Nf3 b6",
+    base_line: "1. d4 Nf6 2. c4 e6 3. Nf3 b6",
     main_line: "1. d4 Nf6 2. c4 e6 3. Nf3 b6"
   });
   const [queensGambitDeclinedProgress, setQueensGambitDeclinedProgress] = useState<QueensGambitDeclinedProgress>({
-    line_1: "1. d4 d5 2. c4",
+    base_line: "1. d4 d5 2. c4",
     main_line: "1. d4 d5 2. c4 e6"
   });
   const [gruenfeldProgress, setGruenfeldProgress] = useState<GruenfeldProgress>({
-    line_1: "1. d4 Nf6 2. c4 g6 3. Nc3 d5",
+    base_line: "1. d4 Nf6 2. c4 g6 3. Nc3 d5",
     main_line: "1. d4 Nf6 2. c4 g6 3. Nc3 d5"
   });
   const [retiProgress, setRetiProgress] = useState<RetiProgress>({
-    line_1: "1. Nf3",
+    base_line: "1. Nf3",
     main_line: "1. Nf3"
   });
   const [petrovsProgress, setPetrovsProgress] = useState<PetrovsProgress>({
-    line_1: "1. e4 e5 2. Nf3 Nf6",
+    base_line: "1. e4 e5 2. Nf3 Nf6",
     main_line: "1. e4 e5 2. Nf3 Nf6"
   });
   const [benoniProgress, setBenoniProgress] = useState<BenoniProgress>({
-    line_1: "1. d4 Nf6 2. c4 c5 3. d5",
+    base_line: "1. d4 Nf6 2. c4 c5 3. d5",
     main_line: "1. d4 Nf6 2. c4 c5 3. d5"
   });
   const [catalanProgress, setCatalanProgress] = useState<CatalanProgress>({
-    line_1: "1. d4 Nf6 2. c4 e6 3. g3",
+    base_line: "1. d4 Nf6 2. c4 e6 3. g3",
     main_line: "1. d4 Nf6 2. c4 e6 3. g3 d5 4. cxd5 exd5 5. Nf3"
   });
   const [italianProgress, setItalianProgress] = useState<ItalianProgress>({
-    line_1: "1. e4 e5 2. Nf3 Nc6 3. Bc4",
+    base_line: "1. e4 e5 2. Nf3 Nc6 3. Bc4",
     main_line: "1. e4 e5 2. Nf3 Nc6 3. Bc4"
   });
 
@@ -557,45 +557,49 @@ function App() {
     fetchGameHistory();
     fetchDailyGameHistory();
     fetchProgress();
-    fetchOpeningProgress("caro_kann_progress", { line_1: "1. e4 c6", main_line: "1. e4 c6 2. d4 d5" }, setCaroKannProgress);
+    fetchOpeningProgress("caro_kann_progress", { base_line: "1. e4 c6", main_line: "1. e4 c6 2. d4 d5" }, setCaroKannProgress);
     fetchOpeningProgress("english_progress", { 
-      line_1: "1. c4", 
+      base_line: "1. c4", 
       main_line: "1. c4",
       agincourt: "1. c4 e6 2. Nf3 d5 3. g3",
       neo_catalan: "1. c4 e6 2. Nf3 d5 3. g3 Nf6 4. Bg2 Be7 5. O-O"
     }, setEnglishProgress);
-    fetchOpeningProgress("french_progress", { line_1: "1. e4 e6 2. d4 d5", main_line: "1. e4 e6 2. d4 d5" }, setFrenchProgress);
+    fetchOpeningProgress("french_progress", { base_line: "1. e4 e6 2. d4 d5", main_line: "1. e4 e6 2. d4 d5" }, setFrenchProgress);
     fetchOpeningProgress("sicilian_progress", { 
-      line_1: "1. e4 c5",
+      base_line: "1. e4 c5",
       main_line: "1. e4 c5",
-      dragon: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6",
+      Dragon: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6",
       sveshnikov: "1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e5",
       scheveningen: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e6",
       alapin: "1. e4 c5 2. c3",
       closed: "1. e4 c5 2. Nc3",
-      najdorf: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6",
-      najdorf_english_attack: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Be3",
-      najdorf_main_line: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Bg5 e6",
-      najdorf_classical: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Be2",
-      dragon_yugoslav_attack: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. Be3",
-      dragon_classical: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. Be2",
-      dragon_fianchetto: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. g3",
-      dragon_levenfish: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. f4",
-      sveshnikov_main_line: "1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e5 6. Ndb5 d6 7. Bg5 a6 8. Na3 b5",
-      scheveningen_keres_attack: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e6 6. g4",
-      scheveningen_english_attack: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e6 6. Be3",
-      accelerated_dragon: "1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 g6",
-      alapin_barmen_defense: "1. e4 c5 2. c3 d5 3. exd5 Qxd5 4. d4",
-      alapin_main_line: "1. e4 c5 2. c3 Nf6",
-      //alapin_2...Nc6: "1. e4 c5 2. c3 Nc6 3. d4 cxd4 4. cxd4 d5",
-      rossolimo_attack: "1. e4 c5 2. Nf3 Nc6 3. Bb5",
-      //rossolimos
-      //closeds
-      grand_prix: "1. e4 c5 2. Nc3 Nc6 3. f4",
-      grand_prix_acclerated: "1. e4 c5 2. f4 d5"
+      Najdorf: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6",
+      Najdorf_English_Attack: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Be3",
+      Najdorf_Main_Line: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Bg5 e6",
+      Najdorf_Classical: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Be2",
+      Dragon_Yugoslav_Attack: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. Be3",
+      Dragon_Classical: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. Be2",
+      Dragon_Fianchetto: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. g3",
+      Dragon_Levenfish: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. f4",
+      Sveshnikov_Main_Line: "1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e5 6. Ndb5 d6 7. Bg5 a6 8. Na3 b5",
+      Scheveningen_Keres_Attack: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e6 6. g4",
+      Scheveningen_English_Attack: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e6 6. Be3",
+      Accelerated_Dragon: "1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 g6",
+      Alapin_Barmen_Defense: "1. e4 c5 2. c3 d5 3. exd5 Qxd5 4. d4",
+      Alapin_Main_Line: "1. e4 c5 2. c3 Nf6",
+      Alapin_Nc6: "1. e4 c5 2. c3 Nc6 3. d4 cxd4 4. cxd4 d5",
+      Rossolimo_Attack: "1. e4 c5 2. Nf3 Nc6 3. Bb5",
+      Rossolimo_Attack_g6: "1. e4 c5 2. Nf3 Nc6 3. Bb5 g6",
+      Rossolimo_Attack_e6: "1. e4 c5 2. Nf3 Nc6 3. Bb5 e6",
+      Rossolimo_Attack_d6: "1. e4 c5 2. Nf3 Nc6 3. Bb5 d6",
+      Rossolimo_Attack_Nf6: "1. e4 c5 2. Nf3 Nc6 3. Bb5 Nf6",
+      Closed_e6: "1. e4 c5 2. Nc3 e6",
+      Closed_a6: "1. e4 c5 2. Nc3 a6",
+      Grand_Prix: "1. e4 c5 2. Nc3 Nc6 3. f4",
+      Grand_Prix_Accelerated: "1. e4 c5 2. f4 d5"
     }, setSicilianProgress);
     fetchOpeningProgress("spanish_progress", { 
-      line_1: "1. e4 e5 2. Nf3 Nc6 3. Bb5", 
+      base_line: "1. e4 e5 2. Nf3 Nc6 3. Bb5", 
       main_line: "1. e4 e5 2. Nf3 Nc6 3. Bb5",
       closed: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7", 
       berlin: "1. e4 e5 2. Nf3 Nc6 3. Bb5 Nf6",
@@ -603,12 +607,12 @@ function App() {
       open: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Nxe4",
       marshall: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 O-O 8. c3 d5"
     }, setSpanishProgress);
-    fetchOpeningProgress("kings_indian_progress", { line_1: "1. d4 Nf6 2. c4 g6", main_line: "1. d4 Nf6 2. c4 g6" }, setKingsIndianProgress);
-    fetchOpeningProgress("queens_pawn_game_progress", { line_1: "1. d4 d5", main_line: "1. d4 d5" }, setQueensPawnGameProgress);
-    fetchOpeningProgress("queens_bishop_game_progress", { line_1: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3", main_line: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3" }, setQueensBishopGameProgress);
-    fetchOpeningProgress("queens_indian_progress", { line_1: "1. d4 Nf6 2. c4 e6 3. Nf3 b6", main_line: "1. d4 Nf6 2. c4 e6 3. Nf3 b6" }, setQueensIndianProgress);
+    fetchOpeningProgress("kings_indian_progress", { base_line: "1. d4 Nf6 2. c4 g6", main_line: "1. d4 Nf6 2. c4 g6" }, setKingsIndianProgress);
+    fetchOpeningProgress("queens_pawn_game_progress", { base_line: "1. d4 d5", main_line: "1. d4 d5" }, setQueensPawnGameProgress);
+    fetchOpeningProgress("queens_bishop_game_progress", { base_line: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3", main_line: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3" }, setQueensBishopGameProgress);
+    fetchOpeningProgress("queens_indian_progress", { base_line: "1. d4 Nf6 2. c4 e6 3. Nf3 b6", main_line: "1. d4 Nf6 2. c4 e6 3. Nf3 b6" }, setQueensIndianProgress);
     fetchOpeningProgress("queens_gambit_declined_progress", { 
-      line_1: "1. d4 d5 2. c4", 
+      base_line: "1. d4 d5 2. c4", 
       main_line: "1. d4 d5 2. c4 e7e6",
       charousek: "1. d4 d5 2. c4 e6 3. Nc3 Be7",
       three_knights: "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Nf3",
@@ -619,23 +623,23 @@ function App() {
       semi_slav: "1. d4 d5 2. c4 e6 3. Nf3 Nf6 4. e3 c6 5. Nbd2",
       harrwitz_attack: "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Bf4"
     }, setQueensGambitDeclinedProgress);
-    fetchOpeningProgress("gruenfeld_progress", { line_1: "1. d4 Nf6 2. c4 g6 3. Nc3 d5", main_line: "1. d4 Nf6 2. c4 g6 3. Nc3 d5" }, setGruenfeldProgress);
-    fetchOpeningProgress("reti_progress", { line_1: "1. Nf3", main_line: "1. Nf3" }, setRetiProgress);
+    fetchOpeningProgress("gruenfeld_progress", { base_line: "1. d4 Nf6 2. c4 g6 3. Nc3 d5", main_line: "1. d4 Nf6 2. c4 g6 3. Nc3 d5" }, setGruenfeldProgress);
+    fetchOpeningProgress("reti_progress", { base_line: "1. Nf3", main_line: "1. Nf3" }, setRetiProgress);
     fetchOpeningProgress("petrovs_progress", { 
-      line_1: "1. e4 e5 2. Nf3 Nf6", 
+      base_line: "1. e4 e5 2. Nf3 Nf6", 
       main_line: "1. e4 e5 2. Nf3 Nf6",
       modern: "1. e4 e5 2. Nf3 Nf6 3. d4 exd4 4. e5 Ne4",
       paulsen_attack: "1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nc4",
       classical_karklins_martinovsky: "1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nd3",
       kaufmann_attack: "1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nf3 Nxe4 5. c4"
     }, setPetrovsProgress);
-    fetchOpeningProgress("benoni_progress", { line_1: "1. d4 Nf6 2. c4 c5 3. d5", main_line: "1. d4 Nf6 2. c4 c5 3. d5" }, setBenoniProgress);
+    fetchOpeningProgress("benoni_progress", { base_line: "1. d4 Nf6 2. c4 c5 3. d5", main_line: "1. d4 Nf6 2. c4 c5 3. d5" }, setBenoniProgress);
     fetchOpeningProgress("catalan_progress", { 
-      line_1: "1. d4 Nf6 2. c4 e6 3. g3", 
+      base_line: "1. d4 Nf6 2. c4 e6 3. g3", 
       main_line: "1. d4 Nf6 2. c4 e6 3. g3 d5 4. cxd5 exd5 5. Nf3",
       closed_main_line: "1. d4 Nf6 2. c4 e6 3. g3 d5 4. Bg2 Be7 5. Nf3 O-O 6. O-O dxc4"
     }, setCatalanProgress);
-    fetchOpeningProgress("italian_progress", { line_1: "1. e4 e5 2. Nf3 Nc6 3. Bc4", main_line: "1. e4 e5 2. Nf3 Nc6 3. Bc4" }, setItalianProgress);
+    fetchOpeningProgress("italian_progress", { base_line: "1. e4 e5 2. Nf3 Nc6 3. Bc4", main_line: "1. e4 e5 2. Nf3 Nc6 3. Bc4" }, setItalianProgress);
     }, [user]);
 
   useEffect(() => {
@@ -2242,6 +2246,7 @@ function App() {
     }
     const lines = getActiveLines(gameOpening);
     const lineLabels = getActiveLineLabels(gameOpening);
+    let fen = "";
     console.log("LINES: " + lines);
     if (daOpeningFens.length > 0){
       const randN = Math.floor(Math.random() * lines.length)
@@ -2249,7 +2254,7 @@ function App() {
       const randLineLabel = lineLabels[randN];
       console.log("line: " + randLineLabel);
       if (Math.random() < 0.25){
-        if(randLineLabel === "line_1" || randLineLabel === "main_line"){
+        if(randLineLabel === "base_line" || randLineLabel === "main_line"){
           posType = "choose random opening"
         }
 
@@ -2260,6 +2265,7 @@ function App() {
          randChess.move({from: lineUCIs[i].substring(0, 2), to: lineUCIs[i].substring(2, 4), promotion: 'q'});
         }
         console.log("randchess fen: " + randChess.fen());
+        fen = randChess.fen();
 
         if (randLineLabel.startsWith("challenge")){
           posType = "challenge line";
@@ -2278,6 +2284,23 @@ function App() {
     }
 
     console.log(posType);
+    if(posType === "choose random"){
+      let attempts = 0;
+      const MAX_ATTEMPTS = 400;
+      while (attempts < MAX_ATTEMPTS) {
+
+      }
+    }else if (posType === "choose random opening"){
+      const randnumb = Math.floor(Math.random() * (daOpeningFens.length - 1))
+      const newFens = daOpeningFens[randnumb];
+    }else if (posType === "challenge line"){
+      const newFens = fen;
+      
+    }else if (posType === "new challenge line"){
+      
+    }else{
+
+    }
 
     //console.log("Checkpoint 2");
     if(daOpeningFens.length > 0 && Math.random() < 0.25){
@@ -2448,8 +2471,8 @@ function App() {
         ? allLines.filter(l => selectedLines.includes(l.key))
         : allLines.filter(l => !(userProgress.level === 1 && l.plyLength >= 7));
 
-      // Fallback if no eligible lines: use line_1 directly from allLines, not prog.line
-      const fallbackLine = prog.allLines.line_1 ?? "";
+      // Fallback if no eligible lines: use base_line directly from allLines, not prog.line
+      const fallbackLine = prog.allLines.base_line ?? "";
 
       const chosenLine = eligibleLines.length > 0
         ? eligibleLines[Math.floor(Math.random() * eligibleLines.length)].line
@@ -2502,13 +2525,13 @@ function App() {
       setDaOpeningFens(openingFens);
       setDaOpeningMoves(openingMoves);
 
-      if (openingFens.length - 1 < userProgress.userMinPly){
+      /*if (openingFens.length - 1 < userProgress.userMinPly){
         setReqMove("add");
         const infos = await getMoveInfos(openingFens[openingFens.length - 1], opening);
         setMoveInfos(infos);
         await waitAddMoves(userProgress.userMinPly);
         setMoveInfos([]);
-      }
+      }*/
       setReqMove("none");
     };
     if (opening !== "None"){
@@ -2568,10 +2591,10 @@ function App() {
         const prog = openingProgressMap[gameOpening];
         if (prog) {
           let line = "";
-          if (prog.allLines.line_1){
-            line = prog.allLines.line_1;
+          if (prog.allLines.base_line){
+            line = prog.allLines.base_line;
           }
-          //await addMoveToLine(moveFrom + square, "line_1", prog.table, line, prog.setter);
+          //await addMoveToLine(moveFrom + square, "base_line", prog.table, line, prog.setter);
         }
         const infos = await getMoveInfos(ourNewFen, gameOpening);
         setMoveInfos(infos);
@@ -3253,10 +3276,10 @@ function App() {
                 const prog = openingProgressMap[gameOpening];
                 if (prog) {
                   let line = "";
-                  if (prog.allLines.line_1){
-                    line = prog.allLines.line_1;
+                  if (prog.allLines.base_line){
+                    line = prog.allLines.base_line;
                   }
-                  //await addMoveToLine(m.from + m.to, "line_1", prog.table, line, prog.setter);
+                  //await addMoveToLine(m.from + m.to, "base_line", prog.table, line, prog.setter);
                 }
                 const infos = await getMoveInfos(ourNewFen, gameOpening);
                 setMoveInfos(infos);
