@@ -243,6 +243,106 @@ function EvalGraph({ evals, bPosHistory, bColors, onJumpToMove }: EvalGraphProps
   );
 }
 
+const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string }[] = [
+  // Caro-Kann
+  { opening: "Caro-Kann", line_key: "base_line", moves: "1. e4 c6" },
+  { opening: "Caro-Kann", line_key: "main_line", moves: "1. e4 c6 2. d4 d5" },
+  // English
+  { opening: "English", line_key: "base_line", moves: "1. c4" },
+  { opening: "English", line_key: "main_line", moves: "1. c4" },
+  { opening: "English", line_key: "agincourt", moves: "1. c4 e6 2. Nf3 d5 3. g3" },
+  { opening: "English", line_key: "neo_catalan", moves: "1. c4 e6 2. Nf3 d5 3. g3 Nf6 4. Bg2 Be7 5. O-O" },
+  // French
+  { opening: "French", line_key: "base_line", moves: "1. e4 e6 2. d4 d5" },
+  { opening: "French", line_key: "main_line", moves: "1. e4 e6 2. d4 d5" },
+  // Sicilian
+  { opening: "Sicilian", line_key: "base_line", moves: "1. e4 c5" },
+  { opening: "Sicilian", line_key: "main_line", moves: "1. e4 c5" },
+  { opening: "Sicilian", line_key: "Dragon", moves: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6" },
+  { opening: "Sicilian", line_key: "sveshnikov", moves: "1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e5" },
+  { opening: "Sicilian", line_key: "scheveningen", moves: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e6" },
+  { opening: "Sicilian", line_key: "alapin", moves: "1. e4 c5 2. c3" },
+  { opening: "Sicilian", line_key: "closed", moves: "1. e4 c5 2. Nc3" },
+  { opening: "Sicilian", line_key: "Najdorf", moves: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6" },
+  { opening: "Sicilian", line_key: "Najdorf_English_Attack", moves: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Be3" },
+  { opening: "Sicilian", line_key: "Najdorf_Main_Line", moves: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Bg5 e6" },
+  { opening: "Sicilian", line_key: "Najdorf_Classical", moves: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Be2" },
+  { opening: "Sicilian", line_key: "Dragon_Yugoslav_Attack", moves: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. Be3" },
+  { opening: "Sicilian", line_key: "Dragon_Classical", moves: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. Be2" },
+  { opening: "Sicilian", line_key: "Dragon_Fianchetto", moves: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. g3" },
+  { opening: "Sicilian", line_key: "Dragon_Levenfish", moves: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. f4" },
+  { opening: "Sicilian", line_key: "Sveshnikov_Main_Line", moves: "1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e5 6. Ndb5 d6 7. Bg5 a6 8. Na3 b5" },
+  { opening: "Sicilian", line_key: "Scheveningen_Keres_Attack", moves: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e6 6. g4" },
+  { opening: "Sicilian", line_key: "Scheveningen_English_Attack", moves: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e6 6. Be3" },
+  { opening: "Sicilian", line_key: "Accelerated_Dragon", moves: "1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 g6" },
+  { opening: "Sicilian", line_key: "Alapin_Barmen_Defense", moves: "1. e4 c5 2. c3 d5 3. exd5 Qxd5 4. d4" },
+  { opening: "Sicilian", line_key: "Alapin_Main_Line", moves: "1. e4 c5 2. c3 Nf6" },
+  { opening: "Sicilian", line_key: "Alapin_Nc6", moves: "1. e4 c5 2. c3 Nc6 3. d4 cxd4 4. cxd4 d5" },
+  { opening: "Sicilian", line_key: "Rossolimo_Attack", moves: "1. e4 c5 2. Nf3 Nc6 3. Bb5" },
+  { opening: "Sicilian", line_key: "Rossolimo_Attack_g6", moves: "1. e4 c5 2. Nf3 Nc6 3. Bb5 g6" },
+  { opening: "Sicilian", line_key: "Rossolimo_Attack_e6", moves: "1. e4 c5 2. Nf3 Nc6 3. Bb5 e6" },
+  { opening: "Sicilian", line_key: "Rossolimo_Attack_d6", moves: "1. e4 c5 2. Nf3 Nc6 3. Bb5 d6" },
+  { opening: "Sicilian", line_key: "Rossolimo_Attack_Nf6", moves: "1. e4 c5 2. Nf3 Nc6 3. Bb5 Nf6" },
+  { opening: "Sicilian", line_key: "Closed_e6", moves: "1. e4 c5 2. Nc3 e6" },
+  { opening: "Sicilian", line_key: "Closed_a6", moves: "1. e4 c5 2. Nc3 a6" },
+  { opening: "Sicilian", line_key: "Grand_Prix", moves: "1. e4 c5 2. Nc3 Nc6 3. f4" },
+  { opening: "Sicilian", line_key: "Grand_Prix_Accelerated", moves: "1. e4 c5 2. f4 d5" },
+  // Spanish
+  { opening: "Spanish", line_key: "base_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5" },
+  { opening: "Spanish", line_key: "main_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5" },
+  { opening: "Spanish", line_key: "closed", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7" },
+  { opening: "Spanish", line_key: "berlin", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 Nf6" },
+  { opening: "Spanish", line_key: "exchange", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Bxc6" },
+  { opening: "Spanish", line_key: "open", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Nxe4" },
+  { opening: "Spanish", line_key: "marshall", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 O-O 8. c3 d5" },
+  // King's Indian
+  { opening: "King's Indian", line_key: "base_line", moves: "1. d4 Nf6 2. c4 g6" },
+  { opening: "King's Indian", line_key: "main_line", moves: "1. d4 Nf6 2. c4 g6" },
+  // Queen's Pawn Game
+  { opening: "Queen's Pawn Game", line_key: "base_line", moves: "1. d4 d5" },
+  { opening: "Queen's Pawn Game", line_key: "main_line", moves: "1. d4 d5" },
+  // Queen's Bishop Game
+  { opening: "Queen's Bishop Game", line_key: "base_line", moves: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3" },
+  { opening: "Queen's Bishop Game", line_key: "main_line", moves: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3" },
+  // Queen's Indian
+  { opening: "Queen's Indian", line_key: "base_line", moves: "1. d4 Nf6 2. c4 e6 3. Nf3 b6" },
+  { opening: "Queen's Indian", line_key: "main_line", moves: "1. d4 Nf6 2. c4 e6 3. Nf3 b6" },
+  // Queen's Gambit Declined
+  { opening: "Queen's Gambit Declined", line_key: "base_line", moves: "1. d4 d5 2. c4" },
+  { opening: "Queen's Gambit Declined", line_key: "main_line", moves: "1. d4 d5 2. c4 e6" },
+  { opening: "Queen's Gambit Declined", line_key: "charousek", moves: "1. d4 d5 2. c4 e6 3. Nc3 Be7" },
+  { opening: "Queen's Gambit Declined", line_key: "three_knights", moves: "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Nf3" },
+  { opening: "Queen's Gambit Declined", line_key: "ragozin_defense", moves: "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Nf3 Bb4" },
+  { opening: "Queen's Gambit Declined", line_key: "barmen", moves: "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Nf3 Nbd7" },
+  { opening: "Queen's Gambit Declined", line_key: "modern", moves: "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Bg5" },
+  { opening: "Queen's Gambit Declined", line_key: "semi_tarrasch", moves: "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Bg5 c5" },
+  { opening: "Queen's Gambit Declined", line_key: "semi_slav", moves: "1. d4 d5 2. c4 e6 3. Nf3 Nf6 4. e3 c6 5. Nbd2" },
+  { opening: "Queen's Gambit Declined", line_key: "harrwitz_attack", moves: "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Bf4" },
+  // Grünfeld
+  { opening: "Grünfeld", line_key: "base_line", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5" },
+  { opening: "Grünfeld", line_key: "main_line", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5" },
+  // Réti
+  { opening: "Réti", line_key: "base_line", moves: "1. Nf3" },
+  { opening: "Réti", line_key: "main_line", moves: "1. Nf3" },
+  // Petrov's
+  { opening: "Petrov's", line_key: "base_line", moves: "1. e4 e5 2. Nf3 Nf6" },
+  { opening: "Petrov's", line_key: "main_line", moves: "1. e4 e5 2. Nf3 Nf6" },
+  { opening: "Petrov's", line_key: "modern", moves: "1. e4 e5 2. Nf3 Nf6 3. d4 exd4 4. e5 Ne4" },
+  { opening: "Petrov's", line_key: "paulsen_attack", moves: "1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nc4" },
+  { opening: "Petrov's", line_key: "classical_karklins_martinovsky", moves: "1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nd3" },
+  { opening: "Petrov's", line_key: "kaufmann_attack", moves: "1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nf3 Nxe4 5. c4" },
+  // Benoni
+  { opening: "Benoni", line_key: "base_line", moves: "1. d4 Nf6 2. c4 c5 3. d5" },
+  { opening: "Benoni", line_key: "main_line", moves: "1. d4 Nf6 2. c4 c5 3. d5" },
+  // Catalan
+  { opening: "Catalan", line_key: "base_line", moves: "1. d4 Nf6 2. c4 e6 3. g3" },
+  { opening: "Catalan", line_key: "main_line", moves: "1. d4 Nf6 2. c4 e6 3. g3 d5 4. cxd5 exd5 5. Nf3" },
+  { opening: "Catalan", line_key: "closed_main_line", moves: "1. d4 Nf6 2. c4 e6 3. g3 d5 4. Bg2 Be7 5. Nf3 O-O 6. O-O dxc4" },
+  // Italian
+  { opening: "Italian", line_key: "base_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4" },
+  { opening: "Italian", line_key: "main_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4" },
+];
+
 function App() {
   //const fens = extractFENsFromGames(pgnData,94, "All");
   const [selectedLines, setSelectedLines] = useState<string[]>([]);
@@ -487,6 +587,64 @@ function App() {
       setter: setItalianProgress,
     }
   };
+
+  type OpeningLine = {
+    line_key: string;
+    moves: string;
+    source_line_key?: string | null;
+  };
+
+  const [openingLines, setOpeningLines] = useState<Record<string, OpeningLine[]>>({});
+
+  async function fetchAllOpeningLines() {
+    if (!user) return;
+    const { data, error } = await supabase
+      .from("opening_lines")
+      .select("opening, line_key, moves")
+      .eq("user_id", user.id);
+
+    if (error) {
+      console.error("Failed to fetch opening lines:", error);
+      return;
+    }
+
+    if (!data || data.length === 0) {
+      // New user — insert all defaults
+      const { error: insertError } = await supabase
+        .from("opening_lines")
+        .insert(DEFAULT_OPENING_LINES.map(l => ({ ...l, user_id: user!.id })));
+
+      if (insertError) {
+        console.error("Failed to initialize opening lines:", insertError);
+        return;
+      }
+
+      // Set local state from defaults
+      const grouped: Record<string, OpeningLine[]> = {};
+      for (const l of DEFAULT_OPENING_LINES) {
+        if (!grouped[l.opening]) grouped[l.opening] = [];
+        grouped[l.opening].push({ line_key: l.line_key, moves: l.moves });
+      }
+      setOpeningLines(grouped);
+      return;
+    }
+
+    // Existing user — group and set state as before
+    const grouped: Record<string, OpeningLine[]> = {};
+    for (const row of data) {
+      if (!grouped[row.opening]) grouped[row.opening] = [];
+      grouped[row.opening].push({ line_key: row.line_key, moves: row.moves });
+    }
+    setOpeningLines(grouped);
+  }
+
+  useEffect(() => {
+    if (!user) return;
+    fetchAllOpeningLines();
+  }, [user]);
+
+
+
   useEffect(() => {
     if (!user) return; // don't fetch if not logged in
 
@@ -702,41 +860,28 @@ function App() {
     }
   }
 
-  async function addMoveToLine(
-    move: string,
-    lineKey: string,
-    table: string,
-    currentLine: string,
-    setter: (updater: (prev: any) => any) => void
-  ) {
-    //fix
+  async function addMoveToLine(opening: string, lineKey: string, move: string) {
     if (!user) return;
-    let updatedLine = currentLine;
-    const length = currentLine.split(" ").length;
-    if (length % 3 === 0) {
-      updatedLine += " " + (length / 3 + 1) + ".";
-    }
-    const openingMover = new Chess;
-    let moves = currentLine.trim().split(" ");
-    for (let i = 0; i < moves.length; i++) {
-      if (moves[i].includes(".")) continue; // skip move numbers
-      openingMover.move(moves[i]);
-    }
-    function uciToSan(uciMove: string, fen: string): string {
-      const chesssGame = new Chess(fen);
-      const move = chesssGame.move({ from: uciMove.substring(0, 2), to: uciMove.substring(2, 4), promotion: 'q' });
-      return move.san;
-    } 
-    updatedLine += " " + uciToSan(move, openingMover.fen());
+    const line = openingLines[opening]?.find(l => l.line_key === lineKey);
+    if (!line) return;
 
-    await supabase
-      .from(table)
-      .update({ [lineKey]: updatedLine })
-      .eq("user_id", user.id);
+    const updatedMoves = line.moves + " " + move;
 
-    setter(prev => ({
+    const { error } = await supabase
+      .from("opening_lines")
+      .update({ moves: updatedMoves })
+      .eq("user_id", user.id)
+      .eq("opening", opening)
+      .eq("line_key", lineKey);
+
+    if (error) {
+      console.error("Failed to update line:", error);
+      return;
+    }
+
+    setOpeningLines(prev => ({
       ...prev,
-      [lineKey]: updatedLine
+      [opening]: prev[opening].map(l => l.line_key === lineKey ? { ...l, moves: updatedMoves } : l),
     }));
   }
 
@@ -774,17 +919,40 @@ function App() {
   }
 
   function getOpeningLines(opening: string): { key: string; label: string; line: string; plyLength: number }[] {
-    const progress = openingProgressMap[opening];
-    if (!progress?.allLines) return [];
+    const lines = openingLines[opening] ?? [];
+    return lines.map(l => ({
+      key: l.line_key,
+      label: l.line_key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()),
+      line: l.moves,
+      plyLength: getPlyLength(l.moves),
+    }));
+  }
 
-    return Object.entries(progress.allLines)
-      .filter(([_, line]) => typeof line === "string" && line.length > 0)
-      .map(([key, line]) => ({
-        key,
-        label: key.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase()),
-        line: line as string,
-        plyLength: getPlyLength(line as string),
-      }));
+  async function createNewLineFromChallenge(opening: string, sourceLineKey: string, newMove: string) {
+    if (!user) return;
+    const sourceLine = openingLines[opening]?.find(l => l.line_key === sourceLineKey);
+    if (!sourceLine) return;
+
+    const newMoves = sourceLine.moves + " " + newMove;
+    const newLineKey = `${sourceLineKey}_${Date.now()}`;
+
+    const { error } = await supabase.from("opening_lines").insert({
+      user_id: user.id,
+      opening,
+      line_key: newLineKey,
+      moves: newMoves,
+      source_line_key: sourceLineKey,
+    });
+
+    if (error) {
+      console.error("Failed to save new line:", error);
+      return;
+    }
+
+    setOpeningLines(prev => ({
+      ...prev,
+      [opening]: [...(prev[opening] ?? []), { line_key: newLineKey, moves: newMoves, source_line_key: sourceLineKey }],
+    }));
   }
 
   function highlightKingSquare(chessInstance: Chess, type: string) {
@@ -2297,7 +2465,7 @@ function App() {
       const newFens = fen;
       
     }else if (posType === "new challenge line"){
-      
+      //createNewLineFromChallenge(gameOpening, sourceLineKey, newMove);
     }else{
 
     }
