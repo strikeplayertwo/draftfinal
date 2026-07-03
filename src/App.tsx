@@ -535,11 +535,10 @@ function App() {
     }));
   }
 
-  async function updateChallengeLine(opening: string, sourceLineKey: string, newMoveUci: string, fen: string){
+  async function updateChallengeLine(opening: string, sourceLineKey: string, newMoveSan: string){
     if (!user) return;
     const sourceLine = openingLines[opening]?.find(l => l.line_key === sourceLineKey);
     if (!sourceLine) return;
-    const newMoveSan = uciToSan(newMoveUci, fen);
     let newMoves = "";
     if(sourceLine.moves.split(" ").length % 3 === 0){
       newMoves = sourceLine.moves + " " + (sourceLine.moves.split(" ").length / 3 + 1) + ". " + newMoveSan;
@@ -1865,9 +1864,51 @@ function App() {
     let disbrilcounter = brilcounter;
     let disbmcounter = bmcounter;
 
-
-    if (reqMove !== "none"){
-
+    if(isChallenge !== ""){
+      const stockfishSetup = await workerD.getBestLine(fenBeforeMove, 18).then(r => { console.log("chooseFen workerB done", r); return r; });
+      const ourEval = -1 * await workerC.getEval(chessGame.fen(), 18);
+      let bestEval = ourEval;
+      const pvb = stockfishSetup.pv;
+      const stockfishMove = pvb?.split(" ")?.[0];
+      const stockfishMoveSAN = uciToSan(stockfishMove, fenBeforeMove);
+      if(stockfishMoveSAN !== playerMove){       
+        tryFenGame.load(fenBeforeMove);
+        tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
+        bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 18);
+        console.log(stockfishMove + " not equals " + playerMove);
+      }else{
+        console.log(stockfishMoveSAN + " equals " + playerMove);
+      }
+      if(ourEval - bestEval >= -30){
+        updateChallengeLine(gameOpening, isChallenge, playerMove);
+        setDif(100);
+        setShowEffex("Good Move ✅ +100 eval");
+        //fix -- show analysis on small board?
+        stopEffex();
+        let thisaccuracy = 1000;
+        setBColors(prev => [...prev, "rgb(221, 255, 0)"]);
+        displayAccuracy = Math.round(((accuracy * (movesplayed) + thisaccuracy) / (movesplayed + 1)));
+        if (movesplayed !== 0){
+          setAccuracy(displayAccuracy);
+        }else{
+          setAccuracy(thisaccuracy);
+        }
+        evalA += 100;
+      }else{
+        setDif(-50);
+        setShowEffex("Bad Move ❌ -100 eval");
+        stopEffex();
+        let thisaccuracy = 0;
+        setBColors(prev => [...prev, "rgb(125, 0, 0)"]);
+        displayAccuracy = Math.round(((accuracy * (movesplayed) + thisaccuracy) / (movesplayed + 1)));
+        if (movesplayed !== 0){
+          setAccuracy(displayAccuracy);
+        }else{
+          setAccuracy(thisaccuracy);
+        }
+        evalA -= 100;
+      }
+    }else if (reqMove !== "none"){
       if (playerMove === reqMove){
         setDif(50);
         setShowEffex("Correct ✅ +50 eval");
