@@ -54,120 +54,6 @@ type UserProgress = {
   userMinPly: number;
 };
 
-type CaroKannProgress = {
-  base_line: string;
-  main_line: string;
-};
-type EnglishProgress = {
-  base_line?: string;
-  main_line: string;
-  agincourt?: string;
-  neo_catalan?: string;
-};
-type FrenchProgress = {
-  base_line: string;
-  main_line: string;
-};
-type SicilianProgress = {
-  base_line?: string;
-  main_line: string;
-  Najdorf?: string;
-  Najdorf_English_Attack?: string;
-  Najdorf_Main_Line?: string;
-  Najdorf_Classical?: string;
-  Dragon?: string;
-  Dragon_Yugoslav_Attack?: string;
-  Dragon_Classical?: string;
-  Dragon_Fianchetto?: string;
-  Dragon_Levenfish?: string;
-  sveshnikov?: string;
-  Sveshnikov_Main_Line?: string;
-  scheveningen?: string;
-  Scheveningen_Keres_Attack?: string;
-  Scheveningen_English_Attack?: string;
-  Accelerated_Dragon?: string;
-  alapin?: string;
-  Alapin_Barmen_Defense?: string;
-  Alapin_Main_Line?: string;
-  Alapin_nc6?: string;
-  rossolimo_Attack?: string;
-  Rossolimo_Attack_g6?: string;
-  Rossolimo_Attack_e6?: string;
-  Rossolimo_Attack_d6?: string;
-  Rossolimo_Attack_Nf6?: string;
-  closed?: string;
-  Closed_e6?: string;
-  Closed_a6?: string;
-  Grand_Prix?: string;
-  Grand_Prix_Accelerated?: string;
-};
-type SpanishProgress = {
-  base_line?: string;
-  main_line: string;
-  closed?: string;
-  berlin?: string;
-  exchange?: string;
-  open?: string;
-  marshall?: string;
-};
-type KingsIndianProgress = {
-  base_line: string;
-  main_line: string;
-};
-type QueensPawnGameProgress = {
-  base_line: string;
-  main_line: string;
-};
-type QueensBishopGameProgress = {
-  base_line: string;
-  main_line: string;
-};
-type QueensIndianProgress = {
-  base_line: string;
-  main_line: string;
-};
-type QueensGambitDeclinedProgress = {
-  base_line?: string;
-  main_line: string;
-  charousek?: string;
-  three_knights?: string;
-  ragozin_defense?: string;
-  barmen?: string;
-  modern?: string;
-  semi_tarrasch?: string;
-  semi_slav?: string;
-  harrwitz_attack?: string;
-};
-type GruenfeldProgress = {
-  base_line: string;
-  main_line: string;
-};
-type RetiProgress = {
-  base_line: string;
-  main_line: string;
-};
-type PetrovsProgress = {
-  base_line?: string;
-  main_line: string;
-  modern?: string;
-  paulsen_attack?: string;
-  classical_karklins_martinovsky?: string;
-  kaufmann_attack?: string;
-};
-type BenoniProgress = {
-  base_line: string;
-  main_line: string;
-};
-type CatalanProgress = {
-  base_line?: string;
-  main_line: string;
-  closed_main_line?: string;
-};
-type ItalianProgress = {
-  base_line: string;
-  main_line: string;
-};
-
 type MoveInfo = {
   san: string;
   from: string;
@@ -403,70 +289,6 @@ function App() {
   
   //opening stuff
   const daOpeningFensRef = useRef<string[]>([]);
-  const [caroKannProgress, setCaroKannProgress] = useState<CaroKannProgress>({
-    base_line: "1. e4 c6",
-    main_line: "1. e4 c6 2. d4 d5"
-  });
-  const [englishProgress, setEnglishProgress] = useState<EnglishProgress>({
-    base_line: "1. c4",
-    main_line: "1. c4"
-  });
-  const [frenchProgress, setFrenchProgress] = useState<FrenchProgress>({
-    base_line: "1. e4 e6 2. d4 d5",
-    main_line: "1. e4 e6 2. d4 d5"
-  });
-  const [sicilianProgress, setSicilianProgress] = useState<SicilianProgress>({
-    base_line: "1. e4 c5",
-    main_line: "1. e4 c5"
-  });
-  const [spanishProgress, setSpanishProgress] = useState<SpanishProgress>({
-    base_line: "1. e4 e5 2. Nf3 Nc6 3. Bb5",
-    main_line: "1. e4 e5 2. Nf3 Nc6 3. Bb5"
-  });
-  const [kingsIndianProgress, setKingsIndianProgress] = useState<KingsIndianProgress>({
-    base_line: "1. d4 Nf6 2. c4 g6",
-    main_line: "1. d4 Nf6 2. c4 g6"
-  });
-  const [queensPawnGameProgress, setQueensPawnGameProgress] = useState<QueensPawnGameProgress>({
-    base_line: "1. d4 d5",
-    main_line: "1. d4 d5"
-  });
-  const [queensBishopGameProgress, setQueensBishopGameProgress] = useState<QueensBishopGameProgress>({
-    base_line: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3",
-    main_line: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3"
-  });
-  const [queensIndianProgress, setQueensIndianProgress] = useState<QueensIndianProgress>({
-    base_line: "1. d4 Nf6 2. c4 e6 3. Nf3 b6",
-    main_line: "1. d4 Nf6 2. c4 e6 3. Nf3 b6"
-  });
-  const [queensGambitDeclinedProgress, setQueensGambitDeclinedProgress] = useState<QueensGambitDeclinedProgress>({
-    base_line: "1. d4 d5 2. c4",
-    main_line: "1. d4 d5 2. c4 e6"
-  });
-  const [gruenfeldProgress, setGruenfeldProgress] = useState<GruenfeldProgress>({
-    base_line: "1. d4 Nf6 2. c4 g6 3. Nc3 d5",
-    main_line: "1. d4 Nf6 2. c4 g6 3. Nc3 d5"
-  });
-  const [retiProgress, setRetiProgress] = useState<RetiProgress>({
-    base_line: "1. Nf3",
-    main_line: "1. Nf3"
-  });
-  const [petrovsProgress, setPetrovsProgress] = useState<PetrovsProgress>({
-    base_line: "1. e4 e5 2. Nf3 Nf6",
-    main_line: "1. e4 e5 2. Nf3 Nf6"
-  });
-  const [benoniProgress, setBenoniProgress] = useState<BenoniProgress>({
-    base_line: "1. d4 Nf6 2. c4 c5 3. d5",
-    main_line: "1. d4 Nf6 2. c4 c5 3. d5"
-  });
-  const [catalanProgress, setCatalanProgress] = useState<CatalanProgress>({
-    base_line: "1. d4 Nf6 2. c4 e6 3. g3",
-    main_line: "1. d4 Nf6 2. c4 e6 3. g3 d5 4. cxd5 exd5 5. Nf3"
-  });
-  const [italianProgress, setItalianProgress] = useState<ItalianProgress>({
-    base_line: "1. e4 e5 2. Nf3 Nc6 3. Bc4",
-    main_line: "1. e4 e5 2. Nf3 Nc6 3. Bc4"
-  });
 
   const [showOpeningSelect, setShowOpeningSelect] = useState(false);
   const [gameOpening, setGameOpening] = useState("None");
@@ -481,112 +303,6 @@ function App() {
   });
   const openings = ["None", "Random", "Sicilian", "French", "Caro-Kann", "English", "Ruy Lopez", "King's Indian", "Queen's Pawn Game", "Queen's Bishop Game", "Queen's Indian", "Gruenfeld", "Queen's Gambit Declined", "Reti", "Petrov's", "Benoni", "Catalan", "Italian"];
   const openingPlyLengths: Record<string, number> = { "None": 6, "Random": 6, "Sicilian": 2, "French": 4, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "Queen's Bishop Game": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 3, "Reti": 1, "Petrov's": 4, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Italian": 5 };
-  const openingMoveMap: Record<string, string> = {
-    "None": "",
-    "Random": "",
-    "Sicilian": "1. e4 c5",
-    "French": "1. e4 e6 2. d4 d5",
-    "Caro-Kann": "1. e4 c6",
-    "English": "1. c4",
-    "Ruy Lopez": "1. e4 e5 2. Nf3 Nc6 3. Bb5",
-    "King's Indian": "1. d4 Nf6 2. c4 g6",
-    "Queen's Pawn Game": "1. d4 d5",
-    "Queen's Bishop Game": "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3",
-    "Queen's Indian": "1. d4 Nf6 2. c4 e6 3. Nf3 b6",
-    "Gruenfeld": "1. d4 Nf6 2. c4 g6 3. Nc3 d5",
-    "Queen's Gambit Declined": "1. d4 d5 2. c4",
-    "Reti": "1. Nf3",
-    "Petrov's": "1. e4 e5 2. Nf3 Nf6",
-    "Benoni": "1. d4 Nf6 2. c4 c5 3. d5",
-    "Catalan": "1. d4 Nf6 2. c4 e6 3. g3",
-    "Italian": "1. e4 e5 2. Nf3 Nc6 3. Bc4"
-  };
-  const openingProgressMap: Record<string, {
-    table: string;
-    allLines: Record<string, string | undefined>;
-    setter: (updater: (prev: any) => any) => void;
-  }> = {
-    "Caro-Kann": {
-      table: "caro_kann_progress",
-      allLines: caroKannProgress,
-      setter: setCaroKannProgress,
-    },
-    "English": {
-      table: "english_progress",
-      allLines: englishProgress,
-      setter: setEnglishProgress,
-    },
-    "French": {
-      table: "french_progress",
-      allLines: frenchProgress,
-      setter: setFrenchProgress,
-    },
-    "Sicilian": {
-      table: "sicilian_progress",
-      allLines: sicilianProgress,
-      setter: setSicilianProgress,
-    },
-    "Ruy Lopez": {
-      table: "spanish_progress",
-      allLines: spanishProgress,
-      setter: setSpanishProgress,
-    },
-    "King's Indian": {
-      table: "kings_indian_progress",
-      allLines: kingsIndianProgress,
-      setter: setKingsIndianProgress,
-    },
-    "Queen's Pawn Game": {
-      table: "queens_pawn_game_progress",
-      allLines: queensPawnGameProgress,
-      setter: setQueensPawnGameProgress,
-    },
-    "Queen's Bishop Game": {
-      table: "queens_bishop_game_progress",
-      allLines: queensBishopGameProgress,
-      setter: setQueensBishopGameProgress,
-    },
-    "Queen's Indian": {
-      table: "queens_indian_progress",
-      allLines: queensIndianProgress,
-      setter: setQueensIndianProgress,
-    },
-    "Queen's Gambit Declined": {
-      table: "queens_gambit_declined_progress",
-      allLines: queensGambitDeclinedProgress,
-      setter: setQueensGambitDeclinedProgress,
-    },
-    "Gruenfeld": {
-      table: "gruenfeld_progress",
-      allLines: gruenfeldProgress,
-      setter: setGruenfeldProgress,
-    },
-    "Reti": {
-      table: "reti_progress",
-      allLines: retiProgress,
-      setter: setRetiProgress,
-    },
-    "Petrov's": {
-      table: "petrovs_progress",
-      allLines: petrovsProgress,
-      setter: setPetrovsProgress,
-    },
-    "Benoni": {
-      table: "benoni_progress",
-      allLines: benoniProgress,
-      setter: setBenoniProgress,
-    },
-    "Catalan": {
-      table: "catalan_progress",
-      allLines: catalanProgress,
-      setter: setCatalanProgress,
-    },
-    "Italian": {
-      table: "italian_progress",
-      allLines: italianProgress,
-      setter: setItalianProgress,
-    }
-  };
 
   type OpeningLine = {
     line_key: string;
@@ -688,116 +404,9 @@ function App() {
       }
     }
 
-    async function fetchOpeningProgress(
-      table: string,
-      defaults: Record<string, string>,
-      setter: (data: any) => void
-    ) {
-      if (!user) return;
-      const columns = Object.keys(defaults).join(", ");
-      const { data, error } = await supabase
-        .from(table)
-        .select(columns)
-        .eq("user_id", user.id)
-        .single();
-
-      if (error || !data) {
-        await supabase.from(table).insert({
-          user_id: user.id,
-          ...defaults
-        });
-        setter(defaults);
-      } else {
-        setter(data);
-      }
-    }
-
     fetchGameHistory();
     fetchDailyGameHistory();
     fetchProgress();
-    fetchOpeningProgress("caro_kann_progress", { base_line: "1. e4 c6", main_line: "1. e4 c6 2. d4 d5" }, setCaroKannProgress);
-    fetchOpeningProgress("english_progress", { 
-      base_line: "1. c4", 
-      main_line: "1. c4",
-      agincourt: "1. c4 e6 2. Nf3 d5 3. g3",
-      neo_catalan: "1. c4 e6 2. Nf3 d5 3. g3 Nf6 4. Bg2 Be7 5. O-O"
-    }, setEnglishProgress);
-    fetchOpeningProgress("french_progress", { base_line: "1. e4 e6 2. d4 d5", main_line: "1. e4 e6 2. d4 d5" }, setFrenchProgress);
-    fetchOpeningProgress("sicilian_progress", { 
-      base_line: "1. e4 c5",
-      main_line: "1. e4 c5",
-      Dragon: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6",
-      sveshnikov: "1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e5",
-      scheveningen: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e6",
-      alapin: "1. e4 c5 2. c3",
-      closed: "1. e4 c5 2. Nc3",
-      Najdorf: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6",
-      Najdorf_English_Attack: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Be3",
-      Najdorf_Main_Line: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Bg5 e6",
-      Najdorf_Classical: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Be2",
-      Dragon_Yugoslav_Attack: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. Be3",
-      Dragon_Classical: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. Be2",
-      Dragon_Fianchetto: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. g3",
-      Dragon_Levenfish: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6 6. f4",
-      Sveshnikov_Main_Line: "1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e5 6. Ndb5 d6 7. Bg5 a6 8. Na3 b5",
-      Scheveningen_Keres_Attack: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e6 6. g4",
-      Scheveningen_English_Attack: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e6 6. Be3",
-      Accelerated_Dragon: "1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 g6",
-      Alapin_Barmen_Defense: "1. e4 c5 2. c3 d5 3. exd5 Qxd5 4. d4",
-      Alapin_Main_Line: "1. e4 c5 2. c3 Nf6",
-      Alapin_Nc6: "1. e4 c5 2. c3 Nc6 3. d4 cxd4 4. cxd4 d5",
-      Rossolimo_Attack: "1. e4 c5 2. Nf3 Nc6 3. Bb5",
-      Rossolimo_Attack_g6: "1. e4 c5 2. Nf3 Nc6 3. Bb5 g6",
-      Rossolimo_Attack_e6: "1. e4 c5 2. Nf3 Nc6 3. Bb5 e6",
-      Rossolimo_Attack_d6: "1. e4 c5 2. Nf3 Nc6 3. Bb5 d6",
-      Rossolimo_Attack_Nf6: "1. e4 c5 2. Nf3 Nc6 3. Bb5 Nf6",
-      Closed_e6: "1. e4 c5 2. Nc3 e6",
-      Closed_a6: "1. e4 c5 2. Nc3 a6",
-      Grand_Prix: "1. e4 c5 2. Nc3 Nc6 3. f4",
-      Grand_Prix_Accelerated: "1. e4 c5 2. f4 d5"
-    }, setSicilianProgress);
-    fetchOpeningProgress("spanish_progress", { 
-      base_line: "1. e4 e5 2. Nf3 Nc6 3. Bb5", 
-      main_line: "1. e4 e5 2. Nf3 Nc6 3. Bb5",
-      closed: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7", 
-      berlin: "1. e4 e5 2. Nf3 Nc6 3. Bb5 Nf6",
-      exchange: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Bxc6",
-      open: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Nxe4",
-      marshall: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 O-O 8. c3 d5"
-    }, setSpanishProgress);
-    fetchOpeningProgress("kings_indian_progress", { base_line: "1. d4 Nf6 2. c4 g6", main_line: "1. d4 Nf6 2. c4 g6" }, setKingsIndianProgress);
-    fetchOpeningProgress("queens_pawn_game_progress", { base_line: "1. d4 d5", main_line: "1. d4 d5" }, setQueensPawnGameProgress);
-    fetchOpeningProgress("queens_bishop_game_progress", { base_line: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3", main_line: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3" }, setQueensBishopGameProgress);
-    fetchOpeningProgress("queens_indian_progress", { base_line: "1. d4 Nf6 2. c4 e6 3. Nf3 b6", main_line: "1. d4 Nf6 2. c4 e6 3. Nf3 b6" }, setQueensIndianProgress);
-    fetchOpeningProgress("queens_gambit_declined_progress", { 
-      base_line: "1. d4 d5 2. c4", 
-      main_line: "1. d4 d5 2. c4 e7e6",
-      charousek: "1. d4 d5 2. c4 e6 3. Nc3 Be7",
-      three_knights: "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Nf3",
-      ragozin_defense: "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Nf3 Bb4",
-      barmen: "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Nf3 Nbd7",
-      modern: "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Bg5",
-      semi_tarrasch: "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Bg5 c5",
-      semi_slav: "1. d4 d5 2. c4 e6 3. Nf3 Nf6 4. e3 c6 5. Nbd2",
-      harrwitz_attack: "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Bf4"
-    }, setQueensGambitDeclinedProgress);
-    fetchOpeningProgress("gruenfeld_progress", { base_line: "1. d4 Nf6 2. c4 g6 3. Nc3 d5", main_line: "1. d4 Nf6 2. c4 g6 3. Nc3 d5" }, setGruenfeldProgress);
-    fetchOpeningProgress("reti_progress", { base_line: "1. Nf3", main_line: "1. Nf3" }, setRetiProgress);
-    fetchOpeningProgress("petrovs_progress", { 
-      base_line: "1. e4 e5 2. Nf3 Nf6", 
-      main_line: "1. e4 e5 2. Nf3 Nf6",
-      modern: "1. e4 e5 2. Nf3 Nf6 3. d4 exd4 4. e5 Ne4",
-      paulsen_attack: "1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nc4",
-      classical_karklins_martinovsky: "1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nd3",
-      kaufmann_attack: "1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nf3 Nxe4 5. c4"
-    }, setPetrovsProgress);
-    fetchOpeningProgress("benoni_progress", { base_line: "1. d4 Nf6 2. c4 c5 3. d5", main_line: "1. d4 Nf6 2. c4 c5 3. d5" }, setBenoniProgress);
-    fetchOpeningProgress("catalan_progress", { 
-      base_line: "1. d4 Nf6 2. c4 e6 3. g3", 
-      main_line: "1. d4 Nf6 2. c4 e6 3. g3 d5 4. cxd5 exd5 5. Nf3",
-      closed_main_line: "1. d4 Nf6 2. c4 e6 3. g3 d5 4. Bg2 Be7 5. Nf3 O-O 6. O-O dxc4"
-    }, setCatalanProgress);
-    fetchOpeningProgress("italian_progress", { base_line: "1. e4 e5 2. Nf3 Nc6 3. Bc4", main_line: "1. e4 e5 2. Nf3 Nc6 3. Bc4" }, setItalianProgress);
     }, [user]);
 
   useEffect(() => {
@@ -860,13 +469,11 @@ function App() {
     }
   }
 
-  async function addMoveToLine(opening: string, lineKey: string, move: string) {
+  /*async function addMoveToLine(opening: string, lineKey: string, move: string) {
     if (!user) return;
     const line = openingLines[opening]?.find(l => l.line_key === lineKey);
     if (!line) return;
-
     const updatedMoves = line.moves + " " + move;
-
     const { error } = await supabase
       .from("opening_lines")
       .update({ moves: updatedMoves })
@@ -878,12 +485,11 @@ function App() {
       console.error("Failed to update line:", error);
       return;
     }
-
     setOpeningLines(prev => ({
       ...prev,
       [opening]: prev[opening].map(l => l.line_key === lineKey ? { ...l, moves: updatedMoves } : l),
     }));
-  }
+  }*/
 
   async function getMoveInfos(fen: string, opening: string): Promise<MoveInfo[]> {
     const game = new Chess(fen);
@@ -893,10 +499,10 @@ function App() {
       const moveSan = line.pv.split(" ")[0];
       const move = game.move(moveSan);
       let isMain = false;
-      const prog = openingProgressMap[opening];
-      if (prog && prog.allLines.main_line !== null) {
-        if (prog.allLines.main_line?.includes(moveSan)){
-          isMain = true;}
+      const lines = openingLines[opening] ?? [];
+      const mainLine = lines.find(l => l.line_key === "main_line")?.moves ?? null;
+      if (mainLine && mainLine.includes(moveSan)) {
+        isMain = true;
       }
       game.undo();
       return {
@@ -928,13 +534,23 @@ function App() {
     }));
   }
 
-  async function createNewLineFromChallenge(opening: string, sourceLineKey: string, newMove: string) {
+  async function createNewLineFromChallenge(opening: string, sourceLineKey: string, newzMove: string, fen: string) {
     if (!user) return;
     const sourceLine = openingLines[opening]?.find(l => l.line_key === sourceLineKey);
     if (!sourceLine) return;
-
-    const newMoves = sourceLine.moves + " " + newMove;
-    const newLineKey = `${sourceLineKey}_${Date.now()}`;
+    const newMove = uciToSan(newzMove, fen);
+    let newMoves = "";
+    if(sourceLine.moves.split(" ").length % 3 === 0){
+      newMoves = sourceLine.moves + " " + (sourceLine.moves.split(" ").length / 3 + 1) + ". " + newMove;
+    }else{
+      newMoves = sourceLine.moves + " " + newMove;
+    }
+    let newLineKey = "";
+    if(sourceLineKey.startsWith("challenge")){
+      newLineKey = `${sourceLineKey}_${newMove}`;
+    }else{
+      newLineKey = `challenge_${sourceLineKey}_${newMove}`;
+    }
 
     const { error } = await supabase.from("opening_lines").insert({
       user_id: user.id,
@@ -1086,7 +702,8 @@ function App() {
     await saveGameResult(accuracy, result, opening);
   }
 
-  async function dailyTriggerEnd(finalmessage: string, accuracy: number, daily_score: number){
+  //async function dailyTriggerEnd(finalmessage: string, accuracy: number, daily_score: number){
+  async function dailyTriggerEnd(finalmessage: string){
     setGameResult(finalmessage);
     //await saveDailyGameResult(accuracy, daily_score);
   }
@@ -1582,7 +1199,7 @@ function App() {
   function countPassedPawns(fen: string): { stm: number; opp: number } {
     const fenParts = fen.split(" ");
     const sideToMove = fenParts[1] as "w" | "b";
-    const opponent = sideToMove === "w" ? "b" : "w";
+    //const opponent = sideToMove === "w" ? "b" : "w";
     const game = new Chess(fen);
     const board = game.board();
     let stmPassed = 0;
@@ -1620,7 +1237,7 @@ function App() {
     return { stm: stmPassed, opp: oppPassed };
   }
 
-  function getFensFromPgn(pgn: string): string[] {
+  /*function getFensFromPgn(pgn: string): string[] {
     const game = new Chess();
     game.loadPgn(pgn);
     const history = game.history({ verbose: true });
@@ -1647,7 +1264,7 @@ function App() {
       }
     }
     return scores;
-  }
+  }*/
 
   async function predictCPL(fen: string, depth: number, usemultipliers: boolean, cpVal1: number, cpVal2: number, cpAdd: number, clarityVal1: number, clarityVal2: number): Promise<[number, number, number, number, number, number, string]> {
     //standard: depth = 18, usemultipliers = true, cpVal1=-91, cpVal2 = -41, cpAdd = 10, clarityVal1 = -80, clarityVal2 = -40
@@ -1913,7 +1530,7 @@ function App() {
     return chosenFens;
   }
 
-  async function generateFENsFromOpening(mainline: string): Promise<string[]> {
+  /*async function generateFENsFromOpening(mainline: string): Promise<string[]> {
     const fens: string[] = [];
     let mainMoves = mainline.split(" ");
     let genGame = new Chess();
@@ -1929,15 +1546,10 @@ function App() {
         setBigChessPosition(genGame.fen());
         while (fens.length < i * 20){
             const lines = await workerA.getTop6Lines(genGame.fen(), 16);
-            let tester = 0;
-            try{
-              tester = lines[1].cp;
-            }catch{
+            if(!lines[1].cp){
               lines[1] = lines[0];
             }
-            try{
-              tester = lines[2].cp;
-            }catch{
+            if(!lines[2].cp){
               lines[2] = lines[1];
             }
             let sidetomove = genGame.fen().split(" ")[1];
@@ -1978,11 +1590,6 @@ function App() {
                 }
             }
             console.log(fens.length);
-            /*if (sidetomove === "b") {
-              console.log("Move " + lines[0].pv.split(" ")[0] + ": " + lines[0].cp);
-            }else{
-              console.log("Move " + lines[2].pv.split(" ")[0] + ": " + lines[2].cp);
-            }*/
             console.log("Move " + lines[0].pv.split(" ")[0] + ": " + lines[0].cp + " Probability: " + probability);
             console.log("Move " + lines[1].pv.split(" ")[0] + ": " + lines[1].cp + " Accuracy: " + secondaccuracy + " Probability: " + ((100 - probability) * (thirdprobability / 100)));
             console.log("Move " + lines[2].pv.split(" ")[0] + ": " + lines[2].cp + " Accuracy: " + thirdaccuracy + " Probability: " + ((100 - probability - ((100 - probability) * (thirdprobability / 100)))));
@@ -1990,7 +1597,7 @@ function App() {
         }
     }
     return fens;
-  }
+  }*/
 
   async function chooseFirstFen(opening: string = "None", plyLength: number = 6): Promise<string> {
     const daFens = await extractFENsFromGames(pgnData,94, opening, plyLength);
@@ -2145,7 +1752,8 @@ function App() {
       const dailyScore = (displayAccuracy * fenScores / 2500);
       const displayScore = Math.round(dailyScore);
       await saveAndRankResult(dailyScore, displayAccuracy/10);
-      dailyTriggerEnd("Daily Challenge Completed! Final Accuracy: " + displayAccuracy/10 + ". Final Score: " + displayScore, displayAccuracy/10, dailyScore);
+      //dailyTriggerEnd("Daily Challenge Completed! Final Accuracy: " + displayAccuracy/10 + ". Final Score: " + displayScore, displayAccuracy/10, dailyScore);
+      dailyTriggerEnd("Daily Challenge Completed! Final Accuracy: " + displayAccuracy/10 + ". Final Score: " + displayScore);
     }
     return;
   }
@@ -2155,8 +1763,57 @@ function App() {
     const move = chesssGame.move({ from: uciMove.substring(0, 2), to: uciMove.substring(2, 4), promotion: 'q' });
     return move.san;
   }
-  async function chooseFen(fenBeforeMove: string, playerMove: string) {
-    playerMove = uciToSan(playerMove, fenBeforeMove);
+
+  async function generateBranchMove(fen: string): Promise<string[]>{
+    let uciFen: string[] = [];
+    const genGame = new Chess(fen);
+    const lines = await workerA.getTop6Lines(genGame.fen(), 16);
+    if(!lines[1].cp) lines[1] = lines[0];
+    if(!lines[2].cp) lines[2] = lines[1];
+    let sidetomove = genGame.fen().split(" ")[1];
+    if (sidetomove === "b") {
+      const temp = lines[0];
+      lines[0] = lines[2];
+      lines[2] = temp;
+    }
+    let secondaccuracy = 0;
+    let thirdaccuracy = 0;
+    if (sidetomove === "b"){
+      secondaccuracy = Math.round((100 * Math.exp((-(lines[1].cp - lines[0].cp)) / 200)));
+      thirdaccuracy = Math.round((100 * Math.exp((-(lines[2].cp - lines[0].cp)) / 200)));
+    }else{
+      secondaccuracy = Math.round((100 * Math.exp((lines[1].cp - lines[0].cp) / 200)));
+      thirdaccuracy = Math.round((100 * Math.exp((lines[2].cp - lines[0].cp) / 200)));
+    }
+    let thirdprobability = 0;
+    let probability = 50 + (100 - secondaccuracy);
+    if (probability > 100) probability = 100;
+    thirdprobability = 50 + (secondaccuracy - thirdaccuracy);
+    if (thirdprobability > 100) thirdprobability = 100;
+    if (Math.random() * 100 < probability){
+      genGame.move(lines[0].pv.split(" ")[0]);
+      uciFen.push(lines[0].pv.split(" ")[0]);
+      console.log("uciFen push " + lines[0].pv.split(" ")[0]);
+      uciFen.push(genGame.fen());
+    } else {
+      //thirdaccuracy = Math.round((100 * Math.exp((lines[2].cp - lines[0].cp) / 200)) * 10);
+      if (Math.random() * 100 < thirdprobability){
+        genGame.move(lines[1].pv.split(" ")[0]);
+        uciFen.push(lines[1].pv.split(" ")[0]);
+        console.log("uciFen push " + lines[1].pv.split(" ")[0]);
+        uciFen.push(genGame.fen());
+      } else {
+        genGame.move(lines[2].pv.split(" ")[0]);
+        uciFen.push(lines[2].pv.split(" ")[0]);
+        console.log("uciFen push " + lines[2].pv.split(" ")[0]);
+        uciFen.push(genGame.fen());
+      }
+    }
+    return uciFen;
+  }
+
+  async function chooseFen(fenBeforeMove: string, playerzMove: string) {
+    const playerMove = uciToSan(playerzMove, fenBeforeMove);
     const chessGame = chessGameRef.current;
     if (!chessGame) return;
     const tryFenGame = tryFenRef.current;
@@ -2415,7 +2072,9 @@ function App() {
     const lines = getActiveLines(gameOpening);
     const lineLabels = getActiveLineLabels(gameOpening);
     let fen = "";
+    let randFens: string[] = [];
     console.log("LINES: " + lines);
+    let sourceLineKey = "";
     if (daOpeningFens.length > 0){
       const randN = Math.floor(Math.random() * lines.length)
       const randLine = lines[randN];
@@ -2429,8 +2088,9 @@ function App() {
         const randChess = new Chess();
         const lineUCIs = getLineUCIs(randLine);
         for(let i = 0; i < lineUCIs.length; i++){
-         console.log("loading move: " + lineUCIs[i]);
-         randChess.move({from: lineUCIs[i].substring(0, 2), to: lineUCIs[i].substring(2, 4), promotion: 'q'});
+          randFens.push(randChess.fen());
+          console.log("loading move: " + lineUCIs[i]);
+          randChess.move({from: lineUCIs[i].substring(0, 2), to: lineUCIs[i].substring(2, 4), promotion: 'q'});
         }
         console.log("randchess fen: " + randChess.fen());
         fen = randChess.fen();
@@ -2444,11 +2104,13 @@ function App() {
 
           if(Math.random() < challengeChance){
             posType = "new challenge line";
+            //sourceLineKey = randLineLabel.split("_")[1];
+            sourceLineKey = randLineLabel;
           }else{
             posType = "random line position";
           }
         }
-      }   
+      } 
     }
 
     console.log(posType);
@@ -2456,19 +2118,22 @@ function App() {
       let attempts = 0;
       const MAX_ATTEMPTS = 400;
       while (attempts < MAX_ATTEMPTS) {
-
+        
       }
     }else if (posType === "choose random opening"){
       const randnumb = Math.floor(Math.random() * (daOpeningFens.length - 1))
       const newFens = daOpeningFens[randnumb];
     }else if (posType === "challenge line"){
       const newFens = fen;
-      
     }else if (posType === "new challenge line"){
-      //createNewLineFromChallenge(gameOpening, sourceLineKey, newMove);
-    }else{
-
+      const [newMoveUci, newFens] = await generateBranchMove(fen); 
+      createNewLineFromChallenge(gameOpening, sourceLineKey, newMoveUci, fen);
+    }else{//random line position
+      const rand2N = Math.floor(Math.random() * randFens.length);
+      const newFens = randFens[rand2N];
     }
+
+    //afterwards: is postype = challenge line or new challenge line, if response is within 30 eval, move successful, line saved
 
     //console.log("Checkpoint 2");
     if(daOpeningFens.length > 0 && Math.random() < 0.25){
@@ -2602,7 +2267,7 @@ function App() {
     return true;
   }
 
-  function sanToUci(sanMove: string): string {
+  /*function sanToUci(sanMove: string): string {
     const openingMover = new Chess();
     try {
       const moveData = openingMover.move(sanMove);
@@ -2611,7 +2276,7 @@ function App() {
     } catch {
       return "";
     }
-  }
+  }*/
 
   async function startOpening(opening: string) {
     setScreen("classic");
@@ -2619,8 +2284,8 @@ function App() {
 
     let openingMoves: string[];
     let plyLength = openingPlyLengths[opening];
-    console.log(openingMoveMap[opening])
-    let openingMovesSAN = openingMoveMap[opening].split(" ");
+    console.log(openingLines[opening]?.find(l => l.line_key === "base_line")?.moves ?? "");
+    let openingMovesSAN = (openingLines[opening]?.find(l => l.line_key === "base_line")?.moves ?? "").split(" ");
     console.log(openingMovesSAN);
     openingMoves = openingMovesSAN.filter(m => {
       if (/^[1-9]/.test(m)) return false;
@@ -2631,16 +2296,15 @@ function App() {
     
 
     // Use selected line(s) if the player picked any, else fall back to default line
-    const prog = openingProgressMap[opening];
-
-    if (prog) {
+    const lines = openingLines[opening] ?? [];
+    if (lines.length > 0) {
       const allLines = getOpeningLines(opening);
       const eligibleLines = selectedLines.length > 0
         ? allLines.filter(l => selectedLines.includes(l.key))
         : allLines.filter(l => !(userProgress.level === 1 && l.plyLength >= 7));
 
       // Fallback if no eligible lines: use base_line directly from allLines, not prog.line
-      const fallbackLine = prog.allLines.base_line ?? "";
+      const fallbackLine = lines.find(l => l.line_key === "base_line")?.moves ?? "";
 
       const chosenLine = eligibleLines.length > 0
         ? eligibleLines[Math.floor(Math.random() * eligibleLines.length)].line
@@ -2684,11 +2348,11 @@ function App() {
         setShowEffex("Correct ✅");
         stopEffex();
       }
-      async function waitAddMoves(minMoves: number) {
+      /*async function waitAddMoves(minMoves: number) {
         while (daOpeningFensRef.current.length - 1 < minMoves) {
           await new Promise(resolve => setTimeout(resolve, 50));
         }
-      }
+      }*/
       await playerRunThru(openingFens);
       setDaOpeningFens(openingFens);
       setDaOpeningMoves(openingMoves);
@@ -2756,13 +2420,10 @@ function App() {
         setShowEffex("Position added to opening pool (" + daOpeningFensRef.current.length + ")");
         stopEffex();
         setBigChessPosition(ourNewFen);
-        const prog = openingProgressMap[gameOpening];
-        if (prog) {
-          let line = "";
-          if (prog.allLines.base_line){
-            line = prog.allLines.base_line;
-          }
-          //await addMoveToLine(moveFrom + square, "base_line", prog.table, line, prog.setter);
+        const lines = openingLines[gameOpening] ?? [];
+        if (lines.length > 0) {
+          //const line = lines.find(l => l.line_key === "base_line")?.moves ?? "";
+          //await addMoveToLine(gameOpening, "base_line", line, moveFrom + square);
         }
         const infos = await getMoveInfos(ourNewFen, gameOpening);
         setMoveInfos(infos);
@@ -3441,13 +3102,10 @@ function App() {
                 setShowEffex("Position added to opening pool (" + daOpeningFensRef.current.length + ")");
                 stopEffex();
                 setBigChessPosition(ourNewFen);
-                const prog = openingProgressMap[gameOpening];
-                if (prog) {
-                  let line = "";
-                  if (prog.allLines.base_line){
-                    line = prog.allLines.base_line;
-                  }
-                  //await addMoveToLine(m.from + m.to, "base_line", prog.table, line, prog.setter);
+                const lines = openingLines[gameOpening] ?? [];
+                if (lines.length > 0) {
+                  //const line = lines.find(l => l.line_key === "base_line")?.moves ?? "";
+                  //await addMoveToLine(gameOpening, "base_line", line, moveFrom + square);
                 }
                 const infos = await getMoveInfos(ourNewFen, gameOpening);
                 setMoveInfos(infos);
