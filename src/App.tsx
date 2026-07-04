@@ -536,9 +536,15 @@ function App() {
   }
 
   async function updateChallengeLine(opening: string, sourceLineKey: string, newMoveSan: string){
-    if (!user) return;
+    if (!user) {
+      console.log("error: user not logged in");
+      return;
+    }
     const sourceLine = openingLines[opening]?.find(l => l.line_key === sourceLineKey);
-    if (!sourceLine) return;
+    if (!sourceLine) {
+      console.log("error: source line not found");
+      return;
+    }
     let newMoves = "";
     if(sourceLine.moves.split(" ").length % 3 === 0){
       newMoves = sourceLine.moves + " " + (sourceLine.moves.split(" ").length / 3 + 1) + ". " + newMoveSan;
@@ -1877,7 +1883,7 @@ function App() {
     if(isChallenge !== ""){
       console.log("Evaluating challenge move: " + isChallenge);
       const stockfishSetup = await workerD.getBestLine(fenBeforeMove, 20).then(r => { console.log("chooseFen workerB done", r); return r; });
-      const ourEval = -1 * await workerC.getEval(chessGame.fen(), 22);
+      const ourEval = -1 * await workerC.getEval(chessGame.fen(), 20);
       let bestEval = ourEval;
       const pvb = stockfishSetup.pv;
       const stockfishMove = pvb?.split(" ")?.[0];
@@ -1885,7 +1891,7 @@ function App() {
       if(stockfishMoveSAN !== playerMove){       
         tryFenGame.load(fenBeforeMove);
         tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
-        bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 22);
+        bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 20);
         console.log(stockfishMove + " not equals " + playerMove);
       }else{
         console.log(stockfishMoveSAN + " equals " + playerMove);
@@ -2201,7 +2207,7 @@ function App() {
 
         if (randLineLabel.startsWith("Challenge")){
           posType = "challenge line";
-          setIsChallenge(daRandLineLabel);
+          setIsChallenge(daRandLineKey);
           console.log("daRandLineLabel: " + daRandLineLabel);
         }else{
 
