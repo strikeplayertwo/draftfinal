@@ -1876,8 +1876,8 @@ function App() {
 
     if(isChallenge !== ""){
       console.log("Evaluating challenge move: " + isChallenge);
-      const stockfishSetup = await workerD.getBestLine(fenBeforeMove, 18).then(r => { console.log("chooseFen workerB done", r); return r; });
-      const ourEval = -1 * await workerC.getEval(chessGame.fen(), 18);
+      const stockfishSetup = await workerD.getBestLine(fenBeforeMove, 20).then(r => { console.log("chooseFen workerB done", r); return r; });
+      const ourEval = -1 * await workerC.getEval(chessGame.fen(), 22);
       let bestEval = ourEval;
       const pvb = stockfishSetup.pv;
       const stockfishMove = pvb?.split(" ")?.[0];
@@ -1885,7 +1885,7 @@ function App() {
       if(stockfishMoveSAN !== playerMove){       
         tryFenGame.load(fenBeforeMove);
         tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
-        bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 18);
+        bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 22);
         console.log(stockfishMove + " not equals " + playerMove);
       }else{
         console.log(stockfishMoveSAN + " equals " + playerMove);
@@ -2183,7 +2183,7 @@ function App() {
       daRandLineLabel = randLineLabel;
       daRandLineKey = lineKeys[randN];
       console.log("line: " + randLineLabel);
-      if (Math.random() < 0.75){
+      if (Math.random() < 0.35){
         if(randLineLabel === "base_line" || randLineLabel === "main_line"){
           posType = "choose random opening"
         }
@@ -2199,7 +2199,7 @@ function App() {
         console.log("randchess fen: " + randChess.fen());
         fen = randChess.fen();
 
-        if (randLineLabel.startsWith("challenge")){
+        if (randLineLabel.startsWith("Challenge")){
           posType = "challenge line";
           setIsChallenge(daRandLineLabel);
           console.log("daRandLineLabel: " + daRandLineLabel);
