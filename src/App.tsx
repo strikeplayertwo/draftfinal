@@ -1064,6 +1064,17 @@ function App() {
     setShowEffex("");
   }
 
+  async function nextEffex(damessage: string = "") {
+    while (showEffex !== ""){
+      await new Promise(resolve => setTimeout(resolve, 250));
+      if(showEffex === ""){
+        await new Promise(resolve => setTimeout(resolve, 250));
+      }
+    }
+    setShowEffex(damessage);
+    stopEffex();
+  }
+
   const PIECE_VALUES: Record<string, number> = {
     p: 1, n: 3, b: 3, r: 5, q: 9, k: 99
   };
@@ -1960,11 +1971,11 @@ function App() {
 
     }else{
       const [result, stockfishSetup] = await Promise.all([
-        workerA.getBestLine(chessGame.fen(), 20).then(r => { console.log("chooseFen workerA done", r); return r; }),
+        workerC.getBestLine(chessGame.fen(), 20).then(r => { console.log("chooseFen workerA done", r); return r; }),
         workerD.getBestLine(fenBeforeMove, 20).then(r => { console.log("chooseFen workerB done", r); return r; }),
       ]);
       const mate = result.mate;
-      const ourEval = -1 * await workerC.getEval(chessGame.fen(), 20);
+      const ourEval = -1 * await workerD.getEval(chessGame.fen(), 20);
       let bestEval = ourEval;
       let streaker = currentStreak;
 
@@ -2207,6 +2218,8 @@ function App() {
 
         if (randLineLabel.startsWith("Challenge")){
           posType = "challenge line";
+          //setShowEffex("CHALLENGE MOVE!");
+          nextEffex("CHALLENGE MOVE!");
           setIsChallenge(daRandLineKey);
           console.log("daRandLineLabel: " + daRandLineLabel);
         }else{
@@ -2216,10 +2229,14 @@ function App() {
 
           if(Math.random() < challengeChance){
             posType = "new challenge line";
+            //setShowEffex("CHALLENGE MOVE!");
+            nextEffex("CHALLENGE MOVE!");
             //sourceLineKey = randLineLabel.split("_")[1];
             sourceLineKey = randLineLabel;
           }else{
             posType = "random line position";
+            //setShowEffex(daRandLineLabel);
+            nextEffex(daRandLineLabel);
           }
         }
       } 
