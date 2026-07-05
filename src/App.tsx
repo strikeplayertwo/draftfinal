@@ -135,15 +135,15 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
   { opening: "Caro-Kann", line_key: "main_line", moves: "1. e4 c6 2. d4 d5" },
   // English
   { opening: "English", line_key: "base_line", moves: "1. c4" },
-  { opening: "English", line_key: "main_line", moves: "1. c4" },
+  //{ opening: "English", line_key: "main_line", moves: "1. c4" },
   { opening: "English", line_key: "agincourt", moves: "1. c4 e6 2. Nf3 d5 3. g3" },
   { opening: "English", line_key: "neo_catalan", moves: "1. c4 e6 2. Nf3 d5 3. g3 Nf6 4. Bg2 Be7 5. O-O" },
   // French
   { opening: "French", line_key: "base_line", moves: "1. e4 e6 2. d4 d5" },
-  { opening: "French", line_key: "main_line", moves: "1. e4 e6 2. d4 d5" },
+  //{ opening: "French", line_key: "main_line", moves: "1. e4 e6 2. d4 d5" },
   // Sicilian
   { opening: "Sicilian", line_key: "base_line", moves: "1. e4 c5" },
-  { opening: "Sicilian", line_key: "main_line", moves: "1. e4 c5" },
+  //{ opening: "Sicilian", line_key: "main_line", moves: "1. e4 c5" },
   { opening: "Sicilian", line_key: "Dragon", moves: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 g6" },
   { opening: "Sicilian", line_key: "sveshnikov", moves: "1. e4 c5 2. Nf3 Nc6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e5" },
   { opening: "Sicilian", line_key: "scheveningen", moves: "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 e6" },
@@ -175,7 +175,7 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
   { opening: "Sicilian", line_key: "Grand_Prix_Accelerated", moves: "1. e4 c5 2. f4 d5" },
   // Spanish
   { opening: "Spanish", line_key: "base_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5" },
-  { opening: "Spanish", line_key: "main_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5" },
+  //{ opening: "Spanish", line_key: "main_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5" },
   { opening: "Spanish", line_key: "closed", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7" },
   { opening: "Spanish", line_key: "berlin", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 Nf6" },
   { opening: "Spanish", line_key: "exchange", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Bxc6" },
@@ -183,18 +183,18 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
   { opening: "Spanish", line_key: "marshall", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 O-O 8. c3 d5" },
   // King's Indian
   { opening: "King's Indian", line_key: "base_line", moves: "1. d4 Nf6 2. c4 g6" },
-  { opening: "King's Indian", line_key: "main_line", moves: "1. d4 Nf6 2. c4 g6" },
+  //{ opening: "King's Indian", line_key: "main_line", moves: "1. d4 Nf6 2. c4 g6" },
   // Queen's Pawn Game
   { opening: "Queen's Pawn Game", line_key: "base_line", moves: "1. d4 d5" },
-  { opening: "Queen's Pawn Game", line_key: "main_line", moves: "1. d4 d5" },
+  //{ opening: "Queen's Pawn Game", line_key: "main_line", moves: "1. d4 d5" },
   // Queen's Bishop Game
   { opening: "Queen's Bishop Game", line_key: "base_line", moves: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3" },
-  { opening: "Queen's Bishop Game", line_key: "main_line", moves: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3" },
+  //{ opening: "Queen's Bishop Game", line_key: "main_line", moves: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3" },
   // Queen's Indian
   { opening: "Queen's Indian", line_key: "base_line", moves: "1. d4 Nf6 2. c4 e6 3. Nf3 b6" },
-  { opening: "Queen's Indian", line_key: "main_line", moves: "1. d4 Nf6 2. c4 e6 3. Nf3 b6" },
+  //{ opening: "Queen's Indian", line_key: "main_line", moves: "1. d4 Nf6 2. c4 e6 3. Nf3 b6" },
   // Queen's Gambit Declined
-  { opening: "Queen's Gambit Declined", line_key: "base_line", moves: "1. d4 d5 2. c4" },
+  { opening: "Queen's Gambit Declined", line_key: "base_line", moves: "1. d4 d5 2. c4 e6" },
   { opening: "Queen's Gambit Declined", line_key: "main_line", moves: "1. d4 d5 2. c4 e6" },
   { opening: "Queen's Gambit Declined", line_key: "charousek", moves: "1. d4 d5 2. c4 e6 3. Nc3 Be7" },
   { opening: "Queen's Gambit Declined", line_key: "three_knights", moves: "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Nf3" },
@@ -206,27 +206,27 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
   { opening: "Queen's Gambit Declined", line_key: "harrwitz_attack", moves: "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Bf4" },
   // Grünfeld
   { opening: "Grünfeld", line_key: "base_line", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5" },
-  { opening: "Grünfeld", line_key: "main_line", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5" },
+  //{ opening: "Grünfeld", line_key: "main_line", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5" },
   // Réti
   { opening: "Réti", line_key: "base_line", moves: "1. Nf3" },
-  { opening: "Réti", line_key: "main_line", moves: "1. Nf3" },
+  //{ opening: "Réti", line_key: "main_line", moves: "1. Nf3" },
   // Petrov's
   { opening: "Petrov's", line_key: "base_line", moves: "1. e4 e5 2. Nf3 Nf6" },
-  { opening: "Petrov's", line_key: "main_line", moves: "1. e4 e5 2. Nf3 Nf6" },
+  //{ opening: "Petrov's", line_key: "main_line", moves: "1. e4 e5 2. Nf3 Nf6" },
   { opening: "Petrov's", line_key: "modern", moves: "1. e4 e5 2. Nf3 Nf6 3. d4 exd4 4. e5 Ne4" },
   { opening: "Petrov's", line_key: "paulsen_attack", moves: "1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nc4" },
   { opening: "Petrov's", line_key: "classical_karklins_martinovsky", moves: "1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nd3" },
   { opening: "Petrov's", line_key: "kaufmann_attack", moves: "1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nf3 Nxe4 5. c4" },
   // Benoni
   { opening: "Benoni", line_key: "base_line", moves: "1. d4 Nf6 2. c4 c5 3. d5" },
-  { opening: "Benoni", line_key: "main_line", moves: "1. d4 Nf6 2. c4 c5 3. d5" },
+  //{ opening: "Benoni", line_key: "main_line", moves: "1. d4 Nf6 2. c4 c5 3. d5" },
   // Catalan
   { opening: "Catalan", line_key: "base_line", moves: "1. d4 Nf6 2. c4 e6 3. g3" },
   { opening: "Catalan", line_key: "main_line", moves: "1. d4 Nf6 2. c4 e6 3. g3 d5 4. cxd5 exd5 5. Nf3" },
   { opening: "Catalan", line_key: "closed_main_line", moves: "1. d4 Nf6 2. c4 e6 3. g3 d5 4. Bg2 Be7 5. Nf3 O-O 6. O-O dxc4" },
   // Italian
   { opening: "Italian", line_key: "base_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4" },
-  { opening: "Italian", line_key: "main_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4" },
+  //{ opening: "Italian", line_key: "main_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4" },
 ];
 
 function App() {
@@ -1065,6 +1065,7 @@ function App() {
   }
 
   async function nextEffex(damessage: string = "") {
+    await new Promise(resolve => setTimeout(resolve, 500));
     while (showEffex !== ""){
       await new Promise(resolve => setTimeout(resolve, 250));
       if(showEffex === ""){
@@ -1560,7 +1561,7 @@ function App() {
           chosenMoves.push(bestMove);
           chosenStats.push({fen: newFen, score, pieces, cpCount, clarity, onslaught, multiplier});
           console.log ("Chosen fen " + newFen + " with score " + score);
-          const formatted = chosenFens.map((fen, index) => `: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cpCount}/20 Clarity: ${chosenStats[index].clarity}/25 Onslaught: ${chosenStats[index].onslaught}/30 Mult: ${chosenStats[index].multiplier}`)
+          const formatted = chosenFens.map((_,index) => `: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cpCount}/20 Clarity: ${chosenStats[index].clarity}/25 Onslaught: ${chosenStats[index].onslaught}/30 Mult: ${chosenStats[index].multiplier}`)
             .join("\n");
           setPosList(formatted);
         }
@@ -1572,7 +1573,7 @@ function App() {
           chosenScores[minIndex] = score;
           chosenMoves[minIndex] = bestMove;
           chosenStats[minIndex] = {fen: newFen, score, pieces, cpCount, clarity, onslaught, multiplier};
-          const formatted = chosenFens.map((fen, index) => `: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cpCount}/20 Clarity: ${chosenStats[index].clarity}/25 Onslaught: ${chosenStats[index].onslaught}/30 Mult: ${chosenStats[index].multiplier}`)
+          const formatted = chosenFens.map((_, index) => `: ${chosenScores[index]} Calculation: ${chosenStats[index].pieces}/25 Decision: ${chosenStats[index].cpCount}/20 Clarity: ${chosenStats[index].clarity}/25 Onslaught: ${chosenStats[index].onslaught}/30 Mult: ${chosenStats[index].multiplier}`)
             .join("\n");
           setPosList(formatted);
         }else {
@@ -2131,10 +2132,10 @@ function App() {
     
     let posType = "choose random";
     function getActiveLines(opening: string): string[] {
-      const allLines = getOpeningLines(opening);
+      let allLines = getOpeningLines(opening);
       const eligible = selectedLines.length > 0
         ? allLines.filter(l => selectedLines.includes(l.key))
-        : allLines.filter(l => !(userProgress.level === 1 && l.plyLength >= 7)); // default: all unlocked lines
+        : allLines.filter(l => !((userProgress.level < 7 && l.plyLength >= 7) || (userProgress.level < 8 && l.plyLength >= 10))); // default: all unlocked lines
 
       console.log("eligible lines: " + eligible);
       return eligible.map(l => l.line);
@@ -2144,7 +2145,7 @@ function App() {
       const allLines = getOpeningLines(opening);
       const eligible = selectedLines.length > 0
         ? allLines.filter(l => selectedLines.includes(l.key))
-        : allLines.filter(l => !(userProgress.level === 1 && l.plyLength >= 7)); // default: all unlocked lines
+        : allLines.filter(l => !((userProgress.level < 7 && l.plyLength >= 7) || (userProgress.level < 8 && l.plyLength >= 10))); // default: all unlocked lines
 
       console.log("eligible lines: " + eligible);
       return eligible.map(l => l.label);
