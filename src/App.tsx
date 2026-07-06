@@ -232,6 +232,7 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
 function App() {
   //const fens = extractFENsFromGames(pgnData,94, "All");
   const [selectedLines, setSelectedLines] = useState<string[]>([]);
+  const [practiceLines, setPracticeLines] = useState<string[]>([]);
   const [showLineSelect, setShowLineSelect] = useState(false);
   const [pendingOpening, setPendingOpening] = useState<string>("");
   const [fens, setFens] = useState<string[]>([]);
@@ -304,6 +305,11 @@ function App() {
   });
   const openings = ["None", "Random", "Sicilian", "French", "Caro-Kann", "English", "Ruy Lopez", "King's Indian", "Queen's Pawn Game", "Queen's Bishop Game", "Queen's Indian", "Gruenfeld", "Queen's Gambit Declined", "Reti", "Petrov's", "Benoni", "Catalan", "Italian"];
   const openingPlyLengths: Record<string, number> = { "None": 6, "Random": 6, "Sicilian": 2, "French": 4, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "Queen's Bishop Game": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 3, "Reti": 1, "Petrov's": 4, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Italian": 5 };
+
+ // const pinkMode = false;
+   /*[!cSquare]:{
+          backgroundColor: 'rgba(255, 0, 204, 0.75)'
+        }*/
 
   type OpeningLine = {
     line_key: string;
@@ -2154,7 +2160,7 @@ function App() {
       const allLines = getOpeningLines(opening);
       const eligible = selectedLines.length > 0
         ? allLines.filter(l => selectedLines.includes(l.key))
-        : allLines.filter(l => !(userProgress.level === 1 && l.plyLength >= 7)); // default: all unlocked lines
+        : allLines.filter(l => !((userProgress.level < 7 && l.plyLength >= 7) || (userProgress.level < 8 && l.plyLength >= 10))); // default: all unlocked lines
 
       console.log("eligible lines: " + eligible);
       return eligible.map(l => l.key);
@@ -2427,18 +2433,40 @@ function App() {
       return m;
     });
     console.log(openingMoves);
-    
 
-    // Use selected line(s) if the player picked any, else fall back to default line
     const lines = openingLines[opening] ?? [];
     if (lines.length > 0) {
       const allLines = getOpeningLines(opening);
       const eligibleLines = selectedLines.length > 0
         ? allLines.filter(l => selectedLines.includes(l.key))
-        : allLines.filter(l => !(userProgress.level === 1 && l.plyLength >= 7));
-
+        : allLines.filter(l => !((userProgress.level < 7 && l.plyLength >= 7) || (userProgress.level < 8 && l.plyLength >= 10))); // default: all unlocked lines
+    
+      const eligiblePracticeLines = allLines.filter(l => practiceLines.includes(l.key));
+      const chosenPracticeLine = eligiblePracticeLines.length > 0
+        ? eligiblePracticeLines[Math.floor(Math.random() * eligiblePracticeLines.length)]
+        : eligibleLines[0]; // fallback to first game line
       // Fallback if no eligible lines: use base_line directly from allLines, not prog.line
+      openingMovesSAN = chosenPracticeLine.line.split(" ");
+      openingMoves = openingMovesSAN.filter(m => {
+        if (/^[1-9]/.test(m)) return false;
+        return m;
+      });
+      plyLength = openingMoves.length;
+
+      // Use eligibleLines for choosing the game start FEN
+      const chosenGameLine = eligibleLines.length > 0
+        ? eligibleLines[Math.floor(Math.random() * eligibleLines.length)]
+        : allLines[0];
+      // pass chosenGameLine.line to chooseFirstFen below
+
+
       const fallbackLine = lines.find(l => l.line_key === "base_line")?.moves ?? "";
+
+      const allUnlocked = getOpeningLines(opening)
+        .filter(l => !((userProgress.level < 7 && l.plyLength >= 7) || (userProgress.level < 8 && l.plyLength >= 10)))
+        .map(l => l.key);
+      setSelectedLines(allUnlocked);  // all selected for gameplay
+      setPracticeLines(allUnlocked);  // all selected for playerRunThru
 
       const chosenLine = eligibleLines.length > 0
         ? eligibleLines[Math.floor(Math.random() * eligibleLines.length)].line
@@ -2474,10 +2502,8 @@ function App() {
           chessGameRef.current = newGame;
           setReqMove(openingMoves[i]);
           while(chessGameRef.current.fen() !== openingFens[i + 1]){
-            //console.log("No. Big Chess Position: " + bigChessPosition + " Opening Fen: " + openingFens[i + 1]);
             await new Promise(resolve => setTimeout(resolve, 50));
           }
-          //console.log("Yes. Big Chess Position: " + bigChessPosition + " Opening Fen: " + openingFens[i + 1]);
         }
         setShowEffex("Correct ✅");
         stopEffex();
@@ -2855,112 +2881,6 @@ function App() {
                       setPendingOpening(opening);
                       setShowLineSelect(true); // ← show picker instead of running immediately
                     }}
-                    /*onClick={async () => {
-                      setScreen("classic");
-                      setShowOpeningSelect(false);
-                      if(opening === "Random"){
-                        opening = openings[Math.floor(Math.random() * (openings.length - 3)) + 2];
-                      };
-                      setGameOpening(opening);
-                      let openingMoves: string[];
-                      let plyLength = openingPlyLengths[opening];
-                      //openingMoves = openingMoveMap[opening].split(" ");
-                      let openingMovesSAN = openingMoveMap[opening].split(" ");
-                      openingMoves = openingMovesSAN.filter(m => {
-                        if (m.startsWith("1") || m.startsWith("2") || m.startsWith("3") || m.startsWith("4") || m.startsWith("5") || m.startsWith("6") || m.startsWith("7") || m.startsWith("8") || m.startsWith("9")) {
-                          return false;
-                        }
-                        return sanToUci(m);
-                      });
-                      const prog = openingProgressMap[opening];
-                      const openingMover = new Chess();
-                      function sanToUci(sanMove: string): string {
-                        try {
-                          // verbose: true returns an object containing 'from', 'to', and 'promotion'
-                          const moveData = openingMover.move(sanMove);
-
-                          if (!moveData) return "";
-
-                          // Build the Long Algebraic Notation string (e.g., e7e8q)
-                          return `${moveData.from}${moveData.to}${moveData.promotion || ''}`;
-                        } catch (e) {
-                          return ""; // Illegal move or incorrect notation format
-                        }
-                      }
-                      if (prog) {
-                        openingMovesSAN = prog.line.split(" ");
-                        openingMoves = openingMovesSAN.filter(m => {
-                          if (m.startsWith("1") || m.startsWith("2") || m.startsWith("3") || m.startsWith("4") || m.startsWith("5") || m.startsWith("6") || m.startsWith("7") || m.startsWith("8") || m.startsWith("9")) {
-                            return false;
-                          }
-                          return sanToUci(m);
-                        });
-
-                        
-                        plyLength = openingMoves.length;
-                      };
-                      const newGame = new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-                      const openingFens = [newGame.fen()];
-                      if(opening !== "None"){
-                        setBigChessPosition(newGame.fen());
-                        for (let i = 0; i < plyLength; i++){
-                          await new Promise(resolve => setTimeout(resolve, 1500));
-                          const move = openingMoves[i];
-                          if (!move) break;
-                          newGame.move(move);
-                          setBigChessPosition(newGame.fen());
-                          openingFens.push(newGame.fen());
-                        }
-                        await new Promise(resolve => setTimeout(resolve, 3000));
-                        newGame.load(openingFens[0]);
-                        setBigChessPosition(openingFens[0]);
-                        async function playerRunThru(openingFens: string[]){
-                          for (let i = 0; i < openingFens.length - 1; i++){
-                            newGame.load(openingFens[i]);
-                            chessGameRef.current = newGame;
-                            setReqMove(openingMoves[i]);
-                            while(chessGameRef.current.fen() !== openingFens[i + 1]){
-                              //console.log("No. Big Chess Position: " + bigChessPosition + " Opening Fen: " + openingFens[i + 1]);
-                              await new Promise(resolve => setTimeout(resolve, 50));
-                            }
-                            //console.log("Yes. Big Chess Position: " + bigChessPosition + " Opening Fen: " + openingFens[i + 1]);
-                          }
-                          setShowEffex("Correct ✅");
-                          stopEffex();
-                        }
-                        async function waitAddMoves(minMoves: number) {
-                          while (daOpeningFensRef.current.length - 1 < minMoves) {
-                            await new Promise(resolve => setTimeout(resolve, 50));
-                          }
-                        }
-                        await playerRunThru(openingFens);
-                        setDaOpeningFens(openingFens);
-                        setDaOpeningMoves(openingMoves);
-
-                        if (openingFens.length - 1 < userProgress.userMinPly){
-                          setReqMove("add");
-                          const infos = await getMoveInfos(openingFens[openingFens.length - 1], opening);
-                          setMoveInfos(infos);
-                          await waitAddMoves(userProgress.userMinPly);
-                          setMoveInfos([]);
-                        }
-                        setReqMove("none");
-                      };
-                      if (opening !== "None"){
-                        await new Promise(resolve => setTimeout(resolve, 2000));
-                      }
-                      const startFen = await chooseFirstFen(opening, plyLength);
-                      console.log("startfen" + startFen);
-                      newGame.load(startFen);
-                      chessGameRef.current = newGame;
-                      smallGameRef.current = new Chess(startFen);
-                      tryFenRef.current = new Chess(startFen);
-                      setChessPosition(newGame.fen());
-                      setBigChessPosition(newGame.fen());
-                      setOldFen(newGame.fen());
-                      highlightKingSquare(newGame, "big");
-                      setBPosHistory([newGame.fen()]);
-                  }}*/
                   style={{
                     padding: "10px 16px",
                     //cursor: isUnlocked ? "pointer" : "not-allowed",
@@ -2996,37 +2916,58 @@ function App() {
               <p style={{ fontSize: 14, fontWeight: 500, margin: "0 0 10px", color: "#e6edf3" }}>
                 Select lines for {pendingOpening}
               </p>
+
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "#8b949e", marginBottom: 4 }}>
+                <span>Line</span>
+                <div style={{ display: "flex", gap: 24 }}>
+                  <span>Game</span>
+                  <span>Practice</span>
+                </div>
+              </div>
               {getOpeningLines(pendingOpening).map(({ key, label, plyLength }) => {
-                const isLocked = userProgress.level === 1 && plyLength >= 7;
+                const isLocked = ((userProgress.level < 7 && plyLength >= 7) || (userProgress.level < 8 && plyLength >= 10))
                 const isSelected = selectedLines.includes(key);
+                const isPractice = practiceLines.includes(key);
                 return (
-                  <label
-                    key={key}
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      padding: "6px 0",
-                      cursor: isLocked ? "not-allowed" : "pointer",
-                      opacity: isLocked ? 0.4 : 1,
-                      fontSize: 13,
-                      color: "#e6edf3",
-                    }}
-                  >
+                  <div key={key} style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    padding: "6px 0",
+                    opacity: isLocked ? 0.4 : 1,
+                    fontSize: 13,
+                    color: "#e6edf3",
+                  }}>
+                    {/* Game checkbox */}
                     <input
                       type="checkbox"
                       checked={isSelected}
                       disabled={isLocked}
+                      title="Include in game"
                       onChange={() => {
                         setSelectedLines(prev =>
                           isSelected ? prev.filter(k => k !== key) : [...prev, key]
                         );
                       }}
                     />
-                    <span style={{ flex: 1 }}>{label}</span>
-                    <span style={{ fontSize: 11, color: "#8b949e" }}>{plyLength} plies</span>
-                    {isLocked && <span style={{ fontSize: 12 }}>🔒</span>}
-                  </label>
+                    <span style={{ flex: 1 }}>
+                      {label}
+                      <span style={{ fontSize: 11, color: "#8b949e", marginLeft: 6 }}>{plyLength} plies</span>
+                      {isLocked && <span style={{ marginLeft: 4 }}>🔒</span>}
+                    </span>
+                    {/* Practice checkbox */}
+                    <input
+                      type="checkbox"
+                      checked={isPractice}
+                      disabled={isLocked}
+                      title="Practice with playerRunThru"
+                      onChange={() => {
+                        setPracticeLines(prev =>
+                          isPractice ? prev.filter(k => k !== key) : [...prev, key]
+                        );
+                      }}
+                    />
+                  </div>
                 );
               })}
               <button
