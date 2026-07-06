@@ -304,7 +304,7 @@ function App() {
     userMinPly: 4
   });
   const openings = ["None", "Random", "Sicilian", "French", "Caro-Kann", "English", "Ruy Lopez", "King's Indian", "Queen's Pawn Game", "Queen's Bishop Game", "Queen's Indian", "Gruenfeld", "Queen's Gambit Declined", "Reti", "Petrov's", "Benoni", "Catalan", "Italian"];
-  const openingPlyLengths: Record<string, number> = { "None": 6, "Random": 6, "Sicilian": 2, "French": 4, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "Queen's Bishop Game": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 3, "Reti": 1, "Petrov's": 4, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Italian": 5 };
+  //const openingPlyLengths: Record<string, number> = { "None": 6, "Random": 6, "Sicilian": 2, "French": 4, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "Queen's Bishop Game": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 3, "Reti": 1, "Petrov's": 4, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Italian": 5 };
 
  // const pinkMode = false;
    /*[!cSquare]:{
@@ -2422,115 +2422,118 @@ function App() {
     setScreen("classic");
     setGameOpening(opening);
 
-    let openingMoves: string[];
-    let plyLength = openingPlyLengths[opening];
-    console.log(openingLines[opening]?.find(l => l.line_key === "base_line")?.moves ?? "");
-    let openingMovesSAN = (openingLines[opening]?.find(l => l.line_key === "base_line")?.moves ?? "").split(" ");
-    console.log(openingMovesSAN);
-    openingMoves = openingMovesSAN.filter(m => {
-      if (/^[1-9]/.test(m)) return false;
-      console.log(m);
-      return m;
-    });
-    console.log(openingMoves);
-
+    const allLines = getOpeningLines(opening);
     const lines = openingLines[opening] ?? [];
-    if (lines.length > 0) {
-      const allLines = getOpeningLines(opening);
-      const eligibleLines = selectedLines.length > 0
-        ? allLines.filter(l => selectedLines.includes(l.key))
-        : allLines.filter(l => !((userProgress.level < 7 && l.plyLength >= 7) || (userProgress.level < 8 && l.plyLength >= 10))); // default: all unlocked lines
-    
-      const eligiblePracticeLines = allLines.filter(l => practiceLines.includes(l.key));
-      const chosenPracticeLine = eligiblePracticeLines.length > 0
-        ? eligiblePracticeLines[Math.floor(Math.random() * eligiblePracticeLines.length)]
-        : eligibleLines[0]; // fallback to first game line
-      // Fallback if no eligible lines: use base_line directly from allLines, not prog.line
-      openingMovesSAN = chosenPracticeLine.line.split(" ");
-      openingMoves = openingMovesSAN.filter(m => {
-        if (/^[1-9]/.test(m)) return false;
-        return m;
-      });
-      plyLength = openingMoves.length;
 
-      // Use eligibleLines for choosing the game start FEN
-      const chosenGameLine = eligibleLines.length > 0
-        ? eligibleLines[Math.floor(Math.random() * eligibleLines.length)]
-        : allLines[0];
-      // pass chosenGameLine.line to chooseFirstFen below
+    // Eligible for gameplay (respects level locks)
+    const eligibleLines = selectedLines.length > 0
+      ? allLines.filter(l => selectedLines.includes(l.key))
+      : allLines.filter(l => !(
+          (userProgress.level < 7 && l.plyLength >= 7) ||
+          (userProgress.level < 8 && l.plyLength >= 10)
+        ));
 
+    // Lines to practice with playerRunThru
+    const eligiblePracticeLines = practiceLines.length > 0
+      ? allLines.filter(l => practiceLines.includes(l.key))
+      : eligibleLines; // fallback to all eligible if none selected
 
-      const fallbackLine = lines.find(l => l.line_key === "base_line")?.moves ?? "";
+    // DON'T call setSelectedLines/setPracticeLines here — that's for the UI picker
+    // Only initialize them when pendingOpening is set (before startOpening is called)
 
-      const allUnlocked = getOpeningLines(opening)
-        .filter(l => !((userProgress.level < 7 && l.plyLength >= 7) || (userProgress.level < 8 && l.plyLength >= 10)))
-        .map(l => l.key);
-      setSelectedLines(allUnlocked);  // all selected for gameplay
-      setPracticeLines(allUnlocked);  // all selected for playerRunThru
+    const openingMover = new Chess();
+    function sanToUci(sanMove: string): string {
+      try {
+        const moveData = openingMover.move(sanMove);
+        if (!moveData) return "";
+        return `${moveData.from}${moveData.to}${moveData.promotion || ''}`;
+      } catch {
+        return "";
+      }
+    }
 
-      const chosenLine = eligibleLines.length > 0
-        ? eligibleLines[Math.floor(Math.random() * eligibleLines.length)].line
-        : fallbackLine;
-
-      openingMovesSAN = chosenLine.split(" ");
-      openingMoves = openingMovesSAN.filter(m => {
-        if (/^[1-9]/.test(m)) return false;
-        return m;
-      });
-      console.log(openingMoves);
-      plyLength = openingMoves.length;
+    function parseMoves(san: string): string[] {
+      return san.split(" ")
+        .filter(m => !/^[1-9]/.test(m) && m.trim().length > 0)
+        .map(m => sanToUci(m))
+        .filter(Boolean);
     }
 
     const newGame = new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
-    const openingFens = [newGame.fen()];
-    if(opening !== "None"){
-      setBigChessPosition(newGame.fen());
-      for (let i = 0; i < plyLength; i++){
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        const move = openingMoves[i];
-        if (!move) break;
-        newGame.move(move);
+
+    if (opening !== "None") {
+      // ← Run playerRunThru for ALL practice lines sequentially
+      for (const practiceLine of eligiblePracticeLines) {
+        openingMover.reset();
+        const openingMoves = parseMoves(practiceLine.line);
+        const plyLength = openingMoves.length;
+        const openingFens = [newGame.fen()];
+
+        newGame.load("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         setBigChessPosition(newGame.fen());
-        openingFens.push(newGame.fen());
-      }
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      newGame.load(openingFens[0]);
-      setBigChessPosition(openingFens[0]);
-      async function playerRunThru(openingFens: string[]){
-        for (let i = 0; i < openingFens.length - 1; i++){
-          newGame.load(openingFens[i]);
-          chessGameRef.current = newGame;
-          setReqMove(openingMoves[i]);
-          while(chessGameRef.current.fen() !== openingFens[i + 1]){
+
+        for (let i = 0; i < plyLength; i++) {
+          await new Promise(resolve => setTimeout(resolve, 1500));
+          const move = openingMoves[i];
+          if (!move) break;
+          newGame.move(move);
+          setBigChessPosition(newGame.fen());
+          openingFens.push(newGame.fen());
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 3000));
+        newGame.load(openingFens[0]);
+        setBigChessPosition(openingFens[0]);
+
+        async function playerRunThru(fens: string[]) {
+          for (let i = 0; i < fens.length - 1; i++) {
+            newGame.load(fens[i]);
+            chessGameRef.current = newGame;
+            setReqMove(openingMoves[i]);
+            while (chessGameRef.current.fen() !== fens[i + 1]) {
+              await new Promise(resolve => setTimeout(resolve, 50));
+            }
+          }
+          setShowEffex("Correct ✅");
+          stopEffex();
+        }
+
+        async function waitAddMoves(minMoves: number) {
+          while (daOpeningFensRef.current.length - 1 < minMoves) {
             await new Promise(resolve => setTimeout(resolve, 50));
           }
         }
-        setShowEffex("Correct ✅");
-        stopEffex();
-      }
-      /*async function waitAddMoves(minMoves: number) {
-        while (daOpeningFensRef.current.length - 1 < minMoves) {
-          await new Promise(resolve => setTimeout(resolve, 50));
-        }
-      }*/
-      await playerRunThru(openingFens);
-      setDaOpeningFens(openingFens);
-      setDaOpeningMoves(openingMoves);
 
-      /*if (openingFens.length - 1 < userProgress.userMinPly){
-        setReqMove("add");
-        const infos = await getMoveInfos(openingFens[openingFens.length - 1], opening);
-        setMoveInfos(infos);
-        await waitAddMoves(userProgress.userMinPly);
-        setMoveInfos([]);
-      }*/
-      setReqMove("none");
-    };
-    if (opening !== "None"){
+        await playerRunThru(openingFens);
+        setDaOpeningFens(openingFens);
+        setDaOpeningMoves(openingMoves);
+
+        if (openingFens.length - 1 < userProgress.userMinPly) {
+          setReqMove("add");
+          const infos = await getMoveInfos(openingFens[openingFens.length - 1], opening);
+          setMoveInfos(infos);
+          await waitAddMoves(userProgress.userMinPly);
+          setMoveInfos([]);
+        }
+        setReqMove("none");
+        await new Promise(resolve => setTimeout(resolve, 1000)); // brief pause between lines
+      }
+    }
+
+    // Choose game start FEN from eligible game lines
+    const fallbackLine = lines.find(l => l.line_key === "base_line")?.moves ?? "";
+    const chosenGameLine = eligibleLines.length > 0
+      ? eligibleLines[Math.floor(Math.random() * eligibleLines.length)].line
+      : fallbackLine;
+
+    const gameMoves = parseMoves(chosenGameLine);
+    const plyLength = gameMoves.length;
+
+    if (opening !== "None") {
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
+
     const startFen = await chooseFirstFen(opening, plyLength);
-    console.log("startfen" + startFen);
     newGame.load(startFen);
     chessGameRef.current = newGame;
     smallGameRef.current = new Chess(startFen);
