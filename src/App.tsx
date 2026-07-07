@@ -1978,11 +1978,11 @@ function App() {
 
     }else{
       const [result, stockfishSetup] = await Promise.all([
-        workerC.getBestLine(chessGame.fen(), 20).then(r => { console.log("chooseFen workerA done", r); return r; }),
-        workerD.getBestLine(fenBeforeMove, 20).then(r => { console.log("chooseFen workerB done", r); return r; }),
+        workerC.getBestLine(chessGame.fen(), 18).then(r => { console.log("chooseFen workerA done", r); return r; }),
+        workerD.getBestLine(fenBeforeMove, 18).then(r => { console.log("chooseFen workerB done", r); return r; }),
       ]);
       const mate = result.mate;
-      const ourEval = -1 * await workerD.getEval(chessGame.fen(), 20);
+      const ourEval = -1 * await workerD.getEval(chessGame.fen(), 18);
       let bestEval = ourEval;
       let streaker = currentStreak;
 
@@ -1993,7 +1993,7 @@ function App() {
         
         tryFenGame.load(fenBeforeMove);
         tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
-        bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 20);
+        bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 18);
         console.log(stockfishMove + " not equals " + playerMove);
       }else{
         console.log(stockfishMoveSAN + " equals " + playerMove);
@@ -2425,7 +2425,6 @@ function App() {
     const allLines = getOpeningLines(opening);
     const lines = openingLines[opening] ?? [];
 
-    // Eligible for gameplay (respects level locks)
     const eligibleLines = selectedLines.length > 0
       ? allLines.filter(l => selectedLines.includes(l.key))
       : allLines.filter(l => !(
@@ -2433,46 +2432,34 @@ function App() {
           (userProgress.level < 8 && l.plyLength >= 10)
         ));
 
-    // Lines to practice with playerRunThru
     const eligiblePracticeLines = practiceLines.length > 0
       ? allLines.filter(l => practiceLines.includes(l.key))
       : eligibleLines; // fallback to all eligible if none selected
 
-    // DON'T call setSelectedLines/setPracticeLines here — that's for the UI picker
-    // Only initialize them when pendingOpening is set (before startOpening is called)
-
-    const openingMover = new Chess();
-    function sanToUci(sanMove: string): string {
-      try {
-        const moveData = openingMover.move(sanMove);
-        if (!moveData) return "";
-        return `${moveData.from}${moveData.to}${moveData.promotion || ''}`;
-      } catch {
-        return "";
-      }
-    }
-
     function parseMoves(san: string): string[] {
       return san.split(" ")
         .filter(m => !/^[1-9]/.test(m) && m.trim().length > 0)
-        .map(m => sanToUci(m))
+        .map(m => m)
         .filter(Boolean);
     }
 
-    const newGame = new Chess("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
+    const newGame = new Chess();
 
     if (opening !== "None") {
-      // ← Run playerRunThru for ALL practice lines sequentially
+      setShowEffex("Practice: " + eligiblePracticeLines[0]?.label);
+      stopEffex();
       for (const practiceLine of eligiblePracticeLines) {
-        openingMover.reset();
+        console.log("Practicing line: " + practiceLine.label + " Moves: " + practiceLine.line);
+        newGame.reset();
         const openingMoves = parseMoves(practiceLine.line);
-        const plyLength = openingMoves.length;
+        //const plyLength = openingMoves.length;
         const openingFens = [newGame.fen()];
 
         newGame.load("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         setBigChessPosition(newGame.fen());
 
-        for (let i = 0; i < plyLength; i++) {
+        //for (let i = 0; i < plyLength; i++) {
+        for (let i = 0; i < openingMoves.length; i++) {
           await new Promise(resolve => setTimeout(resolve, 1500));
           const move = openingMoves[i];
           if (!move) break;
@@ -2494,28 +2481,29 @@ function App() {
               await new Promise(resolve => setTimeout(resolve, 50));
             }
           }
-          setShowEffex("Correct ✅");
+          //setShowEffex("Correct ✅");
+          setShowEffex("Next: " + (eligiblePracticeLines[eligiblePracticeLines.indexOf(practiceLine) + 1]?.label ?? "End of Practice"));
           stopEffex();
         }
 
-        async function waitAddMoves(minMoves: number) {
+        /*async function waitAddMoves(minMoves: number) {
           while (daOpeningFensRef.current.length - 1 < minMoves) {
             await new Promise(resolve => setTimeout(resolve, 50));
           }
-        }
+        }*/
 
         await playerRunThru(openingFens);
+        setReqMove("none");
         setDaOpeningFens(openingFens);
         setDaOpeningMoves(openingMoves);
 
-        if (openingFens.length - 1 < userProgress.userMinPly) {
+        /*if (openingFens.length - 1 < userProgress.userMinPly) {
           setReqMove("add");
           const infos = await getMoveInfos(openingFens[openingFens.length - 1], opening);
           setMoveInfos(infos);
           await waitAddMoves(userProgress.userMinPly);
           setMoveInfos([]);
-        }
-        setReqMove("none");
+        }*/
         await new Promise(resolve => setTimeout(resolve, 1000)); // brief pause between lines
       }
     }
@@ -2591,7 +2579,7 @@ function App() {
         const infos = await getMoveInfos(ourNewFen, gameOpening);
         setMoveInfos(infos);
         //console.log("\Added fen: " + chessGame.fen() + " Move: " + moveFrom + square);
-      }else if (reqMove !== "none" && daOpeningFens.length === 0){
+      }else if (reqMove !== "none"){
         const sendthatfen = chessGame.fen();
         chessGame.move({
           from: moveFrom,
@@ -2881,6 +2869,11 @@ function App() {
                       if (opening === "Random") {
                         opening = openings[Math.floor(Math.random() * (openings.length - 3)) + 2];
                       }
+                      const allUnlocked = getOpeningLines(opening)
+                        .filter(l => !((userProgress.level < 7 && l.plyLength >= 7) || (userProgress.level < 8 && l.plyLength >= 10)))
+                        .map(l => l.key);
+                      setSelectedLines(allUnlocked);
+                      setPracticeLines(allUnlocked);
                       setPendingOpening(opening);
                       setShowLineSelect(true); // ← show picker instead of running immediately
                     }}
@@ -2956,7 +2949,8 @@ function App() {
                     <span style={{ flex: 1 }}>
                       {label}
                       <span style={{ fontSize: 11, color: "#8b949e", marginLeft: 6 }}>{plyLength} plies</span>
-                      {isLocked && <span style={{ marginLeft: 4 }}>🔒</span>}
+                      {//isLocked && <span style={{ marginLeft: 4 }}>🔒</span>}
+                      isLocked && <span style={{ marginLeft: 4 }}></span>}
                     </span>
                     {/* Practice checkbox */}
                     <input
