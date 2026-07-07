@@ -206,6 +206,10 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
   { opening: "Queen's Gambit Declined", line_key: "harrwitz_attack", moves: "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Bf4" },
   // Grünfeld
   { opening: "Grünfeld", line_key: "base_line", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5" },
+  { opening: "Grünfeld", line_key: "exchange", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5 4. cxd5 Nxd5 5. e4 Nxc3 6. Bxc3 Bg7" },
+  { opening: "Grünfeld", line_key: "russian", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5 4. Nf3 Bg7 5. Qb3" },
+  { opening: "Grünfeld", line_key: "petrosian", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5 4. Nf3 Bg7 5. Bg5" },
+  { opening: "Grünfeld", line_key: "5_cxd5", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5 4. Nf3 Bg7 5. cxd5" },
   //{ opening: "Grünfeld", line_key: "main_line", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5" },
   // Réti
   { opening: "Réti", line_key: "base_line", moves: "1. Nf3" },
@@ -218,8 +222,11 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
   { opening: "Petrov's", line_key: "classical_karklins_martinovsky", moves: "1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nd3" },
   { opening: "Petrov's", line_key: "kaufmann_attack", moves: "1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nf3 Nxe4 5. c4" },
   // Benoni
-  { opening: "Benoni", line_key: "base_line", moves: "1. d4 Nf6 2. c4 c5 3. d5" },
-  //{ opening: "Benoni", line_key: "main_line", moves: "1. d4 Nf6 2. c4 c5 3. d5" },
+  { opening: "Benoni", line_key: "base_line", moves: "1. d4 Nf6 2. c4 c5" },
+  { opening: "Benoni", line_key: "main_line", moves: "1. d4 Nf6 2. c4 c5 3. d5" },
+  { opening: "Benoni", line_key: "3_g6", moves: "1. d4 Nf6 2. c4 c5 3. d5 g6 4. Nc3" },
+  { opening: "Benoni", line_key: "benko_gambit", moves: "1. d4 Nf6 2. c4 c5 3. d5 b5" },
+  { opening: "Benoni", line_key: "czech", moves: "1. d4 Nf6 2. c4 c5 3. d5 e6 4. Nc3" },
   // Catalan
   { opening: "Catalan", line_key: "base_line", moves: "1. d4 Nf6 2. c4 e6 3. g3" },
   { opening: "Catalan", line_key: "main_line", moves: "1. d4 Nf6 2. c4 e6 3. g3 d5 4. cxd5 exd5 5. Nf3" },
