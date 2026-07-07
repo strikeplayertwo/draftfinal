@@ -151,7 +151,13 @@ export function createPersistentWorker() {
                 return;
               }
               if (result.mate !== null) {
-                resolve(result.mate > 0 ? 1000.1 - (result.mate * 100) : -1000.1 - (result.mate * 100));
+                const rawValue = result.mate > 0 ? 1000.1 - (result.mate * 100) : -1000.1 - (result.mate * 100);
+                if(((rawValue * 10) % 10 === 9) && result.mate > 0){
+                  resolve(300.1);
+                }else if(((rawValue * 10) % 10 === 9) && result.mate < 0){
+                  resolve(-300.1);
+                }else resolve(rawValue);
+                //resolve(result.mate > 0 ? 1000.1 - (result.mate * 100) : -1000.1 - (result.mate * 100));
               } else {
                 resolve(result.cp ?? 0);
               }

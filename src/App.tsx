@@ -2410,13 +2410,13 @@ function App() {
       while (attempts < MAX_ATTEMPTS) {
         const newFens = fens[Math.floor(Math.random() * fens.length)];
         let evalB = await workerC.getEval(newFens, 10);
-        if(Math.abs(evalB) > 800 && Math.abs (evalA) > 300){
+        if(Math.abs(evalB) > 800 && Math.abs(evalA) > 300){
           const [daEvalB, potMate] = await resolveEval(newFens, 10);
           evalB = daEvalB
         }
         if(evalB !== Math.trunc(evalB)){
           console.log("MATE DETECTED");
-          if ((evalA > evalB && evalB > 0 && ((evalB * 10) % 10 === 1)) || (evalA < evalB && evalB < 0 && ((evalB * 10) % 10 === 9))){
+          if ((evalA > evalB && evalB > 0 && ((evalB * 10) % 10 === 1)) || (evalA < evalB && evalB < 0 && ((evalB * 10) % 10 === 1))){
             console.log("MATE SUCCESSFUL");
             const newevalB = evalB;
             
@@ -2437,10 +2437,10 @@ function App() {
             chessGame.load(newFens);
             highlightKingSquare(chessGame, "big");
             let newevalB = await workerD.getEval(newFens, 18);
-            if(Math.abs(newevalB) > 800 && Math.abs(evalA) > 300){
+            /*if(Math.abs(newevalB) > 800 && Math.abs(evalA) > 300){
               const [daNewEvalB, potMate] = await resolveEval(newFens, 18);
               newevalB = daNewEvalB;
-            }
+            }*/
             //optimize above--not needed if resolveEval runs at depth 10
             const difference = evalA - newevalB;
             setOldEval(newevalB);
