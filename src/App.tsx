@@ -1978,11 +1978,11 @@ function App() {
 
     }else{
       const [result, stockfishSetup] = await Promise.all([
-        workerC.getBestLine(chessGame.fen(), 18).then(r => { console.log("chooseFen workerA done", r); return r; }),
+        workerC.getBestLine(chessGame.fen(), 16).then(r => { console.log("chooseFen workerA done", r); return r; }),
         workerD.getBestLine(fenBeforeMove, 18).then(r => { console.log("chooseFen workerB done", r); return r; }),
       ]);
       const mate = result.mate;
-      const ourEval = -1 * await workerD.getEval(chessGame.fen(), 18);
+      const ourEval = -1 * await workerC.getEval(chessGame.fen(), 20);
       let bestEval = ourEval;
       let streaker = currentStreak;
 
@@ -1993,7 +1993,7 @@ function App() {
         
         tryFenGame.load(fenBeforeMove);
         tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
-        bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 18);
+        bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 20);
         console.log(stockfishMove + " not equals " + playerMove);
       }else{
         console.log(stockfishMoveSAN + " equals " + playerMove);
