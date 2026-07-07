@@ -5,10 +5,20 @@ import {Chess} from "chess.js";
 function splitPGNGames(pgnText: string, openingFilter: string): string[] {
   if(openingFilter.toLowerCase() === "petrov's"){
     openingFilter = "Petrov";
-  }else if(openingFilter.toLowerCase() === "queen's pawn game"){
+  }else if(openingFilter.toLowerCase() === "queen's pawn game" || openingFilter.toLowerCase() === "queen's gambit declined"){
     openingFilter = "Queen's pawn";
   }else if(openingFilter.toLowerCase() === "italian"){
     openingFilter = "Giuoco";
+  }else if(openingFilter.toLowerCase() === "king's indian defense"){
+    openingFilter = "King's Indian";
+  }else if(openingFilter.toLowerCase() === "queen's indian defense"){
+    openingFilter = "Queen's Indian";
+  }else if(openingFilter.toLowerCase() === "grünfeld"){
+    openingFilter = "Gruenfeld";
+  }else if(openingFilter.toLowerCase() === "london system"){
+    openingFilter = "Queen's Pawn Game";
+  }else if(openingFilter.toLowerCase() === "spanish"){
+    openingFilter = "Ruy Lopez";
   }
   console.log("Opening filter: " + openingFilter)
   return pgnText

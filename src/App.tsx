@@ -66,11 +66,11 @@ type MoveInfo = {
 
 
 const levelUnlocks: Record<number, string[]> = {
-  2: ["Random", "French", "Caro-Kann", "Benoni"],
-  3: ["English", "Italian", "Catalan"],
-  4: ["Queen's Pawn Game", "Queen's Bishop Game", "Queen's Gambit Declined"],
-  5: ["Queen's Indian", "King's Indian", "Gruenfeld"],
-  6: ["Ruy Lopez", "Reti", "Sicilian, Petrov's"],
+  2: ["Random", "French", "Italian", "Queen's Pawn Game"],
+  3: ["Caro-Kann", "Queen's Indian Defense", "King's Indian Defense"],
+  4: ["Reti", "London System", "Queen's Gambit Declined"],
+  5: ["Benoni", "English", "Gruenfeld"],
+  6: ["Ruy Lopez", "Catalan", "Sicilian, Petrov's"],
 };
 
 
@@ -182,16 +182,16 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
   { opening: "Spanish", line_key: "open", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Nxe4" },
   { opening: "Spanish", line_key: "marshall", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 O-O 8. c3 d5" },
   // King's Indian
-  { opening: "King's Indian", line_key: "base_line", moves: "1. d4 Nf6 2. c4 g6" },
+  { opening: "King's Indian Defense", line_key: "base_line", moves: "1. d4 Nf6 2. c4 g6" },
   //{ opening: "King's Indian", line_key: "main_line", moves: "1. d4 Nf6 2. c4 g6" },
   // Queen's Pawn Game
   { opening: "Queen's Pawn Game", line_key: "base_line", moves: "1. d4 d5" },
   //{ opening: "Queen's Pawn Game", line_key: "main_line", moves: "1. d4 d5" },
   // Queen's Bishop Game
-  { opening: "Queen's Bishop Game", line_key: "base_line", moves: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3" },
+  { opening: "London System", line_key: "base_line", moves: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3" },
   //{ opening: "Queen's Bishop Game", line_key: "main_line", moves: "1. d4 d5 2. Nf3 Nf6 3. Bf4 c5 4. e3" },
   // Queen's Indian
-  { opening: "Queen's Indian", line_key: "base_line", moves: "1. d4 Nf6 2. c4 e6 3. Nf3 b6" },
+  { opening: "Queen's Indian Defense", line_key: "base_line", moves: "1. d4 Nf6 2. c4 e6 3. Nf3 b6" },
   //{ opening: "Queen's Indian", line_key: "main_line", moves: "1. d4 Nf6 2. c4 e6 3. Nf3 b6" },
   // Queen's Gambit Declined
   { opening: "Queen's Gambit Declined", line_key: "base_line", moves: "1. d4 d5 2. c4 e6" },
@@ -310,7 +310,7 @@ function App() {
     beaten_openings: [],
     userMinPly: 4
   });
-  const openings = ["None", "Random", "Sicilian", "French", "Caro-Kann", "English", "Ruy Lopez", "King's Indian", "Queen's Pawn Game", "Queen's Bishop Game", "Queen's Indian", "Gruenfeld", "Queen's Gambit Declined", "Reti", "Petrov's", "Benoni", "Catalan", "Italian"];
+  const openings = ["None", "Random", "Italian", "French", "Queen's Pawn Game", "Caro-Kann", "Queen's Indian Defense", "King's Indian Defense", "Reti", "London System", "Queen's Gambit Declined", "Gruenfeld", "Benoni", "English", "Petrov's", "Ruy Lopez", "Catalan", "Sicilian"];
   //const openingPlyLengths: Record<string, number> = { "None": 6, "Random": 6, "Sicilian": 2, "French": 4, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "Queen's Bishop Game": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 3, "Reti": 1, "Petrov's": 4, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Italian": 5 };
 
  // const pinkMode = false;
