@@ -49,8 +49,10 @@ type RankInfo = {
 
 type UserProgress = {
   level: number;
-  beaten_openings: string[];
-  unlocked_openings: string[];
+  openings_level_1: string[];
+  openings_level_2: string[];
+  openings_level_3: string[];
+  openings_level_4: string[];
   userMinPly: number;
 };
 
@@ -306,8 +308,10 @@ function App() {
   const [daOpeningMoves, setDaOpeningMoves] = useState<string[]>([]);
   const [userProgress, setUserProgress] = useState<UserProgress>({
     level: 1,
-    unlocked_openings: ["None"],
-    beaten_openings: [],
+    openings_level_1: ["None"],
+    openings_level_2: [],
+    openings_level_3: [],
+    openings_level_4: [],
     userMinPly: 4
   });
   const openings = ["None", "Random", "Italian", "French", "Queen's Pawn Game", "Caro-Kann", "Queen's Indian Defense", "King's Indian Defense", "Reti", "London System", "Queen's Gambit Declined", "Gruenfeld", "Benoni", "English", "Petrov's", "Ruy Lopez", "Catalan", "Sicilian"];
@@ -401,7 +405,7 @@ function App() {
     async function fetchProgress() {
       const { data, error } = await supabase
         .from("user_progress")
-        .select("level, unlocked_openings, beaten_openings, userMinPly")
+        .select("level, openings_level_1, openings_level_2, openings_level_3, openings_level_4, userMinPly")
         .eq("user_id", user!.id)
         .single();
 
@@ -410,8 +414,11 @@ function App() {
         await supabase.from("user_progress").insert({
           user_id: user!.id,
           level: 1,
-          unlocked_openings: ["None"],
-          beaten_openings: []
+          openings_level_1: ["None"],
+          openings_level_2: [],
+          openings_level_3: [],
+          openings_level_4: [],
+          userMinPly: 4
         });
       } else {
         setUserProgress(data);
@@ -459,7 +466,7 @@ function App() {
     if (!user) return;
     const newLevel = userProgress.level + 1;
     const newUnlocks = levelUnlocks[newLevel] ?? []; // openings unlocked at this level
-    const updated = [...userProgress.unlocked_openings, ...newUnlocks];
+    const updated = [...userProgress.openings_level_1, ...newUnlocks];
     let minPly = userProgress.userMinPly;
     if(newLevel === 7){
       minPly = 7;
@@ -469,11 +476,11 @@ function App() {
 
     const { error } = await supabase
       .from("user_progress")
-      .update({ level: newLevel, unlocked_openings: updated, userMinPly: minPly })
+      .update({ level: newLevel, openings_level_1: updated, userMinPly: minPly })
       .eq("user_id", user.id);
 
     if (!error) {
-      setUserProgress({ level: newLevel, unlocked_openings: updated, beaten_openings: userProgress.beaten_openings, userMinPly: minPly });
+      setUserProgress({ level: newLevel, openings_level_1: updated, openings_level_2: userProgress.openings_level_2, openings_level_3: userProgress.openings_level_3, openings_level_4: userProgress.openings_level_4, userMinPly: minPly });
       if (newUnlocks.length > 0) {
         //setGameResult(prev => `${prev}\nLevel ${newLevel}! Unlocked: ${newUnlocks.join(", ")}`);
         setGameResult(prev => 
@@ -739,23 +746,23 @@ function App() {
   }
 
   async function triggerEnd(finalmessage: string, accuracy: number, result: string, opening: string){
-    if (result === "Win" && !userProgress.beaten_openings.includes(opening)) {
+    if (result === "Win" && !userProgress.openings_level_2.includes(opening)) {
       await supabase
       .from("user_progress")
-      .update({ beaten_openings: [...userProgress.beaten_openings, opening] })
+      .update({ openings_level_2: [...userProgress.openings_level_2, opening] })
       .eq("user_id", user!.id);
-      if (userProgress.beaten_openings.length === 0){
+      if (userProgress.openings_level_2.length === 0){
         setUserProgress(prev => ({
           ...prev,
-          beaten_openings: [...prev.beaten_openings, opening, "Random"]
+          openings_level_2: [...prev.openings_level_2, opening, "Random"]
         }));
       }else{
         setUserProgress(prev => ({
           ...prev,
-          beaten_openings: [...prev.beaten_openings, opening]
+          openings_level_2: [...prev.openings_level_2, opening]
         }));
       }
-      if (userProgress.beaten_openings.length === 0 || userProgress.beaten_openings.length === 1 || userProgress.beaten_openings.length === 3 || userProgress.beaten_openings.length === 5 || userProgress.beaten_openings.length === 6){
+      if (userProgress.openings_level_2.length === 0 || userProgress.openings_level_2.length === 1 || userProgress.openings_level_2.length === 3 || userProgress.openings_level_2.length === 5 || userProgress.openings_level_2.length === 6){
         levelUp();
         console.log("Level up!" + opening);
       }
@@ -2864,10 +2871,10 @@ function App() {
               padding: "8px 0"
             }}>
               {openings
-              .filter(opening => userProgress.unlocked_openings.includes(opening) || levelUnlocks[userProgress.level + 1].includes(opening))
+              .filter(opening => userProgress.openings_level_1.includes(opening) || levelUnlocks[userProgress.level + 1].includes(opening))
               .map(opening => {
-                const isBeaten = userProgress.beaten_openings.includes(opening);
-                //const isUnlocked = userProgress.unlocked_openings.includes(opening);
+                const isBeaten = userProgress.openings_level_2.includes(opening);
+                //const isUnlocked = userProgress.openings_level_1.includes(opening);
                 return (
                   <div
                     key={opening}
