@@ -921,7 +921,6 @@ function App() {
           workerA.getBestLine(fenAfterMove, 18).then(r => { console.log("workerA done", r); return r; }),
           workerB.getBestLine(fenBeforeMove, 18).then(r => { console.log("workerB done", r); return r; }),
         ]);
-        console.log("Promise.all resolved");
         const pv = result.pv;
         console.log("PV: " + pv);
         const bestMove = pv?.split(" ")?.[0];
@@ -2275,7 +2274,7 @@ function App() {
         ? allLines.filter(l => selectedLines.includes(l.key))
         : allLines.filter(l => !(openingMaxPly < l.plyLength && l.key !== "base_line" && l.key !== "main_line")); // default: all unlocked lines
 
-      console.log("eligible lines: " + eligible);
+      //console.log("eligible lines: " + eligible);
       return eligible.map(l => l.line);
       //return eligible.map(l => l.label + l.line);
     }
@@ -2284,7 +2283,7 @@ function App() {
       const eligible = selectedLines.length > 0
         ? allLines.filter(l => selectedLines.includes(l.key))
         : allLines.filter(l => !(openingMaxPly < l.plyLength && l.key !== "base_line" && l.key !== "main_line"))
-      console.log("eligible lines: " + eligible);
+      //console.log("eligible lines: " + eligible);
       return eligible.map(l => l.label);
     }
     function getActiveLineKeys(opening: string): string[] {
@@ -2292,7 +2291,7 @@ function App() {
       const eligible = selectedLines.length > 0
         ? allLines.filter(l => selectedLines.includes(l.key))
         : allLines.filter(l => !(openingMaxPly < l.plyLength && l.key !== "base_line" && l.key !== "main_line"))
-      console.log("eligible lines: " + eligible);
+      //console.log("eligible lines: " + eligible);
       return eligible.map(l => l.key);
     }
     function sanToUciMultiple(sanMoves: string[]): string[] {
@@ -2417,7 +2416,7 @@ function App() {
         }
         if(evalB !== Math.trunc(evalB)){
           console.log("MATE DETECTED");
-          if ((evalA > evalB && evalB > 0) || (evalA < evalB && evalB < 0)){
+          if ((evalA > evalB && evalB > 0 && ((evalB * 10) % 10 === 1)) || (evalA < evalB && evalB < 0 && ((evalB * 10) % 10 === 9))){
             console.log("MATE SUCCESSFUL");
             const newevalB = evalB;
             
