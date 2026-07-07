@@ -313,6 +313,8 @@ function App() {
     openings_level_4: [],
   });
   const openings = ["None", "Random", "Italian", "French", "Queen's Pawn Game", "Caro-Kann", "Queen's Indian Defense", "King's Indian Defense", "Reti", "London System", "Queen's Gambit Declined", "Gruenfeld", "Benoni", "English", "Petrov's", "Ruy Lopez", "Catalan", "Sicilian"];
+  const [practiceEnded, setPracticeEnded] = useState(false);
+  
   //const openingPlyLengths: Record<string, number> = { "None": 6, "Random": 6, "Sicilian": 2, "French": 4, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "Queen's Bishop Game": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 3, "Reti": 1, "Petrov's": 4, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Italian": 5 };
 
  // const pinkMode = false;
@@ -2294,35 +2296,38 @@ function App() {
         }
         console.log("randchess fen: " + randChess.fen());
         fen = randChess.fen();
-
-        if (randLineLabel.startsWith("Challenge")){
-          posType = "challenge line";
-          //setShowEffex("CHALLENGE MOVE!");
-          nextEffex("CHALLENGE MOVE!");
-          setIsChallenge(daRandLineKey);
-          console.log("daRandLineLabel: " + daRandLineLabel);
+        let openingMinPly = 4;
+        if(userProgress.openings_level_2?.includes(gameOpening)){
+          openingMinPly = 7;
+        }else if(userProgress.openings_level_3?.includes(gameOpening)){
+          openingMinPly = 10;
+        }else if(userProgress.openings_level_4?.includes(gameOpening)){
+          openingMinPly = 20;
+        }
+        if(randFens.length >= openingMinPly){
+          posType = "choose random";
         }else{
-          let openingMinPly = 4;
-          if(userProgress.openings_level_2?.includes(gameOpening)){
-            openingMinPly = 7;
-          }else if(userProgress.openings_level_3?.includes(gameOpening)){
-            openingMinPly = 10;
-          }else if(userProgress.openings_level_4?.includes(gameOpening)){
-            openingMinPly = 20;
-          }
-          const challengeChance = (openingMinPly - lineUCIs.length)/openingMinPly;
-          console.log("Chance for challenge move: " + challengeChance + " " + openingMinPly + " " + lineUCIs.length);
-
-          if(Math.random() < challengeChance){
-            posType = "new challenge line";
+          if (randLineLabel.startsWith("Challenge")){
+            posType = "challenge line";
             //setShowEffex("CHALLENGE MOVE!");
             nextEffex("CHALLENGE MOVE!");
-            //sourceLineKey = randLineLabel.split("_")[1];
-            sourceLineKey = randLineLabel;
+            setIsChallenge(daRandLineKey);
+            console.log("daRandLineLabel: " + daRandLineLabel);
           }else{
-            posType = "random line position";
-            //setShowEffex(daRandLineLabel);
-            nextEffex(daRandLineLabel);
+            const challengeChance = (openingMinPly - lineUCIs.length)/openingMinPly;
+            console.log("Chance for challenge move: " + challengeChance + " " + openingMinPly + " " + lineUCIs.length);
+
+            if(Math.random() < challengeChance){
+              posType = "new challenge line";
+              //setShowEffex("CHALLENGE MOVE!");
+              nextEffex("CHALLENGE MOVE!");
+              //sourceLineKey = randLineLabel.split("_")[1];
+              sourceLineKey = randLineLabel;
+            }else{
+              posType = "random line position";
+              //setShowEffex(daRandLineLabel);
+              nextEffex(daRandLineLabel);
+            }
           }
         }
       } 
@@ -2582,6 +2587,7 @@ function App() {
         }*/
         await new Promise(resolve => setTimeout(resolve, 1000)); // brief pause between lines
       }
+      setPracticeEnded(true);
     }
 
     // Choose game start FEN from eligible game lines
@@ -2656,25 +2662,39 @@ function App() {
         setMoveInfos(infos);
         //console.log("\Added fen: " + chessGame.fen() + " Move: " + moveFrom + square);
       }else if (reqMove !== "none"){
-        const sendthatfen = chessGame.fen();
-        chessGame.move({
-          from: moveFrom,
-          to: square,
-          promotion: 'q'
-        });
-        let playMove = uciToSan(moveFrom + square, sendthatfen);
-        if(playMove === reqMove){
-          chessGameRef.current = chessGame;
-          console.log("Requested move played");
-          setBigChessPosition(chessGame.fen());
+        if(practiceEnded === false){
+          const sendthatfen = chessGame.fen();
+          chessGame.move({
+            from: moveFrom,
+            to: square,
+            promotion: 'q'
+          });
+          let playMove = uciToSan(moveFrom + square, sendthatfen);
+          if(playMove === reqMove){
+            chessGameRef.current = chessGame;
+            console.log("Requested move played");
+            setBigChessPosition(chessGame.fen());
+          }else{
+            setShowEffex("Incorrect ❌ (" + reqMove + ")");
+            stopEffex();
+            console.log("Requested move not played: " + moveFrom + square + " reqMove: " + reqMove + "chesspos: " + bigChessPosition);
+            setBigChessPosition(sendthatfen);
+            chessGame.undo();
+          }
         }else{
-          setShowEffex("Incorrect ❌ (" + reqMove + ")");
-          stopEffex();
-          console.log("Requested move not played: " + moveFrom + square + " reqMove: " + reqMove + "chesspos: " + bigChessPosition);
-          setBigChessPosition(sendthatfen);
-          chessGame.undo();
+          console.log("situation 0");
+          const sendthatfen = chessGame.fen();
+          setOldFen(chessGame.fen());
+          chessGame.move({
+            from: moveFrom,
+            to: square,
+            promotion: 'q'
+          });
+          setOldMove(moveFrom + square)
+          chooseFen(sendthatfen, moveFrom + square);
+          setFens(fens.filter(f => f !== sendthatfen));
+          //fix-- above is probably wrong
         }
-
       }else{
         const sendthatfen = chessGame.fen();
         setOldFen(chessGame.fen());
