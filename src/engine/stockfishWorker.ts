@@ -151,7 +151,7 @@ export function createPersistentWorker() {
                 return;
               }
               if (result.mate !== null) {
-                resolve(result.mate > 0 ? 10000 - result.mate : -10000 - result.mate);
+                resolve(result.mate > 0 ? 1000.1 - (result.mate * 100) : -1000.1 - (result.mate * 100));
               } else {
                 resolve(result.cp ?? 0);
               }
@@ -184,7 +184,8 @@ export function createPersistentWorker() {
                 if (mateMatch) {
                   // Convert mate to large cp value, preserving sign
                   const mateIn = parseInt(mateMatch[1], 10);
-                  cp = mateIn > 0 ? 10000 - mateIn : -10000 - mateIn;
+                  //could make it so that on higher depth where it can see longer mates, it's only 50 per move and not 100
+                  cp = mateIn > 0 ? 1000.1 - (mateIn * 100) : -1000.1 - (mateIn * 100);
                 } else {
                   cp = cpMatch ? parseInt(cpMatch[1], 10) : 0;
                 }

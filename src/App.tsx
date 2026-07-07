@@ -1756,6 +1756,26 @@ function App() {
     }
   }
 
+  async function resolveEval(fen: string, startDepth: number = 18): Promise<[number, string]> {
+    let daEval = 1001;
+    let mate = "";
+    console.log("resolving eval of " + fen);
+    while(Math.abs(daEval) > 1000 && startDepth < 60){
+      startDepth += 10;
+      daEval = await workerB.getEval(fen, startDepth)
+    }
+    if(Math.abs(daEval) < 1001){
+      console.log("resolve success: " + daEval + "depth: " + startDepth);
+      if(Math.trunc(daEval) !== daEval){
+        const bline = await workerB.getBestLine(fen, startDepth);
+        if(bline.mate) mate = bline.pv;
+      }
+    }else{
+      console.log("resolve failure: " + daEval);
+    }
+    return [daEval, mate];
+  }
+
   async function saveAndRankResult(dailyScore: number, accuracy: number) {
     if (!user) return;
 
@@ -2055,8 +2075,15 @@ function App() {
         workerC.getBestLine(chessGame.fen(), 16).then(r => { console.log("chooseFen workerA done", r); return r; }),
         workerD.getBestLine(fenBeforeMove, 18).then(r => { console.log("chooseFen workerB done", r); return r; }),
       ]);
-      const mate = result.mate;
-      const ourEval = -1 * await workerC.getEval(chessGame.fen(), 20);
+      let mate = result.mate;
+      let stockMate = "";
+      let ourMate = "";
+      let ourEval = -1 * await workerC.getEval(chessGame.fen(), 20);
+      if(Math.abs(ourEval) > 800){
+        const [daOurEval, potMate] = await resolveEval(chessGame.fen(), 20);
+        ourEval = daOurEval;
+        ourMate = potMate;
+      }
       let bestEval = ourEval;
       let streaker = currentStreak;
 
@@ -2068,6 +2095,11 @@ function App() {
         tryFenGame.load(fenBeforeMove);
         tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
         bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 20);
+        if(Math.abs(bestEval) > 800){
+          const [daBestEval, potMate] = await resolveEval(tryFenGame.fen(), 20);
+          bestEval = -1 * daBestEval;
+          stockMate = potMate;
+        }
         console.log(stockfishMove + " not equals " + playerMove);
       }else{
         console.log(stockfishMoveSAN + " equals " + playerMove);
@@ -2206,8 +2238,32 @@ function App() {
           triggerEnd("Game over! Final result: " + (mate > 0 ? "You are mated in " + mate : "You are mated in " + (-mate)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval, displayAccuracy/10, "Loss", gameOpening);
         }
         return;
+      }else if (ourMate !== ""){
+        const ourMateMoves = ourMate.split(" ");
+        for (let i = 0; i < ourMateMoves.length + 5; i++){
+          if (chessGame.isGameOver() === false){
+            setBigChessPosition(chessGame.fen());
+            await new Promise(resolve => setTimeout(resolve, 500));
+            const move = ourMateMoves?.[i];
+            chessGame.move({from: move?.substring(0, 2) as Square, to: move?.substring(2, 4) as Square, promotion: 'q'});
+            flushSync(() => {
+              setBigChessPosition(chessGame.fen());
+            });
+            await new Promise(resolve => setTimeout(resolve, 1000));
+          }
+        }
+        if (evalA > 0){
+          triggerEnd("You win! Final result: " + (ourEval > 0 ? "You mate in " + ourMateMoves.length : "You mate in " + (-ourMateMoves.length)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter) + ", Starting Eval: " + startingEval, displayAccuracy/10, "Win", gameOpening);
+        }else{
+          triggerEnd("Game over! Final result: " + (ourEval > 0 ? "You are mated in " + ourMateMoves.length : "You are mated in " + (-ourMateMoves.length)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval, displayAccuracy/10, "Loss", gameOpening);
+        }
+        return;
+      }else if (stockMate !== ""){
+        console.log("player failed to find mate");
+        if(ourEval > 800){
+          //fix
+        }
       }
-
     }
     
     let posType = "choose random";
@@ -2354,13 +2410,39 @@ function App() {
       const MAX_ATTEMPTS = 400;
       while (attempts < MAX_ATTEMPTS) {
         const newFens = fens[Math.floor(Math.random() * fens.length)];
-        const evalB = await workerC.getEval(newFens, 10); 
+        let evalB = await workerC.getEval(newFens, 10);
+        if(Math.abs(evalB) > 800 && Math.abs (evalA) > 300){
+          const [daEvalB, potMate] = await resolveEval(newFens, 10);
+          evalB = daEvalB
+        }
+        if(evalB !== Math.trunc(evalB)){
+          console.log("MATE DETECTED");
+          if ((evalA > evalB && evalB > 0) || (evalA < evalB && evalB < 0)){
+            console.log("MATE SUCCESSFUL");
+            const newevalB = evalB;
+            
+            setBigChessPosition(newFens);
+            chessGame.load(newFens);
+            highlightKingSquare(chessGame, "big");
+            const difference = evalA - newevalB;
+            setOldEval(newevalB);
+            setDif(difference);
+            console.log("Success 1! Mate found " + evalA + " " + evalB + " " + newevalB + " " + difference);
+            setBPosHistory(prev => [...prev, newFens]);
+            return;
+          }
+        }
         if (Math.abs(evalA) < 50){
           if ((evalA - evalB <= 30) && (evalA - evalB >= -30)){
             setBigChessPosition(newFens);
             chessGame.load(newFens);
             highlightKingSquare(chessGame, "big");
-            const newevalB = await workerD.getEval(newFens, 18);
+            let newevalB = await workerD.getEval(newFens, 18);
+            if(Math.abs(newevalB) > 800 && Math.abs(evalA) > 300){
+              const [daNewEvalB, potMate] = await resolveEval(newFens, 18);
+              newevalB = daNewEvalB;
+            }
+            //optimize above--not needed if resolveEval runs at depth 10
             const difference = evalA - newevalB;
             setOldEval(newevalB);
             setDif(difference);
@@ -2369,7 +2451,11 @@ function App() {
             return;
           }
         }else if (((evalA < evalB / 0.6) && (evalA > evalB * 0.6) && (evalA >= 0)) || ((evalA > evalB / 0.6) && (evalA < evalB * 0.6) && (evalA <= 0))){
-          const newevalB = await workerC.getEval(newFens, 18);
+          let newevalB = await workerC.getEval(newFens, 18);
+          if(Math.abs(newevalB) > 800 && Math.abs(evalA) > 300){
+            const [daNewEvalB, potMate] = await resolveEval(newFens, 18);
+            newevalB = daNewEvalB;
+          }
           if (((evalA < newevalB / 0.5) && (evalA > newevalB * 0.5) && (evalA >= 0)) || ((evalA > newevalB / 0.5) && (evalA < newevalB * 0.5) && (evalA <= 0))){
             setBigChessPosition(newFens);
             chessGame.load(newFens);
@@ -2393,7 +2479,11 @@ function App() {
           }catch{
             console.log("invalid move in swapFen");
           }
-          const newevalB = await workerB.getEval(chessGame.fen(), 18);
+          let newevalB = await workerB.getEval(chessGame.fen(), 18);
+          if(Math.abs(newevalB) > 800 && Math.abs(evalA) > 300){
+            const [daNewEvalB, potMate] = await resolveEval(newFens, 18);
+            newevalB = daNewEvalB;
+          }
 
           if (((evalA < newevalB / 0.5) && (evalA > newevalB * 0.5) && (evalA >= 0)) || ((evalA > newevalB / 0.5) && (evalA < newevalB * 0.5) && (evalA <= 0))){
             setBigChessPosition(chessGame.fen());
@@ -2445,7 +2535,11 @@ function App() {
       setBigChessPosition(newFenny);
       chessGame.load(newFenny);
       highlightKingSquare(chessGame, "big");
-      const newevalB = await workerD.getEval(newFenny, 18);//fix --is this line and below needed?
+      let newevalB = await workerD.getEval(newFenny, 18);//fix --is this line and below needed?
+      if(Math.abs(newevalB) > 800 && Math.abs(evalA) > 300){
+        const [daNewEvalB, potMate] = await resolveEval(newFenny, 18);
+        newevalB = daNewEvalB;
+      }
       const difference = evalA - newevalB;
       setOldEval(newevalB);
       setDif(difference);
