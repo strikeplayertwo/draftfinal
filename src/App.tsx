@@ -206,14 +206,14 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
   { opening: "Queen's Gambit Declined", line_key: "semi_slav", moves: "1. d4 d5 2. c4 e6 3. Nf3 Nf6 4. e3 c6 5. Nbd2" },
   { opening: "Queen's Gambit Declined", line_key: "harrwitz_attack", moves: "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Bf4" },
   // Grünfeld
-  { opening: "Grünfeld", line_key: "base_line", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5" },
-  { opening: "Grünfeld", line_key: "exchange", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5 4. cxd5 Nxd5 5. e4 Nxc3 6. Bxc3 Bg7" },
-  { opening: "Grünfeld", line_key: "russian", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5 4. Nf3 Bg7 5. Qb3" },
-  { opening: "Grünfeld", line_key: "petrosian", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5 4. Nf3 Bg7 5. Bg5" },
-  { opening: "Grünfeld", line_key: "5_cxd5", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5 4. Nf3 Bg7 5. cxd5" },
+  { opening: "Gruenfeld", line_key: "base_line", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5" },
+  { opening: "Gruenfeld", line_key: "exchange", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5 4. cxd5 Nxd5 5. e4 Nxc3 6. Bxc3 Bg7" },
+  { opening: "Gruenfeld", line_key: "russian", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5 4. Nf3 Bg7 5. Qb3" },
+  { opening: "Gruenfeld", line_key: "petrosian", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5 4. Nf3 Bg7 5. Bg5" },
+  { opening: "Gruenfeld", line_key: "5_cxd5", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5 4. Nf3 Bg7 5. cxd5" },
   //{ opening: "Grünfeld", line_key: "main_line", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5" },
   // Réti
-  { opening: "Réti", line_key: "base_line", moves: "1. Nf3" },
+  { opening: "Reti", line_key: "base_line", moves: "1. Nf3" },
   //{ opening: "Réti", line_key: "main_line", moves: "1. Nf3" },
   // Petrov's
   { opening: "Petrov's", line_key: "base_line", moves: "1. e4 e5 2. Nf3 Nf6" },
@@ -2217,7 +2217,7 @@ function App() {
       let allLines = getOpeningLines(opening);
       const eligible = selectedLines.length > 0
         ? allLines.filter(l => selectedLines.includes(l.key))
-        : allLines.filter(l => !(openingMaxPly < l.plyLength)); // default: all unlocked lines
+        : allLines.filter(l => !(openingMaxPly < l.plyLength && l.key !== "base_line" && l.key !== "main_line")); // default: all unlocked lines
 
       console.log("eligible lines: " + eligible);
       return eligible.map(l => l.line);
@@ -2227,7 +2227,7 @@ function App() {
       const allLines = getOpeningLines(opening);
       const eligible = selectedLines.length > 0
         ? allLines.filter(l => selectedLines.includes(l.key))
-        : allLines.filter(l => !(openingMaxPly < l.plyLength)); // default: all unlocked lines
+        : allLines.filter(l => !(openingMaxPly < l.plyLength && l.key !== "base_line" && l.key !== "main_line"))
       console.log("eligible lines: " + eligible);
       return eligible.map(l => l.label);
     }
@@ -2235,7 +2235,7 @@ function App() {
       const allLines = getOpeningLines(opening);
       const eligible = selectedLines.length > 0
         ? allLines.filter(l => selectedLines.includes(l.key))
-        : allLines.filter(l => !(openingMaxPly < l.plyLength)); // default: all unlocked lines
+        : allLines.filter(l => !(openingMaxPly < l.plyLength && l.key !== "base_line" && l.key !== "main_line"))
       console.log("eligible lines: " + eligible);
       return eligible.map(l => l.key);
     }
@@ -2512,7 +2512,7 @@ function App() {
 
     const eligibleLines = selectedLines.length > 0
       ? allLines.filter(l => selectedLines.includes(l.key))
-      : allLines.filter(l => !(openingMaxPly < l.plyLength)); // default: all unlocked lines
+      : allLines.filter(l => !(openingMaxPly < l.plyLength && l.key !== "base_line" && l.key !== "main_line"))
     const eligiblePracticeLines = practiceLines.length > 0
       ? allLines.filter(l => practiceLines.includes(l.key))
       : eligibleLines; // fallback to all eligible if none selected
@@ -2970,7 +2970,7 @@ function App() {
                       }
                       const openingMaxPly = await getOpeningMaxPly(opening);
                       const allUnlocked = getOpeningLines(opening)
-                        .filter(l => !(openingMaxPly < l.plyLength)) // default: all unlocked lines
+                        .filter(l => !(openingMaxPly < l.plyLength && l.key !== "base_line" && l.key !== "main_line"))
                         .map(l => l.key);
                       setSelectedLines(allUnlocked);
                       setPracticeLines(allUnlocked);
@@ -3031,7 +3031,7 @@ function App() {
                 }else if(userProgress.openings_level_4?.includes(pendingOpening)){
                   openingMaxPly = 20;
                 }
-                const isLocked = (openingMaxPly < plyLength);
+                const isLocked = (openingMaxPly < plyLength && key !== "base_line" && key !== "main_line");
                 const isSelected = selectedLines.includes(key);
                 const isPractice = practiceLines.includes(key);
                 return (
