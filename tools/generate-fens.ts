@@ -25,8 +25,7 @@ function splitPGNGames(pgnText: string, openingFilter: string): string[] {
     .split(/\r?\n\r?\n(?=\[Event )/)
     .filter(g => g.trim().length > 0)
     .filter(g => {
-      if (openingFilter === "None") return true; // no filter, return all
-      // Match against the [Opening "..."] tag in the PGN header
+      if (openingFilter === "None") return true;
       const openingMatch = g.match(/\[Opening "([^"]+)"\]/);
       if (!openingMatch) return false;
       return openingMatch[1].toLowerCase().includes(openingFilter.toLowerCase());

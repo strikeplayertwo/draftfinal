@@ -53,7 +53,6 @@ type UserProgress = {
   openings_level_2: string[];
   openings_level_3: string[];
   openings_level_4: string[];
-  userMinPly: number;
 };
 
 type MoveInfo = {
@@ -312,7 +311,6 @@ function App() {
     openings_level_2: [],
     openings_level_3: [],
     openings_level_4: [],
-    userMinPly: 4
   });
   const openings = ["None", "Random", "Italian", "French", "Queen's Pawn Game", "Caro-Kann", "Queen's Indian Defense", "King's Indian Defense", "Reti", "London System", "Queen's Gambit Declined", "Gruenfeld", "Benoni", "English", "Petrov's", "Ruy Lopez", "Catalan", "Sicilian"];
   //const openingPlyLengths: Record<string, number> = { "None": 6, "Random": 6, "Sicilian": 2, "French": 4, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "Queen's Bishop Game": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 3, "Reti": 1, "Petrov's": 4, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Italian": 5 };
@@ -405,7 +403,7 @@ function App() {
     async function fetchProgress() {
       const { data, error } = await supabase
         .from("user_progress")
-        .select("level, openings_level_1, openings_level_2, openings_level_3, openings_level_4, userMinPly")
+        .select("level, openings_level_1, openings_level_2, openings_level_3, openings_level_4")
         .eq("user_id", user!.id)
         .single();
 
@@ -418,7 +416,6 @@ function App() {
           openings_level_2: [],
           openings_level_3: [],
           openings_level_4: [],
-          userMinPly: 4
         });
       } else {
         setUserProgress(data);
@@ -467,20 +464,14 @@ function App() {
     const newLevel = userProgress.level + 1;
     const newUnlocks = levelUnlocks[newLevel] ?? []; // openings unlocked at this level
     const updated = [...userProgress.openings_level_1, ...newUnlocks];
-    let minPly = userProgress.userMinPly;
-    if(newLevel === 7){
-      minPly = 7;
-    }else if (newLevel === 8){
-      minPly = 10;
-    }
 
     const { error } = await supabase
       .from("user_progress")
-      .update({ level: newLevel, openings_level_1: updated, userMinPly: minPly })
+      .update({ level: newLevel, openings_level_1: updated})
       .eq("user_id", user.id);
 
     if (!error) {
-      setUserProgress({ level: newLevel, openings_level_1: updated, openings_level_2: userProgress.openings_level_2, openings_level_3: userProgress.openings_level_3, openings_level_4: userProgress.openings_level_4, userMinPly: minPly });
+      setUserProgress({ level: newLevel, openings_level_1: updated, openings_level_2: userProgress.openings_level_2, openings_level_3: userProgress.openings_level_3, openings_level_4: userProgress.openings_level_4});
       if (newUnlocks.length > 0) {
         //setGameResult(prev => `${prev}\nLevel ${newLevel}! Unlocked: ${newUnlocks.join(", ")}`);
         setGameResult(prev => 
@@ -746,25 +737,80 @@ function App() {
   }
 
   async function triggerEnd(finalmessage: string, accuracy: number, result: string, opening: string){
-    if (result === "Win" && !userProgress.openings_level_2.includes(opening)) {
-      await supabase
-      .from("user_progress")
-      .update({ openings_level_2: [...userProgress.openings_level_2, opening] })
-      .eq("user_id", user!.id);
-      if (userProgress.openings_level_2.length === 0){
-        setUserProgress(prev => ({
-          ...prev,
-          openings_level_2: [...prev.openings_level_2, opening, "Random"]
-        }));
-      }else{
-        setUserProgress(prev => ({
-          ...prev,
-          openings_level_2: [...prev.openings_level_2, opening]
-        }));
-      }
-      if (userProgress.openings_level_2.length === 0 || userProgress.openings_level_2.length === 1 || userProgress.openings_level_2.length === 3 || userProgress.openings_level_2.length === 5 || userProgress.openings_level_2.length === 6){
-        levelUp();
-        console.log("Level up!" + opening);
+    if (result === "Win" && !userProgress.openings_level_4?.includes(opening)) {
+      if (userProgress.openings_level_1?.includes(opening)){
+        await supabase
+          .from("user_progress")
+          .update({ openings_level_2: [...userProgress.openings_level_2, opening] })
+          .eq("user_id", user!.id);
+        await supabase
+          .from("user_progress")
+          .delete()
+          .eq("user_id", user!.id)
+          .eq("openings_level_1", opening);
+        if (userProgress.openings_level_2.length === 0){
+          setUserProgress(prev => ({
+            ...prev,
+            openings_level_2: [...prev.openings_level_2, opening, "Random"]
+          }));
+          setUserProgress(prev => ({ 
+            ...prev, 
+            "openings_level_1": prev["openings_level_1"].filter(item => item !== opening) 
+          }));
+        }else{
+          setUserProgress(prev => ({
+            ...prev,
+            openings_level_2: [...prev.openings_level_2, opening]
+          }));
+          setUserProgress(prev => ({ 
+            ...prev, 
+            "openings_level_1": prev["openings_level_1"].filter(item => item !== opening) 
+          }));
+        }
+        if (userProgress.openings_level_2.length === 0 || userProgress.openings_level_2.length === 2 || userProgress.openings_level_2.length === 4 || userProgress.openings_level_2.length === 6 || userProgress.openings_level_2.length === 7 || userProgress.openings_level_2.length === 17){
+          levelUp();
+          console.log("Level up!" + opening);
+        }
+      }else if (userProgress.openings_level_2?.includes(opening)){
+        if(userProgress.level >= 6){
+          await supabase
+            .from("user_progress")
+            .update({ openings_level_3: [...userProgress.openings_level_3, opening] })
+            .eq("user_id", user!.id);
+          await supabase
+            .from("user_progress")
+            .delete()
+            .eq("user_id", user!.id)
+            .eq("openings_level_2", opening);
+          setUserProgress(prev => ({
+            ...prev,
+            openings_level_3: [...prev.openings_level_3, opening]
+          }));
+          setUserProgress(prev => ({ 
+            ...prev, 
+            "openings_level_2": prev["openings_level_2"].filter(item => item !== opening) 
+          }));
+        }
+      }else{//3
+        if(userProgress.level >= 7){
+          await supabase
+            .from("user_progress")
+            .update({ openings_level_4: [...userProgress.openings_level_4, opening] })
+            .eq("user_id", user!.id);
+          await supabase
+            .from("user_progress")
+            .delete()
+            .eq("user_id", user!.id)
+            .eq("openings_level_3", opening);
+          setUserProgress(prev => ({
+            ...prev,
+            openings_level_4: [...prev.openings_level_4, opening]
+          }));
+          setUserProgress(prev => ({ 
+            ...prev, 
+            "openings_level_3": prev["openings_level_3"].filter(item => item !== opening) 
+          }));
+        }
       }
     }
     setGameResult(finalmessage);
@@ -1893,6 +1939,18 @@ function App() {
     return uciFen;
   }
 
+  async function getOpeningMaxPly(opening: string): Promise<number> {
+    let openingMinPly = 4;
+    if(userProgress.openings_level_2?.includes(opening)){
+      openingMinPly = 7;
+    }else if(userProgress.openings_level_3?.includes(opening)){
+      openingMinPly = 10;
+    }else if(userProgress.openings_level_4?.includes(opening)){
+      openingMinPly = 20;
+    }
+    return openingMinPly;
+  }
+
   async function chooseFen(fenBeforeMove: string, playerzMove: string) {
     const playerMove = uciToSan(playerzMove, fenBeforeMove);
     const chessGame = chessGameRef.current;
@@ -2151,11 +2209,13 @@ function App() {
     }
     
     let posType = "choose random";
+    const openingMaxPly = await getOpeningMaxPly(gameOpening);
+    
     function getActiveLines(opening: string): string[] {
       let allLines = getOpeningLines(opening);
       const eligible = selectedLines.length > 0
         ? allLines.filter(l => selectedLines.includes(l.key))
-        : allLines.filter(l => !((userProgress.level < 7 && l.plyLength >= 7) || (userProgress.level < 8 && l.plyLength >= 10))); // default: all unlocked lines
+        : allLines.filter(l => !(openingMaxPly < l.plyLength)); // default: all unlocked lines
 
       console.log("eligible lines: " + eligible);
       return eligible.map(l => l.line);
@@ -2165,8 +2225,7 @@ function App() {
       const allLines = getOpeningLines(opening);
       const eligible = selectedLines.length > 0
         ? allLines.filter(l => selectedLines.includes(l.key))
-        : allLines.filter(l => !((userProgress.level < 7 && l.plyLength >= 7) || (userProgress.level < 8 && l.plyLength >= 10))); // default: all unlocked lines
-
+        : allLines.filter(l => !(openingMaxPly < l.plyLength)); // default: all unlocked lines
       console.log("eligible lines: " + eligible);
       return eligible.map(l => l.label);
     }
@@ -2174,8 +2233,7 @@ function App() {
       const allLines = getOpeningLines(opening);
       const eligible = selectedLines.length > 0
         ? allLines.filter(l => selectedLines.includes(l.key))
-        : allLines.filter(l => !((userProgress.level < 7 && l.plyLength >= 7) || (userProgress.level < 8 && l.plyLength >= 10))); // default: all unlocked lines
-
+        : allLines.filter(l => !(openingMaxPly < l.plyLength)); // default: all unlocked lines
       console.log("eligible lines: " + eligible);
       return eligible.map(l => l.key);
     }
@@ -2244,9 +2302,16 @@ function App() {
           setIsChallenge(daRandLineKey);
           console.log("daRandLineLabel: " + daRandLineLabel);
         }else{
-
-          const challengeChance = (userProgress.userMinPly - lineUCIs.length)/userProgress.userMinPly;
-          console.log("Chance for challenge move: " + challengeChance + " " + userProgress.userMinPly + " " + lineUCIs.length);
+          let openingMinPly = 4;
+          if(userProgress.openings_level_2?.includes(gameOpening)){
+            openingMinPly = 7;
+          }else if(userProgress.openings_level_3?.includes(gameOpening)){
+            openingMinPly = 10;
+          }else if(userProgress.openings_level_4?.includes(gameOpening)){
+            openingMinPly = 20;
+          }
+          const challengeChance = (openingMinPly - lineUCIs.length)/openingMinPly;
+          console.log("Chance for challenge move: " + challengeChance + " " + openingMinPly + " " + lineUCIs.length);
 
           if(Math.random() < challengeChance){
             posType = "new challenge line";
@@ -2438,14 +2503,11 @@ function App() {
 
     const allLines = getOpeningLines(opening);
     const lines = openingLines[opening] ?? [];
+    const openingMaxPly = await getOpeningMaxPly(opening);
 
     const eligibleLines = selectedLines.length > 0
       ? allLines.filter(l => selectedLines.includes(l.key))
-      : allLines.filter(l => !(
-          (userProgress.level < 7 && l.plyLength >= 7) ||
-          (userProgress.level < 8 && l.plyLength >= 10)
-        ));
-
+      : allLines.filter(l => !(openingMaxPly < l.plyLength)); // default: all unlocked lines
     const eligiblePracticeLines = practiceLines.length > 0
       ? allLines.filter(l => practiceLines.includes(l.key))
       : eligibleLines; // fallback to all eligible if none selected
@@ -2871,9 +2933,12 @@ function App() {
               padding: "8px 0"
             }}>
               {openings
-              .filter(opening => userProgress.openings_level_1.includes(opening) || levelUnlocks[userProgress.level + 1].includes(opening))
+              .filter((opening) => userProgress.openings_level_1?.includes(opening) || userProgress.openings_level_2?.includes(opening) || userProgress.openings_level_3?.includes(opening) || userProgress.openings_level_4?.includes(opening) || levelUnlocks[userProgress.level + 1].includes(opening))
+              //fix--does that work?
               .map(opening => {
-                const isBeaten = userProgress.openings_level_2.includes(opening);
+                const isBeaten = userProgress.openings_level_2?.includes(opening);
+                const isBeatenTwice = userProgress.openings_level_3?.includes(opening);
+                const isBeatenThrice = userProgress.openings_level_4?.includes(opening);
                 //const isUnlocked = userProgress.openings_level_1.includes(opening);
                 return (
                   <div
@@ -2883,8 +2948,9 @@ function App() {
                       if (opening === "Random") {
                         opening = openings[Math.floor(Math.random() * (openings.length - 3)) + 2];
                       }
+                      const openingMaxPly = await getOpeningMaxPly(opening);
                       const allUnlocked = getOpeningLines(opening)
-                        .filter(l => !((userProgress.level < 7 && l.plyLength >= 7) || (userProgress.level < 8 && l.plyLength >= 10)))
+                        .filter(l => !(openingMaxPly < l.plyLength)) // default: all unlocked lines
                         .map(l => l.key);
                       setSelectedLines(allUnlocked);
                       setPracticeLines(allUnlocked);
@@ -2895,7 +2961,7 @@ function App() {
                     padding: "10px 16px",
                     //cursor: isUnlocked ? "pointer" : "not-allowed",
                     cursor: "pointer",
-                    color: isBeaten ? "rgb(0, 200, 0)" : "#e6edf3",
+                    color: isBeaten ? "rgb(0, 200, 0)" : isBeatenTwice ? "rgb(200, 0, 0)" : isBeatenThrice ? "rgb(200, 97, 0)" : "#e6edf3",
                     //color: isUnlocked ? "#e6edf3" : "#8b949e",
                     fontSize: "0.9rem",
                     opacity: levelUnlocks[userProgress.level + 1]?.includes(opening) ? 0.4 : 1,
@@ -2905,7 +2971,9 @@ function App() {
                   }}
                   onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                 >
-                  {opening} {isBeaten}
+                  {opening} {isBeaten || isBeatenTwice || isBeatenThrice}
+                  {//fix- not sure above works
+                  }
                 </div>
               );
               })}
@@ -2935,7 +3003,15 @@ function App() {
                 </div>
               </div>
               {getOpeningLines(pendingOpening).map(({ key, label, plyLength }) => {
-                const isLocked = ((userProgress.level < 7 && plyLength >= 7) || (userProgress.level < 8 && plyLength >= 10))
+                let openingMaxPly = 4;
+                if(userProgress.openings_level_2?.includes(pendingOpening)){
+                  openingMaxPly = 7;
+                }else if(userProgress.openings_level_3?.includes(pendingOpening)){
+                  openingMaxPly = 10;
+                }else if(userProgress.openings_level_4?.includes(pendingOpening)){
+                  openingMaxPly = 20;
+                }
+                const isLocked = (openingMaxPly < plyLength);
                 const isSelected = selectedLines.includes(key);
                 const isPractice = practiceLines.includes(key);
                 return (
