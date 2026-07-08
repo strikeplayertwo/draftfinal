@@ -20,7 +20,7 @@ function splitPGNGames(pgnText: string, openingFilter: string): string[] {
   }else if(openingFilter.toLowerCase() === "spanish"){
     openingFilter = "Ruy Lopez";
   }
-  console.log("Opening filter: " + openingFilter)
+  //console.log("Opening filter: " + openingFilter)
   return pgnText
     .split(/\r?\n\r?\n(?=\[Event )/)
     .filter(g => g.trim().length > 0)
@@ -33,8 +33,8 @@ function splitPGNGames(pgnText: string, openingFilter: string): string[] {
 }
 
 
-export async function extractFENsFromGames(pgnText: string, limit = 469, opening = "None", plyLength = 6): Promise<string[]> {
-  const gamesText = splitPGNGames(pgnText, opening).slice(0, limit);
+export async function extractFENsFromGames(pgnText: string, limit = 469, opening = "None", plyLength = 10, start = 0): Promise<string[]> {
+  const gamesText = splitPGNGames(pgnText, opening).slice(start, limit);
   const fens: string[] = [];
 
   for (const gameText of gamesText) {

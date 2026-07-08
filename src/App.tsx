@@ -1595,7 +1595,7 @@ function App() {
   }
 
   async function chooseFiveFens(): Promise<string[]> {
-    let daDailyFens = await extractFENsFromGames(pgnData,94, "None", 6);
+    let daDailyFens = await extractFENsFromGames(pgnData,94, "None", 10);
     let chosenFens: string[] = [];
     let chosenMoves: string[] = [];
     const chosenScores: number[] = [];
@@ -1723,11 +1723,12 @@ function App() {
     return fens;
   }*/
 
-  async function chooseFirstFen(opening: string = "None", plyLength: number = 6): Promise<string> {
+  async function chooseFirstFen(opening: string = "None", plyLength: number = 10): Promise<string> {
     const daFens = await extractFENsFromGames(pgnData,94, opening, plyLength);
     while(daFens.length < 94){
       //const makeupFens = await extractFENsFromGames(pgnData, 94 - daFens.length, "None", plyLength);
-      const makeupFens = await extractFENsFromGames(pgnData, 1, "None", plyLength);
+      const randoN = Math.floor(Math.random() * 468);
+      const makeupFens = await extractFENsFromGames(pgnData, randoN + 1, "None", plyLength, randoN);
       daFens.push(...makeupFens);
     }
     /*const prog = openingProgressMap[opening];
