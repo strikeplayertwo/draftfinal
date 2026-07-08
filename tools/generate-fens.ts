@@ -44,18 +44,26 @@ export async function extractFENsFromGames(pgnText: string, limit = 469, opening
     const chess = new Chess();
 
     const maxPly = parsed.moves.length - 1;
-    console.log("parsed moves: " + parsed.moves.length);
+    /*console.log("parsed moves: " + parsed.moves.length);
     const randomPly = Math.floor(Math.random() * (maxPly - plyLength + 1)) + plyLength;
-    console.log("randomPly: " + randomPly);
-
-    try {
-      for (let i = 0; i < randomPly; i++) {
-        const san = parsed.moves[i].move;
-        chess.move(san);
-        //console.log("pushing " + san);
-      }
+    console.log("randomPly: " + randomPly);*/
+    const randomStartPly = plyLength + Math.floor(Math.random() * 8);
+    const randomEndPly = Math.floor((Math.random() * maxPly / 2) + maxPly / 2);
+    for (let i = 0; i < randomStartPly; i++){
+      const san = parsed.moves[i].move;
+      chess.move(san);
+    }
+    for (let i = randomStartPly; i < randomEndPly; i += 8){
       fens.push(chess.fen());
-    } catch { /* ignore malformed games */ }
+      try{
+        for (let j = 0; j < 8; j++){
+          if(parsed.moves[i]){
+            const san = parsed.moves[i].move;
+            chess.move(san);
+          }
+        }
+      }catch{}
+    };
   }
   console.log(fens.length + " fens generated from " + opening);
   return fens;
