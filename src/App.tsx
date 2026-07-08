@@ -71,7 +71,7 @@ const levelUnlocks: Record<number, string[]> = {
   3: ["Caro-Kann", "Queen's Indian Defense", "King's Indian Defense"],
   4: ["Reti", "London System", "Queen's Gambit Declined"],
   5: ["Benoni", "English", "Gruenfeld"],
-  6: ["Ruy Lopez", "Catalan", "Sicilian, Petrov's"],
+  6: ["Ruy Lopez", "Catalan", "Sicilian", "Petrov's"],
 };
 
 
@@ -1128,10 +1128,10 @@ function App() {
   }
 
   async function nextEffex(damessage: string = "") {
-    await new Promise(resolve => setTimeout(resolve, 500));
-    while (showEffex !== ""){
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    while (showEffex){
       await new Promise(resolve => setTimeout(resolve, 250));
-      if(showEffex === ""){
+      if(!showEffex){
         await new Promise(resolve => setTimeout(resolve, 250));
       }
     }
@@ -2448,20 +2448,26 @@ function App() {
           }
         }else if (((evalA < evalB / 0.6) && (evalA > evalB * 0.6) && (evalA >= 0)) || ((evalA > evalB / 0.6) && (evalA < evalB * 0.6) && (evalA <= 0))){
           let newevalB = await workerC.getEval(newFens, 18);
+          let deepMate = false;
           if(Math.abs(newevalB) > 800 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(newevalB) * 0.5){
             const [daNewEvalB, potMate] = await resolveEval(newFens, 18);
             newevalB = daNewEvalB;
+            deepMate = true;
           }
           if (((evalA < newevalB / 0.5) && (evalA > newevalB * 0.5) && (evalA >= 0)) || ((evalA > newevalB / 0.5) && (evalA < newevalB * 0.5) && (evalA <= 0))){
-            setBigChessPosition(newFens);
-            chessGame.load(newFens);
-            highlightKingSquare(chessGame, "big");
-            setOldEval(newevalB);
-            const difference = evalA - newevalB;
-            setDif(difference);
-            console.log("Success 2! Elo within division range" + evalA + " " + evalB + " " + newevalB + " " + difference);
-            setBPosHistory(prev => [...prev, newFens]);
-            return;
+            if(!(newevalB * 10 % 10 === 1 && deepMate === false)){
+              setBigChessPosition(newFens);
+              chessGame.load(newFens);
+              highlightKingSquare(chessGame, "big");
+              setOldEval(newevalB);
+              const difference = evalA - newevalB;
+              setDif(difference);
+              console.log("Success 2! Elo within division range" + evalA + " " + evalB + " " + newevalB + " " + difference);
+              setBPosHistory(prev => [...prev, newFens]);
+              return;
+            }else{
+              console.log("IGNORING MATE");
+            }
           }else{
             console.log("Inaccuracy error");
           }
@@ -2476,20 +2482,26 @@ function App() {
             console.log("invalid move in swapFen");
           }
           let newevalB = await workerB.getEval(chessGame.fen(), 18);
+          let deepMate = false;
           if(Math.abs(newevalB) > 800 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(newevalB) * 0.5){
             const [daNewEvalB, potMate] = await resolveEval(newFens, 18);
             newevalB = daNewEvalB;
+            deepMate = true;
           }
 
           if (((evalA < newevalB / 0.5) && (evalA > newevalB * 0.5) && (evalA >= 0)) || ((evalA > newevalB / 0.5) && (evalA < newevalB * 0.5) && (evalA <= 0))){
-            setBigChessPosition(chessGame.fen());
-            highlightKingSquare(chessGame, "big");
-            setOldEval(newevalB);
-            const difference = evalA - newevalB;
-            setDif(difference);
-            console.log("Success 3! Elo swapped" + evalA + " " + evalB + " " + newevalB + " " + difference);
-            setBPosHistory(prev => [...prev, chessGame.fen()]);
-            return;
+            if(!(newevalB * 10 % 10 === 1 && deepMate === false)){
+              setBigChessPosition(chessGame.fen());
+              highlightKingSquare(chessGame, "big");
+              setOldEval(newevalB);
+              const difference = evalA - newevalB;
+              setDif(difference);
+              console.log("Success 3! Elo swapped" + evalA + " " + evalB + " " + newevalB + " " + difference);
+              setBPosHistory(prev => [...prev, chessGame.fen()]);
+              return;
+            }else{
+              console.log("IGNORING SWAPMATE");
+            }
           }else{
             console.log("Inaccuracy error on swap");
           };
@@ -3043,7 +3055,7 @@ function App() {
               padding: "8px 0"
             }}>
               {openings
-              .filter((opening) => userProgress.openings_level_1?.includes(opening) || userProgress.openings_level_2?.includes(opening) || userProgress.openings_level_3?.includes(opening) || userProgress.openings_level_4?.includes(opening) || levelUnlocks[userProgress.level + 1].includes(opening))
+              .filter((opening) => userProgress.openings_level_1?.includes(opening) || userProgress.openings_level_2?.includes(opening) || userProgress.openings_level_3?.includes(opening) || userProgress.openings_level_4?.includes(opening) || levelUnlocks[userProgress.level + 1]?.includes(opening))
               //fix--does that work?
               .map(opening => {
                 const isBeaten = userProgress.openings_level_2?.includes(opening);
@@ -3277,12 +3289,14 @@ function App() {
             )}
             <h3>Past Scores</h3>
             <ul>
-              {dailyGameHistory.map((game) => (
-                <li key={game.id}>
-                  {new Date(game.created_at).toLocaleDateString()} 
-                  {game.accuracy != null ? ` — Accuracy: ${game.accuracy.toFixed(1)}%` : ""}
-                  {game.daily_score != null ? ` — Score: ${game.daily_score.toFixed(1)}` : ""}
-                </li>
+              {dailyGameHistory
+                .filter((_, index) => index < 20)
+                .map((game) => (
+                  <li key={game.id}>
+                    {new Date(game.created_at).toLocaleDateString()} 
+                    {game.accuracy != null ? ` — Accuracy: ${game.accuracy.toFixed(1)}%` : ""}
+                    {game.daily_score != null ? ` — Score: ${game.daily_score.toFixed(1)}` : ""}
+                  </li>
               ))}
             </ul>
           </div>
@@ -3341,7 +3355,10 @@ function App() {
           <EvalGraph evals={evalHistory} bPosHistory={bPosHistory} bColors={bColors} onJumpToMove={handleJumpToMove}/>
           <h3>Past Games</h3>
           <ul>
-            {gameHistory.map((game) => (
+            {gameHistory
+            //only take most recent 20 games
+              .filter((_, index) => index < 20)
+              .map((game) => (
               <li key={game.id}>
                 {new Date(game.created_at).toLocaleDateString()} ({game.result}) — {game.accuracy.toFixed(1)}%, {game.opening}
               </li>
