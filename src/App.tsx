@@ -564,7 +564,15 @@ function App() {
     }else{
       newMoves = sourceLine.moves + " " + newMoveSan;
     }
-    const newLineKey = `${sourceLineKey}_${newMoveSan}`;
+    let newLineKey = `${sourceLineKey}_${newMoveSan}`;
+    //check if newLineKey already exists in openingLines[opening]
+    if (openingLines[opening]?.some(l => l.line_key === newLineKey)) {
+      console.log("changing sourceLineKey: " + newLineKey)
+      let linekeyparts = newLineKey.split("_");
+      linekeyparts[0].replace("e", "e1");
+      newLineKey = linekeyparts.join("_");
+      console.log("changed line key: " + newLineKey);
+    }
     const { error } = await supabase
     .from("opening_lines")
     .update({
@@ -741,32 +749,26 @@ function App() {
   async function triggerEnd(finalmessage: string, accuracy: number, result: string, opening: string){
     if (result === "Win" && !userProgress.openings_level_4?.includes(opening)) {
       if (userProgress.openings_level_1?.includes(opening)){
+        const updatedOpenings = (userProgress.openings_level_1 ?? []).filter(o => o !== opening);
+        await supabase
+          .from("user_progress")
+          .update({ openings_level_1: updatedOpenings })
+          .eq("user_id", user!.id);
         await supabase
           .from("user_progress")
           .update({ openings_level_2: [...userProgress.openings_level_2, opening] })
           .eq("user_id", user!.id);
-        await supabase
-          .from("user_progress")
-          .delete()
-          .eq("user_id", user!.id)
-          .eq("openings_level_1", opening);
         if (userProgress.openings_level_2.length === 0){
           setUserProgress(prev => ({
             ...prev,
-            openings_level_2: [...prev.openings_level_2, opening, "Random"]
-          }));
-          setUserProgress(prev => ({ 
-            ...prev, 
-            "openings_level_1": prev["openings_level_1"].filter(item => item !== opening) 
+            openings_level_1: updatedOpenings,
+            openings_level_2: [...prev.openings_level_2, opening, "Random"],
           }));
         }else{
           setUserProgress(prev => ({
             ...prev,
-            openings_level_2: [...prev.openings_level_2, opening]
-          }));
-          setUserProgress(prev => ({ 
-            ...prev, 
-            "openings_level_1": prev["openings_level_1"].filter(item => item !== opening) 
+            openings_level_1: updatedOpenings,
+            openings_level_2: [...prev.openings_level_2, opening],
           }));
         }
         if (userProgress.openings_level_2.length === 0 || userProgress.openings_level_2.length === 2 || userProgress.openings_level_2.length === 4 || userProgress.openings_level_2.length === 6 || userProgress.openings_level_2.length === 7 || userProgress.openings_level_2.length === 17){
@@ -775,42 +777,36 @@ function App() {
         }
       }else if (userProgress.openings_level_2?.includes(opening)){
         if(userProgress.level >= 6){
+          const updatedOpenings = (userProgress.openings_level_2 ?? []).filter(o => o !== opening);
+          await supabase
+            .from("user_progress")
+            .update({ openings_level_2: updatedOpenings })
+            .eq("user_id", user!.id);
           await supabase
             .from("user_progress")
             .update({ openings_level_3: [...userProgress.openings_level_3, opening] })
             .eq("user_id", user!.id);
-          await supabase
-            .from("user_progress")
-            .delete()
-            .eq("user_id", user!.id)
-            .eq("openings_level_2", opening);
           setUserProgress(prev => ({
             ...prev,
-            openings_level_3: [...prev.openings_level_3, opening]
-          }));
-          setUserProgress(prev => ({ 
-            ...prev, 
-            "openings_level_2": prev["openings_level_2"].filter(item => item !== opening) 
+            openings_level_2: updatedOpenings,
+            openings_level_3: [...prev.openings_level_3, opening],
           }));
         }
       }else{//3
         if(userProgress.level >= 7){
+          const updatedOpenings = (userProgress.openings_level_3 ?? []).filter(o => o !== opening);
+          await supabase
+            .from("user_progress")
+            .update({ openings_level_3: updatedOpenings })
+            .eq("user_id", user!.id);
           await supabase
             .from("user_progress")
             .update({ openings_level_4: [...userProgress.openings_level_4, opening] })
             .eq("user_id", user!.id);
-          await supabase
-            .from("user_progress")
-            .delete()
-            .eq("user_id", user!.id)
-            .eq("openings_level_3", opening);
           setUserProgress(prev => ({
             ...prev,
-            openings_level_4: [...prev.openings_level_4, opening]
-          }));
-          setUserProgress(prev => ({ 
-            ...prev, 
-            "openings_level_3": prev["openings_level_3"].filter(item => item !== opening) 
+            openings_level_3: updatedOpenings,
+            openings_level_4: [...prev.openings_level_4, opening],
           }));
         }
       }
