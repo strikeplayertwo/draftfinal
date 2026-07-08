@@ -1756,14 +1756,15 @@ function App() {
   }
 
   async function resolveEval(fen: string, startDepth: number = 18): Promise<[number, string]> {
-    let daEval = 1001;
+    let daEval = 1101;
     let mate = "";
     console.log("resolving eval of " + fen);
-    while(Math.abs(daEval) > 1000 && startDepth < 60){
+    while(Math.abs(daEval) > 1100 && startDepth < 60){
+      console.log("not yet resolved: " + startDepth + " " + daEval);
       startDepth += 10;
       daEval = await workerB.getEval(fen, startDepth)
     }
-    if(Math.abs(daEval) < 1001){
+    if(Math.abs(daEval) < 1101){
       console.log("resolve success: " + daEval + "depth: " + startDepth);
       if(Math.trunc(daEval) !== daEval){
         const bline = await workerB.getBestLine(fen, startDepth);
@@ -2369,7 +2370,7 @@ function App() {
             setIsChallenge(daRandLineKey);
             console.log("daRandLineLabel: " + daRandLineLabel);
           }else{
-            const challengeChance = (openingMinPly - lineUCIs.length)/openingMinPly;
+            const challengeChance = (openingMinPly - lineUCIs.length - 1)/openingMinPly;
             console.log("Chance for challenge move: " + challengeChance + " " + openingMinPly + " " + lineUCIs.length);
 
             if(Math.random() < challengeChance){
@@ -2410,7 +2411,7 @@ function App() {
       while (attempts < MAX_ATTEMPTS) {
         const newFens = fens[Math.floor(Math.random() * fens.length)];
         let evalB = await workerC.getEval(newFens, 10);
-        if(Math.abs(evalB) > 800 && Math.abs(evalA) > 300){
+        if(Math.abs(evalB) > 800 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(evalB) * 0.5){
           const [daEvalB, potMate] = await resolveEval(newFens, 10);
           evalB = daEvalB
         }
@@ -2451,7 +2452,7 @@ function App() {
           }
         }else if (((evalA < evalB / 0.6) && (evalA > evalB * 0.6) && (evalA >= 0)) || ((evalA > evalB / 0.6) && (evalA < evalB * 0.6) && (evalA <= 0))){
           let newevalB = await workerC.getEval(newFens, 18);
-          if(Math.abs(newevalB) > 800 && Math.abs(evalA) > 300){
+          if(Math.abs(newevalB) > 800 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(newevalB) * 0.5){
             const [daNewEvalB, potMate] = await resolveEval(newFens, 18);
             newevalB = daNewEvalB;
           }
@@ -2479,7 +2480,7 @@ function App() {
             console.log("invalid move in swapFen");
           }
           let newevalB = await workerB.getEval(chessGame.fen(), 18);
-          if(Math.abs(newevalB) > 800 && Math.abs(evalA) > 300){
+          if(Math.abs(newevalB) > 800 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(newevalB) * 0.5){
             const [daNewEvalB, potMate] = await resolveEval(newFens, 18);
             newevalB = daNewEvalB;
           }
@@ -2535,7 +2536,7 @@ function App() {
       chessGame.load(newFenny);
       highlightKingSquare(chessGame, "big");
       let newevalB = await workerD.getEval(newFenny, 18);//fix --is this line and below needed?
-      if(Math.abs(newevalB) > 800 && Math.abs(evalA) > 300){
+      if(Math.abs(newevalB) > 800 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(newevalB) * 0.5){
         const [daNewEvalB, potMate] = await resolveEval(newFenny, 18);
         newevalB = daNewEvalB;
       }

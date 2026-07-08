@@ -153,10 +153,15 @@ export function createPersistentWorker() {
               if (result.mate !== null) {
                 const rawValue = result.mate > 0 ? 1000.1 - (result.mate * 100) : -1000.1 - (result.mate * 100);
                 if(((rawValue * 10) % 10 === 9) && result.mate > 0){
+                  console.log("Mate over 20 brah");
                   resolve(300.1);
                 }else if(((rawValue * 10) % 10 === 9) && result.mate < 0){
+                  console.log("Mate over 20 bruh");
                   resolve(-300.1);
-                }else resolve(rawValue);
+                }else {
+                  console.log("Mate not over 20");
+                  resolve(rawValue);
+                };
                 //resolve(result.mate > 0 ? 1000.1 - (result.mate * 100) : -1000.1 - (result.mate * 100));
               } else {
                 resolve(result.cp ?? 0);
