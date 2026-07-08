@@ -207,7 +207,7 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
   { opening: "Queen's Gambit Declined", line_key: "harrwitz_attack", moves: "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Bf4" },
   // Grünfeld
   { opening: "Gruenfeld", line_key: "base_line", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5" },
-  { opening: "Gruenfeld", line_key: "exchange", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5 4. cxd5 Nxd5 5. e4 Nxc3 6. Bxc3 Bg7" },
+  { opening: "Gruenfeld", line_key: "exchange", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5 4. cxd5 Nxd5 5. e4 Nxc3 6. bxc3 Bg7" },
   { opening: "Gruenfeld", line_key: "russian", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5 4. Nf3 Bg7 5. Qb3" },
   { opening: "Gruenfeld", line_key: "petrosian", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5 4. Nf3 Bg7 5. Bg5" },
   { opening: "Gruenfeld", line_key: "5_cxd5", moves: "1. d4 Nf6 2. c4 g6 3. Nc3 d5 4. Nf3 Bg7 5. cxd5" },
@@ -2079,7 +2079,7 @@ function App() {
       let ourEval = -1 * await workerC.getEval(chessGame.fen(), 20);
       if(Math.abs(ourEval) > 800){
         const [daOurEval, potMate] = await resolveEval(chessGame.fen(), 20);
-        ourEval = daOurEval;
+        ourEval = -1 * daOurEval;
         ourMate = potMate;
       }
       let bestEval = ourEval;
