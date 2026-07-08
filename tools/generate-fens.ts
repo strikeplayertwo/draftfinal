@@ -48,22 +48,33 @@ export async function extractFENsFromGames(pgnText: string, limit = 469, opening
     const randomPly = Math.floor(Math.random() * (maxPly - plyLength + 1)) + plyLength;
     console.log("randomPly: " + randomPly);*/
     const randomStartPly = plyLength + Math.floor(Math.random() * 8);
-    const randomEndPly = Math.floor((Math.random() * maxPly / 2) + maxPly / 2);
+    //const randomEndPly = Math.floor((Math.random() * maxPly / 2) + maxPly / 2);
     for (let i = 0; i < randomStartPly; i++){
       const san = parsed.moves[i].move;
       chess.move(san);
     }
-    for (let i = randomStartPly; i < randomEndPly; i += 8){
-      fens.push(chess.fen());
-      try{
-        for (let j = 0; j < 8; j++){
-          if(parsed.moves[i]){
-            const san = parsed.moves[i].move;
-            chess.move(san);
+
+    for (let i = 0; i < maxPly; i++){
+      if(i % 8 === 0){
+        fens.push(chess.fen());
+
+        const board = chess.board();
+        let pieceCount = 0;
+        for (let rank = 0; rank < 8; rank++) {
+          for (let file = 0; file < 8; file++) {
+            const piece = board[rank][file];
+            if (piece) pieceCount++;
           }
         }
+        if(pieceCount < 6) i = maxPly;
+      }
+      try{
+        if(parsed.moves[i]){
+          const san = parsed.moves[i].move;
+          chess.move(san);
+        }
       }catch{}
-    };
+    }
   }
   console.log(fens.length + " fens generated from " + opening);
   return fens;

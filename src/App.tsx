@@ -2409,7 +2409,7 @@ function App() {
         const newFens = fens[Math.floor(Math.random() * fens.length)];
         let evalB = await workerC.getEval(newFens, 10);
         if(Math.abs(evalB) > 800 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(evalB) * 0.5){
-          const [daEvalB, potMate] = await resolveEval(newFens, 10);
+          const [daEvalB] = await resolveEval(newFens, 10);
           evalB = daEvalB
         }
         if(evalB !== Math.trunc(evalB)){
@@ -2451,7 +2451,7 @@ function App() {
           let newevalB = await workerC.getEval(newFens, 18);
           let deepMate = false;
           if(Math.abs(newevalB) > 800 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(newevalB) * 0.5){
-            const [daNewEvalB, potMate] = await resolveEval(newFens, 18);
+            const [daNewEvalB] = await resolveEval(newFens, 18);
             newevalB = daNewEvalB;
             deepMate = true;
           }
@@ -2485,7 +2485,7 @@ function App() {
           let newevalB = await workerB.getEval(chessGame.fen(), 18);
           let deepMate = false;
           if(Math.abs(newevalB) > 800 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(newevalB) * 0.5){
-            const [daNewEvalB, potMate] = await resolveEval(newFens, 18);
+            const [daNewEvalB] = await resolveEval(newFens, 18);
             newevalB = daNewEvalB;
             deepMate = true;
           }
@@ -2546,7 +2546,7 @@ function App() {
       highlightKingSquare(chessGame, "big");
       let newevalB = await workerD.getEval(newFenny, 18);//fix --is this line and below needed?
       if(Math.abs(newevalB) > 800 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(newevalB) * 0.5){
-        const [daNewEvalB, potMate] = await resolveEval(newFenny, 18);
+        const [daNewEvalB] = await resolveEval(newFenny, 18);
         newevalB = daNewEvalB;
       }
       const difference = evalA - newevalB;
