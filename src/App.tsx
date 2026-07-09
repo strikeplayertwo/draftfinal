@@ -782,9 +782,10 @@ function App() {
             .from("user_progress")
             .update({ openings_level_2: updatedOpenings })
             .eq("user_id", user!.id);
+          const updatedNextOpenings = (userProgress.openings_level_3 ? userProgress.openings_level_3 + opening : [opening]);
           await supabase
             .from("user_progress")
-            .update({ openings_level_3: [...userProgress.openings_level_3, opening] })
+            .update({ openings_level_3: updatedNextOpenings })
             .eq("user_id", user!.id);
           setUserProgress(prev => ({
             ...prev,
@@ -799,9 +800,10 @@ function App() {
             .from("user_progress")
             .update({ openings_level_3: updatedOpenings })
             .eq("user_id", user!.id);
+          const updatedNextOpenings = (userProgress.openings_level_4 ? userProgress.openings_level_4 + opening : [opening]);
           await supabase
             .from("user_progress")
-            .update({ openings_level_4: [...userProgress.openings_level_4, opening] })
+            .update({ openings_level_4: updatedNextOpenings })
             .eq("user_id", user!.id);
           setUserProgress(prev => ({
             ...prev,
@@ -2418,7 +2420,7 @@ function App() {
         }
         if(evalB !== Math.trunc(evalB)){
           console.log("MATE DETECTED");
-          if((evalA > evalB && evalB > 0 && ((evalB * 10) % 10 === 1)) || (evalA < evalB && evalB < 0 && ((evalB * 10) % 10 === 1))){
+          if((evalA > evalB && evalB > 0 && (Math.abs(evalB * 10) % 10 === 1)) || (evalA < evalB && evalB < 0 && (Math.abs(evalB * 10) % 10 === 1))){
             console.log("MATE SUCCESSFUL");
             const newevalB = evalB;
             
@@ -2431,8 +2433,8 @@ function App() {
             console.log("Success 1! Mate found " + evalA + " " + evalB + " " + newevalB + " " + difference);
             setBPosHistory(prev => [...prev, newFens]);
             return;
-          }else if((evalA > evalB && evalB < 0 && ((evalB * 10) % 10 === 1)) || (evalA < evalB && evalB > 0 && ((evalB * 10) % 10 === 1))){
-            console.log("SWAPMATE DETECTED");
+          }else if((evalA > evalB && evalB < 0 && (Math.abs((evalB * 10) % 10) === 1)) || (evalA < evalB && evalB > 0 && (Math.abs(evalB * 10) % 10 === 1))){
+            console.log("SWAPMATE DETECTED" + newFens);
             
             const daMate = await workerC.getBestLine(newFens, 50);
             const matePV = daMate.pv.split(" ");
@@ -2492,7 +2494,7 @@ function App() {
             deepMate = true;
           }
           if (((evalA < newevalB / 0.5) && (evalA > newevalB * 0.5) && (evalA >= 0)) || ((evalA > newevalB / 0.5) && (evalA < newevalB * 0.5) && (evalA <= 0))){
-            if(!(newevalB * 10 % 10 === 1 && deepMate === false)){
+            if(!(Math.abs(newevalB) * 10 % 10 === 1 && deepMate === false)){
               setBigChessPosition(newFens);
               chessGame.load(newFens);
               highlightKingSquare(chessGame, "big");
@@ -2527,7 +2529,7 @@ function App() {
           }
 
           if (((evalA < newevalB / 0.5) && (evalA > newevalB * 0.5) && (evalA >= 0)) || ((evalA > newevalB / 0.5) && (evalA < newevalB * 0.5) && (evalA <= 0))){
-            if(!(newevalB * 10 % 10 === 1 && deepMate === false)){
+            if(!(Math.abs(newevalB) * 10 % 10 === 1 && deepMate === false)){
               setBigChessPosition(chessGame.fen());
               highlightKingSquare(chessGame, "big");
               setOldEval(newevalB);
@@ -2678,7 +2680,7 @@ function App() {
             const filteredLines = starterLines.filter(l => l.key === selectedLine)
             const filterLines = filteredLines[0];
             const selectedLineMoves = filterLines.line;
-            console.log("selecting line: " + selectedLines + " with moves: " + selectedLineMoves);
+            console.log("selecting line: " + selectedLine + " with moves: " + selectedLineMoves);
             newGame.reset();
             const selectedMoves = parseMoves(selectedLineMoves);
             const selectedFens = [newGame.fen()];
