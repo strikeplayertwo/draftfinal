@@ -298,7 +298,7 @@ function App() {
   
   //opening stuff
   const daOpeningFensRef = useRef<string[]>([]);
-
+  const [resolvedFens, setResolvedFens] = useState<string[]>([]);
   const [showOpeningSelect, setShowOpeningSelect] = useState(false);
   const [gameOpening, setGameOpening] = useState("None");
   const [reqMove, setReqMove] = useState<string>("none");
@@ -1757,19 +1757,29 @@ function App() {
     let daEval = 1101;
     let mate = "";
     console.log("resolving eval of " + fen);
-    while(Math.abs(daEval) > 1100 && startDepth < 26){
-      console.log("not yet resolved: " + startDepth + " " + daEval);
-      startDepth += 10;
-      daEval = await workerB.getEval(fen, startDepth)
-    }
-    if(Math.abs(daEval) < 1101){
-      console.log("resolve success: " + daEval + "depth: " + startDepth);
-      if(Math.trunc(daEval) !== daEval){
-        const bline = await workerB.getBestLine(fen, startDepth);
-        if(bline.mate) mate = bline.pv;
-      }
+    if(resolvedFens.includes(fen)){
+      const idnex = resolvedFens.indexOf(fen);
+      daEval = parseFloat(resolvedFens[idnex + 1]);
+      mate = resolvedFens[idnex + 2];
+      console.log("skipping already resolved fen: " + fen + daEval + mate);
     }else{
-      console.log("resolve failure: " + daEval);
+      while(Math.abs(daEval) > 1100 && startDepth < 26){
+        console.log("not yet resolved: " + startDepth + " " + daEval);
+        startDepth += 10;
+        daEval = await workerB.getEval(fen, startDepth)
+      }
+      if(Math.abs(daEval) < 1101){
+        console.log("resolve success: " + daEval + "depth: " + startDepth);
+        if(Math.trunc(daEval) !== daEval){
+          const bline = await workerB.getBestLine(fen, startDepth);
+          if(bline.mate) mate = bline.pv;
+        }
+      }else{
+        console.log("resolve failure: " + daEval);
+      }
+      setResolvedFens(prev => 
+        prev.concat([fen, daEval.toString(), mate])
+      );
     }
     return [daEval, mate];
   }
@@ -2662,11 +2672,15 @@ function App() {
         stopEffex();
       }
       if(practiceLines.length !== selectedLines.length){
+        const starterLines = getOpeningLines(opening);
         for (const selectedLine of selectedLines){
           if(!practiceLines.includes(selectedLine)){
-            console.log("selecting line: " + selectedLine);
+            const filteredLines = starterLines.filter(l => l.key === selectedLine)
+            const filterLines = filteredLines[0];
+            const selectedLineMoves = filterLines.line;
+            console.log("selecting line: " + selectedLines + " with moves: " + selectedLineMoves);
             newGame.reset();
-            const selectedMoves = parseMoves(selectedLine);
+            const selectedMoves = parseMoves(selectedLineMoves);
             const selectedFens = [newGame.fen()];
             for (let i = 0; i < selectedMoves.length; i++) {
               const move = selectedMoves[i];
@@ -2674,6 +2688,9 @@ function App() {
               newGame.move(move);
               selectedFens.push(newGame.fen());
             }
+            setDaOpeningFens(prev => 
+              prev.concat(selectedFens)
+            );
           }
         }
       }
@@ -2723,7 +2740,9 @@ function App() {
 
         await playerRunThru(openingFens);
         setReqMove("none");
-        setDaOpeningFens(openingFens);
+        setDaOpeningFens(prev => 
+          prev.concat(openingFens)
+        );
         setDaOpeningMoves(openingMoves);
 
         /*if (openingFens.length - 1 < userProgress.userMinPly) {
