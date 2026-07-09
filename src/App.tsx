@@ -2397,7 +2397,7 @@ function App() {
       const MAX_ATTEMPTS = 400;
       while (attempts < MAX_ATTEMPTS) {
         let newFens = fens[Math.floor(Math.random() * fens.length)];
-        while(bPosHistory.includes(newFens) === true){
+        while(bPosHistory.includes(newFens) === true || oldFen === newFens){
           console.log("skipping duplicate fen");
           newFens = fens[Math.floor(Math.random() * fens.length)];
         }
@@ -2661,13 +2661,29 @@ function App() {
         setShowEffex("Practice: " + eligiblePracticeLines[0]?.label);
         stopEffex();
       }
+      if(practiceLines.length !== selectedLines.length){
+        for (const selectedLine of selectedLines){
+          if(!practiceLines.includes(selectedLine)){
+            console.log("selecting line: " + selectedLine);
+            newGame.reset();
+            const selectedMoves = parseMoves(selectedLine);
+            const selectedFens = [newGame.fen()];
+            for (let i = 0; i < selectedMoves.length; i++) {
+              const move = selectedMoves[i];
+              if (!move) break;
+              newGame.move(move);
+              selectedFens.push(newGame.fen());
+            }
+          }
+        }
+      }
       for (const practiceLine of eligiblePracticeLines) {
         console.log("Practicing line: " + practiceLine.label + " Moves: " + practiceLine.line);
         newGame.reset();
         const openingMoves = parseMoves(practiceLine.line);
         //const plyLength = openingMoves.length;
         const openingFens = [newGame.fen()];
-
+        //below line not needed
         newGame.load("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         setBigChessPosition(newGame.fen());
 
@@ -3106,6 +3122,7 @@ function App() {
                         .map(l => l.key);
                       setSelectedLines(allUnlocked);
                       setPracticeLines([]);
+                      
                       setPendingOpening(opening);
                       setShowLineSelect(true); // ← show picker instead of running immediately
                     }}
