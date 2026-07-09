@@ -151,7 +151,7 @@ export function createPersistentWorker() {
                 return;
               }
               if (result.mate !== null) {
-                const rawValue = result.mate > 0 ? 1000.1 - (result.mate * 100) : -1000.1 - (result.mate * 100);
+                const rawValue = result.mate > 0 ? Math.trunc((1000.1 - (result.mate * 100)) * 10) / 10 : Math.trunc((-1000.1 - (result.mate * 100)) * 10) / 10;
                 if(((rawValue * 10) % 10 === 9) && result.mate > 0){
                   console.log("Mate over 20 brah");
                   resolve(300.1);

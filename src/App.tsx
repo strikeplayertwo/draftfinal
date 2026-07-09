@@ -1757,7 +1757,7 @@ function App() {
     let daEval = 1101;
     let mate = "";
     console.log("resolving eval of " + fen);
-    while(Math.abs(daEval) > 1100 && startDepth < 60){
+    while(Math.abs(daEval) > 1100 && startDepth < 26){
       console.log("not yet resolved: " + startDepth + " " + daEval);
       startDepth += 10;
       daEval = await workerB.getEval(fen, startDepth)
@@ -2077,8 +2077,8 @@ function App() {
       let stockMate = "";
       let ourMate = "";
       let ourEval = -1 * await workerC.getEval(chessGame.fen(), 20);
-      if(Math.abs(ourEval) > 800){
-        const [daOurEval, potMate] = await resolveEval(chessGame.fen(), 20);
+      if(Math.abs(ourEval) > 1000){
+        const [daOurEval, potMate] = await resolveEval(chessGame.fen(), 16);
         ourEval = -1 * daOurEval;
         ourMate = potMate;
       }
@@ -2093,8 +2093,8 @@ function App() {
         tryFenGame.load(fenBeforeMove);
         tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
         bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 20);
-        if(Math.abs(bestEval) > 800){
-          const [daBestEval, potMate] = await resolveEval(tryFenGame.fen(), 20);
+        if(Math.abs(bestEval) > 1000){
+          const [daBestEval, potMate] = await resolveEval(tryFenGame.fen(), 16);
           bestEval = -1 * daBestEval;
           stockMate = potMate;
         }
@@ -2387,19 +2387,8 @@ function App() {
       } 
     }
 
-    console.log(posType + " ischallenge: " + isChallenge);
-    /* each needs:
-    setBigChessPosition(newFens);
-    chessGame.load(newFens);
-    highlightKingSquare(chessGame, "big");
-    const newevalB = await workerD.getEval(newFens, 18);
-    const difference = evalA - newevalB;
-    setOldEval(newevalB);
-    setDif(difference);
-    setBPosHistory(prev => [...prev, newFens]);
+    console.log(posType);
 
-    setReqMove
-    */
     let newFenny = "";
     if(posType === "choose random"){
       setReqMove("none");
@@ -2407,15 +2396,19 @@ function App() {
       let attempts = 0;
       const MAX_ATTEMPTS = 400;
       while (attempts < MAX_ATTEMPTS) {
-        const newFens = fens[Math.floor(Math.random() * fens.length)];
+        let newFens = fens[Math.floor(Math.random() * fens.length)];
+        while(bPosHistory.includes(newFens) === true){
+          console.log("skipping duplicate fen");
+          newFens = fens[Math.floor(Math.random() * fens.length)];
+        }
         let evalB = await workerC.getEval(newFens, 10);
-        if(Math.abs(evalB) > 800 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(evalB) * 0.5){
-          const [daEvalB] = await resolveEval(newFens, 10);
+        if(Math.abs(evalB) > 1000 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(evalB) * 0.5){
+          const [daEvalB] = await resolveEval(newFens, 16);
           evalB = daEvalB
         }
         if(evalB !== Math.trunc(evalB)){
           console.log("MATE DETECTED");
-          if ((evalA > evalB && evalB > 0 && ((evalB * 10) % 10 === 1)) || (evalA < evalB && evalB < 0 && ((evalB * 10) % 10 === 1))){
+          if((evalA > evalB && evalB > 0 && ((evalB * 10) % 10 === 1)) || (evalA < evalB && evalB < 0 && ((evalB * 10) % 10 === 1))){
             console.log("MATE SUCCESSFUL");
             const newevalB = evalB;
             
@@ -2427,6 +2420,38 @@ function App() {
             setDif(difference);
             console.log("Success 1! Mate found " + evalA + " " + evalB + " " + newevalB + " " + difference);
             setBPosHistory(prev => [...prev, newFens]);
+            return;
+          }else if((evalA > evalB && evalB < 0 && ((evalB * 10) % 10 === 1)) || (evalA < evalB && evalB > 0 && ((evalB * 10) % 10 === 1))){
+            console.log("SWAPMATE DETECTED");
+            
+            const daMate = await workerC.getBestLine(newFens, 50);
+            const matePV = daMate.pv.split(" ");
+            const swapMove = matePV[0];
+            chessGame.load(newFens);
+            try{
+              chessGame.move({from: swapMove.substring(0, 2), to: swapMove.substring(2, 4), promotion: 'q'});
+              console.log("swapmate successful?" + evalA + " " + evalB);
+            }catch{
+              console.log("invalid move in mateSwapFen");
+            }
+            for (let i = 1; i < matePV.length + 5; i++){
+              if (chessGame.isGameOver() === false){
+                setBigChessPosition(chessGame.fen());
+                await new Promise(resolve => setTimeout(resolve, 500));
+                const move = matePV[i];
+                chessGame.move({from: move?.substring(0, 2) as Square, to: move?.substring(2, 4) as Square, promotion: 'q'});
+                flushSync(() => {
+                  setBigChessPosition(chessGame.fen());
+                });
+                await new Promise(resolve => setTimeout(resolve, 1000));
+              }
+            }
+            if (evalA > 0){
+              triggerEnd("You win! Final result: " + ("You mate in " + (matePV.length - 1)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter) + ", Starting Eval: " + startingEval, displayAccuracy/10, "Win", gameOpening);
+            }else{
+              triggerEnd("Game over! Final result: " + ("You are mated in " + (matePV.length - 1)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval, displayAccuracy/10, "Loss", gameOpening);
+            }
+
             return;
           }
         }
@@ -2451,8 +2476,8 @@ function App() {
         }else if (((evalA < evalB / 0.6) && (evalA > evalB * 0.6) && (evalA >= 0)) || ((evalA > evalB / 0.6) && (evalA < evalB * 0.6) && (evalA <= 0))){
           let newevalB = await workerC.getEval(newFens, 18);
           let deepMate = false;
-          if(Math.abs(newevalB) > 800 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(newevalB) * 0.5){
-            const [daNewEvalB] = await resolveEval(newFens, 18);
+          if(Math.abs(newevalB) > 1000 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(newevalB) * 0.5){
+            const [daNewEvalB] = await resolveEval(newFens, 16);
             newevalB = daNewEvalB;
             deepMate = true;
           }
@@ -2485,8 +2510,8 @@ function App() {
           }
           let newevalB = await workerB.getEval(chessGame.fen(), 18);
           let deepMate = false;
-          if(Math.abs(newevalB) > 800 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(newevalB) * 0.5){
-            const [daNewEvalB] = await resolveEval(newFens, 18);
+          if(Math.abs(newevalB) > 1000 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(newevalB) * 0.5){
+            const [daNewEvalB] = await resolveEval(newFens, 16);
             newevalB = daNewEvalB;
             deepMate = true;
           }
@@ -2546,8 +2571,8 @@ function App() {
       chessGame.load(newFenny);
       highlightKingSquare(chessGame, "big");
       let newevalB = await workerD.getEval(newFenny, 18);//fix --is this line and below needed?
-      if(Math.abs(newevalB) > 800 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(newevalB) * 0.5){
-        const [daNewEvalB] = await resolveEval(newFenny, 18);
+      if(Math.abs(newevalB) > 1000 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(newevalB) * 0.5){
+        const [daNewEvalB] = await resolveEval(newFenny, 16);
         newevalB = daNewEvalB;
       }
       const difference = evalA - newevalB;
@@ -2617,10 +2642,11 @@ function App() {
     const eligibleLines = selectedLines.length > 0
       ? allLines.filter(l => selectedLines.includes(l.key))
       : allLines.filter(l => !(openingMaxPly < l.plyLength && l.key !== "base_line" && l.key !== "main_line"))
-    const eligiblePracticeLines = practiceLines.length > 0
+    /*const eligiblePracticeLines = practiceLines.length > 0
       ? allLines.filter(l => practiceLines.includes(l.key))
       : eligibleLines; // fallback to all eligible if none selected
-
+*/
+    const eligiblePracticeLines = allLines.filter(l => practiceLines.includes(l.key));
     function parseMoves(san: string): string[] {
       return san.split(" ")
         .filter(m => !/^[1-9]/.test(m) && m.trim().length > 0)
@@ -2631,8 +2657,10 @@ function App() {
     const newGame = new Chess();
 
     if (opening !== "None") {
-      setShowEffex("Practice: " + eligiblePracticeLines[0]?.label);
-      stopEffex();
+      if(eligiblePracticeLines[0]){
+        setShowEffex("Practice: " + eligiblePracticeLines[0]?.label);
+        stopEffex();
+      }
       for (const practiceLine of eligiblePracticeLines) {
         console.log("Practicing line: " + practiceLine.label + " Moves: " + practiceLine.line);
         newGame.reset();
@@ -3077,7 +3105,7 @@ function App() {
                         .filter(l => !(openingMaxPly < l.plyLength && l.key !== "base_line" && l.key !== "main_line"))
                         .map(l => l.key);
                       setSelectedLines(allUnlocked);
-                      setPracticeLines(allUnlocked);
+                      setPracticeLines([]);
                       setPendingOpening(opening);
                       setShowLineSelect(true); // ← show picker instead of running immediately
                     }}
@@ -3138,6 +3166,7 @@ function App() {
                 const isLocked = (openingMaxPly < plyLength && key !== "base_line" && key !== "main_line");
                 const isSelected = selectedLines.includes(key);
                 const isPractice = practiceLines.includes(key);
+                //const isPractice = false;
                 return (
                   <div key={key} style={{
                     display: "flex",
