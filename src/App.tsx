@@ -196,7 +196,7 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
   //{ opening: "Queen's Indian", line_key: "main_line", moves: "1. d4 Nf6 2. c4 e6 3. Nf3 b6" },
   // Queen's Gambit Declined
   { opening: "Queen's Gambit Declined", line_key: "base_line", moves: "1. d4 d5 2. c4 e6" },
-  { opening: "Queen's Gambit Declined", line_key: "main_line", moves: "1. d4 d5 2. c4 e6" },
+  //{ opening: "Queen's Gambit Declined", line_key: "main_line", moves: "1. d4 d5 2. c4 e6" },
   { opening: "Queen's Gambit Declined", line_key: "charousek", moves: "1. d4 d5 2. c4 e6 3. Nc3 Be7" },
   { opening: "Queen's Gambit Declined", line_key: "three_knights", moves: "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Nf3" },
   { opening: "Queen's Gambit Declined", line_key: "ragozin_defense", moves: "1. d4 d5 2. c4 e6 3. Nc3 Nf6 4. Nf3 Bb4" },
@@ -315,7 +315,7 @@ function App() {
   const openings = ["None", "Random", "Italian", "French", "Queen's Pawn Game", "Caro-Kann", "Queen's Indian Defense", "King's Indian Defense", "Reti", "London System", "Queen's Gambit Declined", "Gruenfeld", "Benoni", "English", "Petrov's", "Ruy Lopez", "Catalan", "Sicilian"];
   const [practiceEnded, setPracticeEnded] = useState(false);
   
-  //const openingPlyLengths: Record<string, number> = { "None": 6, "Random": 6, "Sicilian": 2, "French": 4, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "Queen's Bishop Game": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 3, "Reti": 1, "Petrov's": 4, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Italian": 5 };
+  const baseLineLengths: Record<string, number> = {"Sicilian": 2, "French": 4, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "London System": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 4, "Reti": 1, "Petrov's": 4, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Italian": 5 };
 
  // const pinkMode = false;
    /*[!cSquare]:{
@@ -782,7 +782,7 @@ function App() {
             .from("user_progress")
             .update({ openings_level_2: updatedOpenings })
             .eq("user_id", user!.id);
-          const updatedNextOpenings = (userProgress.openings_level_3 ? userProgress.openings_level_3 + opening : [opening]);
+          const updatedNextOpenings = (userProgress.openings_level_3 ? [...userProgress.openings_level_3, opening] : [opening]);
           await supabase
             .from("user_progress")
             .update({ openings_level_3: updatedNextOpenings })
@@ -800,7 +800,7 @@ function App() {
             .from("user_progress")
             .update({ openings_level_3: updatedOpenings })
             .eq("user_id", user!.id);
-          const updatedNextOpenings = (userProgress.openings_level_4 ? userProgress.openings_level_4 + opening : [opening]);
+          const updatedNextOpenings = (userProgress.openings_level_4 ? [...userProgress.openings_level_4, opening] : [opening]);
           await supabase
             .from("user_progress")
             .update({ openings_level_4: updatedNextOpenings })
@@ -2283,7 +2283,7 @@ function App() {
       let allLines = getOpeningLines(opening);
       const eligible = selectedLines.length > 0
         ? allLines.filter(l => selectedLines.includes(l.key))
-        : allLines.filter(l => !(openingMaxPly < l.plyLength && l.key !== "base_line" && l.key !== "main_line")); // default: all unlocked lines
+        : allLines.filter(l => !(openingMaxPly < l.plyLength)); // default: all unlocked lines
 
       //console.log("eligible lines: " + eligible);
       return eligible.map(l => l.line);
@@ -2340,7 +2340,7 @@ function App() {
     let daRandLineKey = "";
     console.log("LINES: " + lines);
     let sourceLineKey = "";
-    if (daOpeningFens.length > 0){
+    if (selectedLines.length > 0){
       const randN = Math.floor(Math.random() * lines.length)
       const randLine = lines[randN];
       const randLineLabel = lineLabels[randN];
@@ -2348,10 +2348,6 @@ function App() {
       daRandLineKey = lineKeys[randN];
       console.log("line: " + randLineLabel);
       if (Math.random() < 0.35){
-        if(randLineLabel === "base_line" || randLineLabel === "main_line"){
-          posType = "choose random opening"
-        }
-
         const randChess = new Chess();
         const lineUCIs = getLineUCIs(randLine);
         daLineUcis = lineUCIs;
@@ -2360,7 +2356,7 @@ function App() {
           console.log("loading move: " + lineUCIs[i]);
           randChess.move({from: lineUCIs[i].substring(0, 2), to: lineUCIs[i].substring(2, 4), promotion: 'q'});
         }
-        console.log("randchess fen: " + randChess.fen());
+        //console.log("randchess fen: " + randChess.fen());
         fen = randChess.fen();
         let openingMinPly = 4;
         if(userProgress.openings_level_2?.includes(gameOpening)){
@@ -2433,7 +2429,8 @@ function App() {
             console.log("Success 1! Mate found " + evalA + " " + evalB + " " + newevalB + " " + difference);
             setBPosHistory(prev => [...prev, newFens]);
             return;
-          }else if((evalA > evalB && evalB < 0 && (Math.abs((evalB * 10) % 10) === 1)) || (evalA < evalB && evalB > 0 && (Math.abs(evalB * 10) % 10 === 1))){
+          }else if((Math.abs(evalA) > Math.abs(evalB) && evalB < 0 && (Math.abs((evalB * 10) % 10) === 1)) || (Math.abs(evalA) > Math.abs(evalB) && evalB > 0 && (Math.abs(evalB * 10) % 10 === 1))){
+            //above line can be simplified
             console.log("SWAPMATE DETECTED" + newFens);
             
             const daMate = await workerC.getBestLine(newFens, 50);
@@ -2554,11 +2551,6 @@ function App() {
       }else{
         triggerEnd("Game over! Final stats: Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval + ", Final Eval: " + evalA, displayAccuracy/10, "Loss", gameOpening);
       }
-    }else if (posType === "choose random opening"){
-      const randnumb = Math.floor(Math.random() * (daOpeningFens.length - 1))
-      newFenny = daOpeningFens[randnumb];
-      setReqMove(daOpeningMoves[randnumb]);
-      setIsChallenge("");
     }else if (posType === "challenge line"){
       setReqMove("none");
       newFenny = fen;
@@ -2572,7 +2564,11 @@ function App() {
       setIsChallenge(newSourceLineKey);
       console.log("newSourceLineKey: " + newSourceLineKey);
     }else{//random line position
-      const rand2N = Math.floor(Math.random() * randFens.length);
+      let rand2N = Math.floor(Math.random() * (randFens.length - baseLineLengths[gameOpening])) + baseLineLengths[gameOpening];
+      if(daRandLineKey === "base_line"){
+        rand2N = Math.floor(Math.random() * randFens.length);
+      }
+      
       newFenny = randFens[rand2N];
       const daReqMove = uciToSan(daLineUcis[rand2N],randFens[rand2N])
       setReqMove(daReqMove);
@@ -2690,6 +2686,7 @@ function App() {
               newGame.move(move);
               selectedFens.push(newGame.fen());
             }
+            
             setDaOpeningFens(prev => 
               prev.concat(selectedFens)
             );
@@ -3151,7 +3148,7 @@ function App() {
                     padding: "10px 16px",
                     //cursor: isUnlocked ? "pointer" : "not-allowed",
                     cursor: "pointer",
-                    color: isBeaten ? "rgb(0, 200, 0)" : isBeatenTwice ? "rgb(200, 0, 0)" : isBeatenThrice ? "rgb(200, 97, 0)" : "#e6edf3",
+                    color: isBeaten ? "rgb(0, 200, 0)" : isBeatenTwice ? "rgb(230, 140, 0)" : isBeatenThrice ? "rgb(50, 0, 200)" : "#e6edf3",
                     //color: isUnlocked ? "#e6edf3" : "#8b949e",
                     fontSize: "0.9rem",
                     opacity: levelUnlocks[userProgress.level + 1]?.includes(opening) ? 0.4 : 1,
