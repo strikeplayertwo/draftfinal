@@ -174,14 +174,14 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
   { opening: "Sicilian", line_key: "Closed_a6", moves: "1. e4 c5 2. Nc3 a6" },
   { opening: "Sicilian", line_key: "Grand_Prix", moves: "1. e4 c5 2. Nc3 Nc6 3. f4" },
   { opening: "Sicilian", line_key: "Grand_Prix_Accelerated", moves: "1. e4 c5 2. f4 d5" },
-  // Spanish
-  { opening: "Spanish", line_key: "base_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5" },
-  //{ opening: "Spanish", line_key: "main_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5" },
-  { opening: "Spanish", line_key: "closed", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7" },
-  { opening: "Spanish", line_key: "berlin", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 Nf6" },
-  { opening: "Spanish", line_key: "exchange", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Bxc6" },
-  { opening: "Spanish", line_key: "open", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Nxe4" },
-  { opening: "Spanish", line_key: "marshall", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 O-O 8. c3 d5" },
+  // Ruy Lopez
+  { opening: "Ruy Lopez", line_key: "base_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5" },
+  //{ opening: "Ruy Lopez", line_key: "main_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5" },
+  { opening: "Ruy Lopez", line_key: "closed", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7" },
+  { opening: "Ruy Lopez", line_key: "berlin", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 Nf6" },
+  { opening: "Ruy Lopez", line_key: "exchange", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Bxc6" },
+  { opening: "Ruy Lopez", line_key: "open", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Nxe4" },
+  { opening: "Ruy Lopez", line_key: "marshall", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 O-O 8. c3 d5" },
   // King's Indian
   { opening: "King's Indian Defense", line_key: "base_line", moves: "1. d4 Nf6 2. c4 g6" },
   //{ opening: "King's Indian", line_key: "main_line", moves: "1. d4 Nf6 2. c4 g6" },
@@ -2320,14 +2320,14 @@ function App() {
 
     function getLineUCIs(line: string): string[] {
       const lineMovesSAN = line.split(" ");
-      console.log ("lineMovesSAN: " + lineMovesSAN);
+      //console.log ("lineMovesSAN: " + lineMovesSAN);
       const lineMovesUCI = lineMovesSAN.filter(m => {
         if (/^[1-9]/.test(m)) return false;
         return m;
       });
-      console.log ("lineMovesSAN filtered: " + lineMovesUCI);
+      //console.log ("lineMovesSAN filtered: " + lineMovesUCI);
       const lineMovesUCI2 = sanToUciMultiple(lineMovesUCI);
-      console.log ("lineMovesUCI: " + lineMovesUCI2);
+      //console.log ("lineMovesUCI: " + lineMovesUCI2);
       return lineMovesUCI2
     }
     const lines = getActiveLines(gameOpening);
@@ -2338,7 +2338,7 @@ function App() {
     let daLineUcis: string[] = [];
     let daRandLineLabel = "";
     let daRandLineKey = "";
-    console.log("LINES: " + lines);
+    //console.log("LINES: " + lines);
     let sourceLineKey = "";
     if (selectedLines.length > 0){
       const randN = Math.floor(Math.random() * lines.length)
@@ -2348,12 +2348,13 @@ function App() {
       daRandLineKey = lineKeys[randN];
       console.log("line: " + randLineLabel);
       if (Math.random() < 0.35){
+        console.log("35%");
         const randChess = new Chess();
         const lineUCIs = getLineUCIs(randLine);
         daLineUcis = lineUCIs;
         for(let i = 0; i < lineUCIs.length; i++){
           randFens.push(randChess.fen());
-          console.log("loading move: " + lineUCIs[i]);
+          //console.log("loading move: " + lineUCIs[i]);
           randChess.move({from: lineUCIs[i].substring(0, 2), to: lineUCIs[i].substring(2, 4), promotion: 'q'});
         }
         //console.log("randchess fen: " + randChess.fen());
@@ -2367,6 +2368,7 @@ function App() {
           openingMinPly = 20;
         }
         if(randFens.length >= openingMinPly){
+          console.log("defaulting to choose random: " + randFens.length + " " + openingMinPly + " " + lineUCIs);
           posType = "choose random";
         }else{
           if (randLineLabel.startsWith("Challenge")){
@@ -2392,7 +2394,9 @@ function App() {
             }
           }
         }
-      } 
+      }else{
+        console.log("65%");
+      }
     }
 
     console.log(posType);
@@ -2433,7 +2437,7 @@ function App() {
             //above line can be simplified
             console.log("SWAPMATE DETECTED" + newFens);
             
-            const daMate = await workerC.getBestLine(newFens, 50);
+            const daMate = await workerC.getBestLine(newFens, 26);
             const matePV = daMate.pv.split(" ");
             const swapMove = matePV[0];
             chessGame.load(newFens);
@@ -2443,6 +2447,7 @@ function App() {
             }catch{
               console.log("invalid move in mateSwapFen");
             }
+            
             for (let i = 1; i < matePV.length + 5; i++){
               if (chessGame.isGameOver() === false){
                 setBigChessPosition(chessGame.fen());
@@ -2470,11 +2475,6 @@ function App() {
             chessGame.load(newFens);
             highlightKingSquare(chessGame, "big");
             let newevalB = await workerD.getEval(newFens, 18);
-            /*if(Math.abs(newevalB) > 800 && Math.abs(evalA) > 300){
-              const [daNewEvalB, potMate] = await resolveEval(newFens, 18);
-              newevalB = daNewEvalB;
-            }*/
-            //optimize above--not needed if resolveEval runs at depth 10
             const difference = evalA - newevalB;
             setOldEval(newevalB);
             setDif(difference);
