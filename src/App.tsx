@@ -2367,7 +2367,7 @@ function App() {
         }else if(userProgress.openings_level_4?.includes(gameOpening)){
           openingMinPly = 20;
         }
-        if(randFens.length >= openingMinPly){
+        if(randFens.length > openingMinPly){
           console.log("defaulting to choose random: " + randFens.length + " " + openingMinPly + " " + lineUCIs);
           posType = "choose random";
         }else{
