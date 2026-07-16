@@ -38,6 +38,18 @@
   font-family: "Times New Roman", Times, serif;
 }
 
+.alerts {
+  max-width: 280px;
+  padding: 0.4rem 0.7rem;
+  white-space: pre-line;
+  position: relative;
+  left: 890px;
+  bottom: 549px;
+  background-color: #000;
+  font-size: 1rem;
+  font-family: "Times New Roman", Times, serif;
+}
+
 .pos-list {
   max-width: 280px;
   padding: 0.4rem 0.7rem;

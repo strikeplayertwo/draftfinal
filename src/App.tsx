@@ -238,7 +238,6 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
 ];
 
 function App() {
-  //const fens = extractFENsFromGames(pgnData,94, "All");
   const [selectedLines, setSelectedLines] = useState<string[]>([]);
   const [practiceLines, setPracticeLines] = useState<string[]>([]);
   const [showLineSelect, setShowLineSelect] = useState(false);
@@ -263,29 +262,23 @@ function App() {
   const [storeGameResult, setStoreGameResult] = useState("");
   const [fenIndex, setFenIndex] = useState(0);
   const [fiveFens, setFiveFens] = useState<string[]>([]);
-  // create a chess game using a ref to always have access to the latest game state within closures and maintain the game state across renders
   const [DisplayEval, setDisplayEval] = useState("");
+  const [DisplayAlerts, setDisplayAlerts] = useState("");
   const [PosList, setPosList] = useState("");
   const chessGameRef = useRef<Chess | null>(null);
   const [fenScores, setFenScores] = useState(0);
-  //const chessGameRef = useRef(new Chess(fens[randomFen]));
-  //const chessGame = chessGameRef.current;
   const [bPosHistory, setBPosHistory] = useState<string[]>([]);
   const [bColors, setBColors] = useState<string[]>([]);
   const smallGameRef = useRef<Chess | null>(null);
   const [startingEval, setStartingEval] = useState(0);
   const [dif, setDif] = useState(0);
-  // track the current position of the chess game in state to trigger a re-render of the chessboard
   const [chessPosition, setChessPosition] = useState("");
   const [bigChessPosition, setBigChessPosition] = useState("");
   const [moveFrom, setMoveFrom] = useState('');
   const [oldMove, setOldMove] = useState('');
   const [oldFen, setOldFen] = useState("");
   const tryFenRef = useRef<Chess | null>(null);
-  //const tryFenRef = useRef(new Chess(oldFen));
-  //const tryFenGame = tryFenRef.current;
   const [accuracy, setAccuracy] = useState(100);
-
   const [screen, setScreen] = useState<"title" | "versus" | "classic" | "daily" | "settings" | "analytics">("title");
 
   //supabase stuff
@@ -1127,18 +1120,6 @@ function App() {
       await new Promise(resolve => setTimeout(resolve, 1500));
     }
     setShowEffex("");
-  }
-
-  async function nextEffex(damessage: string = "") {
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    while (showEffex){
-      await new Promise(resolve => setTimeout(resolve, 250));
-      if(!showEffex){
-        await new Promise(resolve => setTimeout(resolve, 250));
-      }
-    }
-    setShowEffex(damessage);
-    stopEffex();
   }
 
   const PIECE_VALUES: Record<string, number> = {
@@ -2374,7 +2355,7 @@ function App() {
           if (randLineLabel.startsWith("Challenge")){
             posType = "challenge line";
             //setShowEffex("CHALLENGE MOVE!");
-            nextEffex("CHALLENGE MOVE!");
+            //nextEffex("CHALLENGE MOVE!");
             setIsChallenge(daRandLineKey);
             console.log("daRandLineLabel: " + daRandLineLabel);
           }else{
@@ -2384,13 +2365,13 @@ function App() {
             if(Math.random() < challengeChance){
               posType = "new challenge line";
               //setShowEffex("CHALLENGE MOVE!");
-              nextEffex("CHALLENGE MOVE!");
+              //nextEffex("CHALLENGE MOVE!");
               //sourceLineKey = randLineLabel.split("_")[1];
               sourceLineKey = randLineLabel;
             }else{
               posType = "random line position";
               //setShowEffex(daRandLineLabel);
-              nextEffex(daRandLineLabel);
+              //nextEffex(daRandLineLabel);
             }
           }
         }
@@ -2400,8 +2381,66 @@ function App() {
     }
 
     console.log(posType);
+    function shortAlerts(fen: string, line: string | null){
+      const alerts: string[] = [];
+      if(line) alerts.push(line);
+      const enPassantSquare = fen.split(" ")[3];
+      const castlingRights = fen.split(" ")[2];
+      if(enPassantSquare !== "-"){
+        alerts.push("En passant square: " + enPassantSquare);
+      }
+      const alertsGame = new Chess(fen);
+      const board = alertsGame.board();
+      let e1e8: boolean[] = [false, false, false, false, false, false];//white king on e1, black king on e8, white rooks on a1 + h1, black rooks on a8 + h8
+      for (let rank = 0; rank < 8; rank++) {
+        for (let file = 0; file < 8; file++) {
+          const piece = board[rank][file];
+          if (!piece) continue;
+          //console.log(piece.type + " " + rank + " " + file + " " + piece.color);
+          if(piece.type === "r"){
+            if(rank === 7 && piece.color === "w"){
+              if(file === 0){
+                e1e8[2] = true;
+              }else if(file === 7){
+                e1e8[3] = true;
+              }
+            }else if(rank === 0 && piece.color === "b"){
+              if(file === 0){
+                e1e8[4] = true;
+              }else if(file === 7){
+                e1e8[5] = true;
+              }
+            }
+            continue;
+          }else if(piece.type === "k"){
+            if(file === 4){
+              if(piece.color === "w" && rank === 7){
+                e1e8[0] = true;
+              }else if(piece.color === "b" && rank === 0){
+                e1e8[1] = true;
+              }
+            }
+            continue;
+          }
+        }
+      }
+      console.log(e1e8);
+      if(e1e8[0] === true){
+        if((e1e8[2] && !castlingRights.includes("Q")) || (e1e8[3] && !castlingRights.includes("K"))){
+          alerts.push("Castling rights: " + castlingRights);
+        }
+      }
+      if(e1e8[1] === true && !alerts.includes(castlingRights)){
+        if((e1e8[4] && !castlingRights.includes("q")) || (e1e8[5] && !castlingRights.includes("k"))){
+          alerts.push("Castling rights: " + castlingRights);
+        }
+      }
 
+      const formatted = alerts.join("\n");
+      setDisplayAlerts(formatted);
+    }
     let newFenny = "";
+
     if(posType === "choose random"){
       setReqMove("none");
       setIsChallenge("");
@@ -2432,6 +2471,7 @@ function App() {
             setDif(difference);
             console.log("Success 1! Mate found " + evalA + " " + evalB + " " + newevalB + " " + difference);
             setBPosHistory(prev => [...prev, newFens]);
+            shortAlerts(newFens, "");
             return;
           }else if((Math.abs(evalA) > Math.abs(evalB) && evalB < 0 && (Math.abs((evalB * 10) % 10) === 1)) || (Math.abs(evalA) > Math.abs(evalB) && evalB > 0 && (Math.abs(evalB * 10) % 10 === 1))){
             //above line can be simplified
@@ -2480,6 +2520,7 @@ function App() {
             setDif(difference);
             console.log("Success 1! Elo Within 30 " + evalA + " " + evalB + " " + newevalB + " " + difference);
             setBPosHistory(prev => [...prev, newFens]);
+            shortAlerts(newFens, "");
             return;
           }
         }else if (((evalA < evalB / 0.6) && (evalA > evalB * 0.6) && (evalA >= 0)) || ((evalA > evalB / 0.6) && (evalA < evalB * 0.6) && (evalA <= 0))){
@@ -2500,6 +2541,7 @@ function App() {
               setDif(difference);
               console.log("Success 2! Elo within division range" + evalA + " " + evalB + " " + newevalB + " " + difference);
               setBPosHistory(prev => [...prev, newFens]);
+              shortAlerts(newFens, "");
               return;
             }else{
               console.log("IGNORING MATE");
@@ -2534,6 +2576,7 @@ function App() {
               setDif(difference);
               console.log("Success 3! Elo swapped" + evalA + " " + evalB + " " + newevalB + " " + difference);
               setBPosHistory(prev => [...prev, chessGame.fen()]);
+              shortAlerts(chessGame.fen(), "");
               return;
             }else{
               console.log("IGNORING SWAPMATE");
@@ -2574,6 +2617,14 @@ function App() {
       setReqMove(daReqMove);
       setIsChallenge("");
     }
+    if(posType === "random line position"){
+      shortAlerts(newFenny, "Line: " + daRandLineLabel);
+    }else if(posType === "challenge line" || "new challenge line"){
+      shortAlerts(newFenny, "Challenge Move! Play a good move");
+    }else{
+      shortAlerts(newFenny, "");
+    }
+    
     if(posType !== "choose random"){
       setBigChessPosition(newFenny);
       chessGame.load(newFenny);
@@ -2588,9 +2639,6 @@ function App() {
       setDif(difference);
       setBPosHistory(prev => [...prev, newFenny]);
     }
-
-    //afterwards: is postype = challenge line or new challenge line, if response is within 30 eval, move successful, line saved
-    //update reqMove, isChallenge --> "" or <sourceLineKey>
   }
 
   function getMoveOptions(square: Square, chessInstance: Chess = chessGameRef.current as Chess) {
@@ -3486,6 +3534,7 @@ function App() {
       <button className="back-button" onClick={handleBack}>Back</button>
       <button className={`back2-button ${showBack2 ? "show" : "hide"}`} onClick={() => {setShowBack2(false); setGameResult(storeGameResult);}}>Back to Graph</button>
       <div className={`evals-graph ${showBack2 ? "show" : "hide"}`}>{DisplayEval}</div>
+      <div className={`alerts ${DisplayAlerts ? "show" : "hide"}`}>{DisplayAlerts}</div>
       </>
   ); 
 }
