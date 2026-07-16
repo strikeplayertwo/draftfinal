@@ -2622,7 +2622,9 @@ function App() {
     }else if(posType === "challenge line" || "new challenge line"){
       shortAlerts(newFenny, "Challenge Move! Play a good move");
     }else{
-      shortAlerts(newFenny, "");
+      if(newFenny){
+        shortAlerts(newFenny, "");
+      }
     }
     
     if(posType !== "choose random"){
@@ -2690,18 +2692,7 @@ function App() {
   async function startOpening(opening: string) {
     setScreen("classic");
     setGameOpening(opening);
-
     const allLines = getOpeningLines(opening);
-    const lines = openingLines[opening] ?? [];
-    const openingMaxPly = await getOpeningMaxPly(opening);
-
-    const eligibleLines = selectedLines.length > 0
-      ? allLines.filter(l => selectedLines.includes(l.key))
-      : allLines.filter(l => !(openingMaxPly < l.plyLength && l.key !== "base_line" && l.key !== "main_line"))
-    /*const eligiblePracticeLines = practiceLines.length > 0
-      ? allLines.filter(l => practiceLines.includes(l.key))
-      : eligibleLines; // fallback to all eligible if none selected
-*/
     const eligiblePracticeLines = allLines.filter(l => practiceLines.includes(l.key));
     function parseMoves(san: string): string[] {
       return san.split(" ")
@@ -2709,9 +2700,7 @@ function App() {
         .map(m => m)
         .filter(Boolean);
     }
-
     const newGame = new Chess();
-
     if (opening !== "None") {
       if(eligiblePracticeLines[0]){
         setShowEffex("Practice: " + eligiblePracticeLines[0]?.label);
@@ -2745,13 +2734,8 @@ function App() {
         console.log("Practicing line: " + practiceLine.label + " Moves: " + practiceLine.line);
         newGame.reset();
         const openingMoves = parseMoves(practiceLine.line);
-        //const plyLength = openingMoves.length;
         const openingFens = [newGame.fen()];
-        //below line not needed
-        newGame.load("rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1");
         setBigChessPosition(newGame.fen());
-
-        //for (let i = 0; i < plyLength; i++) {
         for (let i = 0; i < openingMoves.length; i++) {
           await new Promise(resolve => setTimeout(resolve, 1500));
           const move = openingMoves[i];
@@ -2803,21 +2787,10 @@ function App() {
       }
       setPracticeEnded(true);
     }
-
-    // Choose game start FEN from eligible game lines
-    const fallbackLine = lines.find(l => l.line_key === "base_line")?.moves ?? "";
-    const chosenGameLine = eligibleLines.length > 0
-      ? eligibleLines[Math.floor(Math.random() * eligibleLines.length)].line
-      : fallbackLine;
-
-    const gameMoves = parseMoves(chosenGameLine);
-    const plyLength = gameMoves.length;
-
     if (opening !== "None") {
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
-
-    const startFen = await chooseFirstFen(opening, plyLength);
+    const startFen = await chooseFirstFen(opening, 10);
     newGame.load(startFen);
     chessGameRef.current = newGame;
     smallGameRef.current = new Chess(startFen);
