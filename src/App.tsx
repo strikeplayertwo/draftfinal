@@ -290,14 +290,11 @@ function App() {
   const [rankInfo, setRankInfo] = useState<RankInfo>(null);
   
   //opening stuff
-  const daOpeningFensRef = useRef<string[]>([]);
   const [resolvedFens, setResolvedFens] = useState<string[]>([]);
   const [showOpeningSelect, setShowOpeningSelect] = useState(false);
   const [gameOpening, setGameOpening] = useState("None");
   const [reqMove, setReqMove] = useState<string>("none");
   const [isChallenge, setIsChallenge] = useState<string>("");
-  const [daOpeningFens, setDaOpeningFens] = useState<string[]>([]);
-  const [daOpeningMoves, setDaOpeningMoves] = useState<string[]>([]);
   const [userProgress, setUserProgress] = useState<UserProgress>({
     level: 1,
     openings_level_1: ["None"],
@@ -435,10 +432,6 @@ function App() {
 
     return () => subscription.unsubscribe();
   }, []);
-
-  useEffect(() => {
-    daOpeningFensRef.current = daOpeningFens;
-  }, [daOpeningFens]);
 
   async function signInWithEmail(email: string, password: string) {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
@@ -2723,10 +2716,6 @@ function App() {
               newGame.move(move);
               selectedFens.push(newGame.fen());
             }
-            
-            setDaOpeningFens(prev => 
-              prev.concat(selectedFens)
-            );
           }
         }
       }
@@ -2771,10 +2760,6 @@ function App() {
 
         await playerRunThru(openingFens);
         setReqMove("none");
-        setDaOpeningFens(prev => 
-          prev.concat(openingFens)
-        );
-        setDaOpeningMoves(openingMoves);
 
         /*if (openingFens.length - 1 < userProgress.userMinPly) {
           setReqMove("add");
@@ -2833,11 +2818,7 @@ function App() {
           promotion: 'q'
         });
         const ourNewFen = chessGame.fen();
-        const newMove = moveFrom + square;
-        daOpeningFensRef.current = [...daOpeningFensRef.current, ourNewFen];
-        setDaOpeningFens(daOpeningFensRef.current);
-        setDaOpeningMoves(prev => [...prev, newMove]);
-        setShowEffex("Position added to opening pool (" + daOpeningFensRef.current.length + ")");
+        setShowEffex("Position added to opening pool");
         stopEffex();
         setBigChessPosition(ourNewFen);
         const lines = openingLines[gameOpening] ?? [];
@@ -3471,11 +3452,7 @@ function App() {
                 chessGameRef.current?.move({ from: m.from, to: m.to, promotion: "q" });
                 setBigChessPosition(chessGameRef.current?.fen() ?? "");
                 const ourNewFen = chessGameRef.current?.fen() ?? "";
-                const newMove = m.from + m.to;
-                daOpeningFensRef.current = [...daOpeningFensRef.current, ourNewFen];
-                setDaOpeningFens(daOpeningFensRef.current);
-                setDaOpeningMoves(prev => [...prev, newMove]);
-                setShowEffex("Position added to opening pool (" + daOpeningFensRef.current.length + ")");
+                setShowEffex("Position added to opening pool");
                 stopEffex();
                 setBigChessPosition(ourNewFen);
                 const lines = openingLines[gameOpening] ?? [];
