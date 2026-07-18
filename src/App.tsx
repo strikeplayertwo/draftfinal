@@ -2008,6 +2008,21 @@ function App() {
           setAccuracy(thisaccuracy);
         }
         evalA += 100;
+      }else if(ourEval - bestEval >= -50){
+        console.log("acceptable challenge response: " + ourEval + " " + bestEval);
+        setDif(25);
+        setShowEffex("Acceptable Move 👍 +25 eval");
+        //fix -- show analysis on small board?
+        stopEffex();
+        let thisaccuracy = 8500;
+        setBColors(prev => [...prev, "rgb(221, 255, 0)"]);
+        displayAccuracy = Math.round(((accuracy * (movesplayed) + thisaccuracy) / (movesplayed + 1)));
+        if (movesplayed !== 0){
+          setAccuracy(displayAccuracy);
+        }else{
+          setAccuracy(thisaccuracy);
+        }
+        evalA += 25;
       }else{
         console.log("bad challenge response: " + ourEval + " " + bestEval);
         setDif(-100);
@@ -2441,10 +2456,14 @@ function App() {
       const MAX_ATTEMPTS = 400;
       while (attempts < MAX_ATTEMPTS) {
         let newFens = fens[Math.floor(Math.random() * fens.length)];
-        while(bPosHistory.includes(newFens) === true || oldFen === newFens){
-          console.log("skipping duplicate fen");
+        while(bPosHistory.includes(newFens) === true || bigChessPosition === newFens){
+          console.log("skipping duplicate fen" + newFens);
+          if(bigChessPosition === newFens){
+            console.log("skipping REPEAT fen" + newFens);
+          }
           newFens = fens[Math.floor(Math.random() * fens.length)];
         }
+        console.log(bPosHistory + " | " + bigChessPosition + " | " + newFens);
         let evalB = await workerC.getEval(newFens, 10);
         if(Math.abs(evalB) > 1000 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(evalB) * 0.5){
           const [daEvalB] = await resolveEval(newFens, 16);
@@ -2562,15 +2581,22 @@ function App() {
 
           if (((evalA < newevalB / 0.5) && (evalA > newevalB * 0.5) && (evalA >= 0)) || ((evalA > newevalB / 0.5) && (evalA < newevalB * 0.5) && (evalA <= 0))){
             if(!(Math.abs(newevalB) * 10 % 10 === 1 && deepMate === false)){
-              setBigChessPosition(chessGame.fen());
-              highlightKingSquare(chessGame, "big");
-              setOldEval(newevalB);
-              const difference = evalA - newevalB;
-              setDif(difference);
-              console.log("Success 3! Elo swapped" + evalA + " " + evalB + " " + newevalB + " " + difference);
-              setBPosHistory(prev => [...prev, chessGame.fen()]);
-              shortAlerts(chessGame.fen(), "");
-              return;
+              if(bPosHistory.includes(chessGame.fen()) === true || bigChessPosition === newFens){
+                console.log("skipping duplicate swap fen" + chessGame.fen());
+                if(bigChessPosition === newFens){
+                  console.log("skipping REPEAT swap fen" + chessGame.fen());
+                }
+              }else{
+                setBigChessPosition(chessGame.fen());
+                highlightKingSquare(chessGame, "big");
+                setOldEval(newevalB);
+                const difference = evalA - newevalB;
+                setDif(difference);
+                console.log("Success 3! Elo swapped" + evalA + " " + evalB + " " + newevalB + " " + difference);
+                setBPosHistory(prev => [...prev, chessGame.fen()]);
+                shortAlerts(chessGame.fen(), "");
+                return;
+              }
             }else{
               console.log("IGNORING SWAPMATE");
             }
@@ -2615,7 +2641,7 @@ function App() {
     }else if(posType === "challenge line" || "new challenge line"){
       shortAlerts(newFenny, "Challenge Move! Play a good move");
     }else{
-      if(newFenny){
+      if(newFenny !== ""){
         shortAlerts(newFenny, "");
       }
     }
