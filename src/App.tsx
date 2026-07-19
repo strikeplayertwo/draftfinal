@@ -2465,9 +2465,13 @@ function App() {
         }
         console.log(bPosHistory + " | " + bigChessPosition + " | " + newFens);
         let evalB = await workerC.getEval(newFens, 10);
+        let daMate = "";
+        let highRes = false;
         if(Math.abs(evalB) > 1000 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(evalB) * 0.5){
-          const [daEvalB] = await resolveEval(newFens, 16);
+          const [daEvalB, daDaMate] = await resolveEval(newFens, 16);
           evalB = daEvalB
+          daMate = daDaMate;
+          highRes = true;
         }
         if(evalB !== Math.trunc(evalB)){
           console.log("MATE DETECTED");
@@ -2489,8 +2493,8 @@ function App() {
             //above line can be simplified
             console.log("SWAPMATE DETECTED" + newFens);
             
-            const daMate = await workerC.getBestLine(newFens, 26);
-            const matePV = daMate.pv.split(" ");
+            //const daMate = await workerC.getBestLine(newFens, 26);
+            const matePV = daMate?.split(" ");
             const swapMove = matePV[0];
             chessGame.load(newFens);
             try{
@@ -2499,25 +2503,13 @@ function App() {
             }catch{
               console.log("invalid move in mateSwapFen");
             }
-            
-            for (let i = 1; i < matePV.length + 5; i++){
-              if (chessGame.isGameOver() === false){
-                setBigChessPosition(chessGame.fen());
-                await new Promise(resolve => setTimeout(resolve, 500));
-                const move = matePV[i];
-                chessGame.move({from: move?.substring(0, 2) as Square, to: move?.substring(2, 4) as Square, promotion: 'q'});
-                flushSync(() => {
-                  setBigChessPosition(chessGame.fen());
-                });
-                await new Promise(resolve => setTimeout(resolve, 1000));
-              }
-            }
-            if (evalA > 0){
-              triggerEnd("You win! Final result: " + ("You mate in " + (matePV.length - 1)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter) + ", Starting Eval: " + startingEval, displayAccuracy/10, "Win", gameOpening);
-            }else{
-              triggerEnd("Game over! Final result: " + ("You are mated in " + (matePV.length - 1)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval, displayAccuracy/10, "Loss", gameOpening);
-            }
-
+            setBigChessPosition(chessGame.fen());
+            highlightKingSquare(chessGame, "big");
+            const difference = evalA - evalB;
+            setOldEval(evalB);
+            setDif(difference);
+            setBPosHistory(prev => [...prev, chessGame.fen()]);
+            shortAlerts(chessGame.fen(), "");
             return;
           }
         }
@@ -2536,12 +2528,18 @@ function App() {
             return;
           }
         }else if (((evalA < evalB / 0.6) && (evalA > evalB * 0.6) && (evalA >= 0)) || ((evalA > evalB / 0.6) && (evalA < evalB * 0.6) && (evalA <= 0))){
-          let newevalB = await workerC.getEval(newFens, 18);
-          let deepMate = false;
-          if(Math.abs(newevalB) > 1000 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(newevalB) * 0.5){
-            const [daNewEvalB] = await resolveEval(newFens, 16);
-            newevalB = daNewEvalB;
-            deepMate = true;
+          let newevalB = evalB;
+          let deepMate = true;
+          if(highRes === true){
+            
+          }else{
+            newevalB = await workerC.getEval(newFens, 18);
+            deepMate = false;
+            if(Math.abs(newevalB) > 1000 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(newevalB) * 0.5){
+              const [daNewEvalB] = await resolveEval(newFens, 16);
+              newevalB = daNewEvalB;
+              deepMate = true;
+            }
           }
           if (((evalA < newevalB / 0.5) && (evalA > newevalB * 0.5) && (evalA >= 0)) || ((evalA > newevalB / 0.5) && (evalA < newevalB * 0.5) && (evalA <= 0))){
             if(!(Math.abs(newevalB) * 10 % 10 === 1 && deepMate === false)){
@@ -2571,12 +2569,18 @@ function App() {
           }catch{
             console.log("invalid move in swapFen");
           }
-          let newevalB = await workerB.getEval(chessGame.fen(), 18);
-          let deepMate = false;
-          if(Math.abs(newevalB) > 1000 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(newevalB) * 0.5){
-            const [daNewEvalB] = await resolveEval(newFens, 16);
-            newevalB = daNewEvalB;
-            deepMate = true;
+          let newevalB = evalB;
+          let deepMate = true;
+          if(highRes === true){
+            
+          }else{
+            newevalB = await workerB.getEval(chessGame.fen(), 18);
+            deepMate = false;
+            if(Math.abs(newevalB) > 1000 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(newevalB) * 0.5){
+              const [daNewEvalB] = await resolveEval(newFens, 16);
+              newevalB = daNewEvalB;
+              deepMate = true;
+            }
           }
 
           if (((evalA < newevalB / 0.5) && (evalA > newevalB * 0.5) && (evalA >= 0)) || ((evalA > newevalB / 0.5) && (evalA < newevalB * 0.5) && (evalA <= 0))){
