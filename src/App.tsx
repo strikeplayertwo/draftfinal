@@ -2794,9 +2794,20 @@ function App() {
       for (const practiceLine of eligiblePracticeLines) {
         console.log("Practicing line: " + practiceLine.label + " Moves: " + practiceLine.line);
         newGame.reset();
-        const openingMoves = parseMoves(practiceLine.line);
-        const openingFens = [newGame.fen()];
+        let openingMoves = parseMoves(practiceLine.line);
+        if(practiceLine.key !== "base_line"){
+          let preOpeningMoves = openingMoves.splice(0, baseLineLengths[opening]);
+          console.log("pre: " + preOpeningMoves + " " + baseLineLengths[opening]);
+          for (let i = 0; i < preOpeningMoves.length; i++) {
+            const move = preOpeningMoves[i];
+            if (!move) break;
+            newGame.move(move);
+          }
+        }
+        let openingFens = [newGame.fen()];
         setBigChessPosition(newGame.fen());
+        console.log("post: " + openingMoves);
+        await new Promise(resolve => setTimeout(resolve, 1500));
         for (let i = 0; i < openingMoves.length; i++) {
           await new Promise(resolve => setTimeout(resolve, 1500));
           const move = openingMoves[i];
@@ -2805,9 +2816,7 @@ function App() {
           setBigChessPosition(newGame.fen());
           openingFens.push(newGame.fen());
         }
-
         await new Promise(resolve => setTimeout(resolve, 3000));
-        newGame.load(openingFens[0]);
         setBigChessPosition(openingFens[0]);
 
         async function playerRunThru(fens: string[]) {
