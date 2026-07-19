@@ -2079,11 +2079,7 @@ function App() {
       let stockMate = "";
       let ourMate = "";
       let ourEval = -1 * await workerC.getEval(chessGame.fen(), 20);
-      if(Math.abs(ourEval) > 1000){
-        const [daOurEval, potMate] = await resolveEval(chessGame.fen(), 16);
-        ourEval = -1 * daOurEval;
-        ourMate = potMate;
-      }
+      
       let bestEval = ourEval;
       let streaker = currentStreak;
 
@@ -2091,7 +2087,11 @@ function App() {
       const stockfishMove = pvb?.split(" ")?.[0];
       const stockfishMoveSAN = uciToSan(stockfishMove, fenBeforeMove);
       if(stockfishMoveSAN !== playerMove){
-        
+        if(Math.abs(ourEval) > 1000){
+          const [daOurEval, potMate] = await resolveEval(chessGame.fen(), 16);
+          ourEval = -1 * daOurEval;
+          ourMate = potMate;
+        }
         tryFenGame.load(fenBeforeMove);
         tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
         bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 20);
