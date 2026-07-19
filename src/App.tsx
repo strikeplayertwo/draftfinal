@@ -2038,6 +2038,7 @@ function App() {
         }
         evalA -= 100;
       }
+      setEvalHistory(prev => [...prev, evalA]);
     }else if (reqMove !== "none"){
       if (playerMove === reqMove){
         setDif(50);
