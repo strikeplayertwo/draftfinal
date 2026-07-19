@@ -49,6 +49,7 @@ type RankInfo = {
 
 type UserProgress = {
   level: number;
+  small_level: number;
   openings_level_1: string[];
   openings_level_2: string[];
   openings_level_3: string[];
@@ -296,7 +297,8 @@ function App() {
   const [reqMove, setReqMove] = useState<string>("none");
   const [isChallenge, setIsChallenge] = useState<string>("");
   const [userProgress, setUserProgress] = useState<UserProgress>({
-    level: 1,
+    level: 1, 
+    small_level: 1,
     openings_level_1: ["None"],
     openings_level_2: [],
     openings_level_3: [],
@@ -395,7 +397,7 @@ function App() {
     async function fetchProgress() {
       const { data, error } = await supabase
         .from("user_progress")
-        .select("level, openings_level_1, openings_level_2, openings_level_3, openings_level_4")
+        .select("level, small_level, openings_level_1, openings_level_2, openings_level_3, openings_level_4")
         .eq("user_id", user!.id)
         .single();
 
@@ -404,6 +406,7 @@ function App() {
         await supabase.from("user_progress").insert({
           user_id: user!.id,
           level: 1,
+          small_level: 1,
           openings_level_1: ["None"],
           openings_level_2: [],
           openings_level_3: [],
@@ -459,7 +462,7 @@ function App() {
       .eq("user_id", user.id);
 
     if (!error) {
-      setUserProgress({ level: newLevel, openings_level_1: updated, openings_level_2: userProgress.openings_level_2, openings_level_3: userProgress.openings_level_3, openings_level_4: userProgress.openings_level_4});
+      setUserProgress({ level: newLevel, small_level: userProgress.small_level, openings_level_1: updated, openings_level_2: userProgress.openings_level_2, openings_level_3: userProgress.openings_level_3, openings_level_4: userProgress.openings_level_4});
       if (newUnlocks.length > 0) {
         //setGameResult(prev => `${prev}\nLevel ${newLevel}! Unlocked: ${newUnlocks.join(", ")}`);
         setGameResult(prev => 
@@ -750,16 +753,25 @@ function App() {
             openings_level_1: updatedOpenings,
             openings_level_2: [...prev.openings_level_2, opening, "Random"],
           }));
+          await supabase
+            .from("user_progress")
+            .update({ small_level: userProgress.small_level + 2 })
+            .eq("user_id", user!.id);
         }else{
           setUserProgress(prev => ({
             ...prev,
             openings_level_1: updatedOpenings,
             openings_level_2: [...prev.openings_level_2, opening],
           }));
+          await supabase
+            .from("user_progress")
+            .update({ small_level: userProgress.small_level + 1 })
+            .eq("user_id", user!.id);
         }
-        if (userProgress.openings_level_2.length === 0 || userProgress.openings_level_2.length === 2 || userProgress.openings_level_2.length === 4 || userProgress.openings_level_2.length === 6 || userProgress.openings_level_2.length === 7 || userProgress.openings_level_2.length === 17){
+        //if (userProgress.openings_level_2.length === 0 || userProgress.openings_level_2.length === 2 || userProgress.openings_level_2.length === 4 || userProgress.openings_level_2.length === 6 || userProgress.openings_level_2.length === 7 || userProgress.openings_level_2.length === 17){
+        if(userProgress.small_level === 3 || userProgress.small_level === 4 || userProgress.small_level === 6 || userProgress.small_level === 8 || userProgress.small_level === 9 || userProgress.small_level === 19){
           levelUp();
-          console.log("Level up!" + opening);
+          console.log("Level up!" + opening + " " + userProgress.small_level);
         }
       }else if (userProgress.openings_level_2?.includes(opening)){
         if(userProgress.level >= 6){
@@ -778,6 +790,14 @@ function App() {
             openings_level_2: updatedOpenings,
             openings_level_3: [...prev.openings_level_3, opening],
           }));
+          await supabase
+            .from("user_progress")
+            .update({ small_level: userProgress.small_level + 1 })
+            .eq("user_id", user!.id);
+          if(userProgress.small_level === 3 || userProgress.small_level === 4 || userProgress.small_level === 6 || userProgress.small_level === 8 || userProgress.small_level === 9 || userProgress.small_level === 19){
+            levelUp();
+            console.log("Level up!" + opening + " " + userProgress.small_level);
+          }
         }
       }else{//3
         if(userProgress.level >= 7){
@@ -796,6 +816,14 @@ function App() {
             openings_level_3: updatedOpenings,
             openings_level_4: [...prev.openings_level_4, opening],
           }));
+          await supabase
+            .from("user_progress")
+            .update({ small_level: userProgress.small_level + 1 })
+            .eq("user_id", user!.id);
+          if(userProgress.small_level === 3 || userProgress.small_level === 4 || userProgress.small_level === 6 || userProgress.small_level === 8 || userProgress.small_level === 9 || userProgress.small_level === 19){
+            levelUp();
+            console.log("Level up!" + opening + " " + userProgress.small_level);
+          }
         }
       }
     }
@@ -1729,31 +1757,44 @@ function App() {
     }
   }
 
-  async function resolveEval(fen: string, startDepth: number = 18): Promise<[number, string]> {
+  function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
+    const timeout = new Promise<T>(resolve => setTimeout(() => resolve(fallback), ms));
+    return Promise.race([promise, timeout]);
+  }
+
+  async function resolveEval(fen: string, startDepth: number = 18, fallbackeval: number): Promise<[number, string]> {
     let daEval = 1101;
     let mate = "";
     console.log("resolving eval of " + fen);
     if(resolvedFens.includes(fen)){
-      const idnex = resolvedFens.indexOf(fen);
-      daEval = parseFloat(resolvedFens[idnex + 1]);
-      mate = resolvedFens[idnex + 2];
+      const index = resolvedFens.indexOf(fen);
+      daEval = parseFloat(resolvedFens[index + 1]);
+      mate = resolvedFens[index + 2];
       console.log("skipping already resolved fen: " + fen + daEval + mate);
     }else{
-      while(Math.abs(daEval) > 1100 && startDepth < 26){
-        console.log("not yet resolved: " + startDepth + " " + daEval);
+      while (Math.abs(daEval) > 1100 && startDepth < 26){
+        console.log("not yet resolved: " + startDepth + " " + fallbackeval);
         startDepth += 10;
-        daEval = await workerB.getEval(fen, startDepth)
+        daEval = await withTimeout(
+          workerB.getEval(fen, startDepth),
+          3000,
+          fallbackeval
+        );
+        if(Math.abs(daEval) > 1100 || daEval === fallbackeval){
+          console.log("resolveworker timed out at depth: " + startDepth);
+          break; // stop retrying if we timed out
+        }
       }
       if(Math.abs(daEval) < 1101){
-        console.log("resolve success: " + daEval + "depth: " + startDepth);
-        if(Math.trunc(daEval) !== daEval){
+        console.log("resolve success: " + daEval + " depth: " + startDepth);
+        if (Math.trunc(daEval) !== daEval) {
           const bline = await workerB.getBestLine(fen, startDepth);
           if(bline.mate) mate = bline.pv;
         }
       }else{
         console.log("resolve failure: " + daEval);
       }
-      setResolvedFens(prev => 
+      setResolvedFens(prev =>
         prev.concat([fen, daEval.toString(), mate])
       );
     }
@@ -2088,7 +2129,7 @@ function App() {
       const stockfishMoveSAN = uciToSan(stockfishMove, fenBeforeMove);
       if(stockfishMoveSAN !== playerMove){
         if(Math.abs(ourEval) > 1000){
-          const [daOurEval, potMate] = await resolveEval(chessGame.fen(), 16);
+          const [daOurEval, potMate] = await resolveEval(chessGame.fen(), 16, ourEval * -1);
           ourEval = -1 * daOurEval;
           ourMate = potMate;
         }
@@ -2096,7 +2137,7 @@ function App() {
         tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
         bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 20);
         if(Math.abs(bestEval) > 1000){
-          const [daBestEval, potMate] = await resolveEval(tryFenGame.fen(), 16);
+          const [daBestEval, potMate] = await resolveEval(tryFenGame.fen(), 16, bestEval * -1);
           bestEval = -1 * daBestEval;
           stockMate = potMate;
         }
@@ -2469,7 +2510,7 @@ function App() {
         let daMate = "";
         let highRes = false;
         if(Math.abs(evalB) > 1000 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(evalB) * 0.5){
-          const [daEvalB, daDaMate] = await resolveEval(newFens, 16);
+          const [daEvalB, daDaMate] = await resolveEval(newFens, 16, evalB);
           evalB = daEvalB
           daMate = daDaMate;
           highRes = true;
@@ -2537,7 +2578,7 @@ function App() {
             newevalB = await workerC.getEval(newFens, 18);
             deepMate = false;
             if(Math.abs(newevalB) > 1000 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(newevalB) * 0.5){
-              const [daNewEvalB] = await resolveEval(newFens, 16);
+              const [daNewEvalB] = await resolveEval(newFens, 16, newevalB);
               newevalB = daNewEvalB;
               deepMate = true;
             }
@@ -2578,7 +2619,7 @@ function App() {
             newevalB = await workerB.getEval(chessGame.fen(), 18);
             deepMate = false;
             if(Math.abs(newevalB) > 1000 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(newevalB) * 0.5){
-              const [daNewEvalB] = await resolveEval(newFens, 16);
+              const [daNewEvalB] = await resolveEval(chessGame.fen(), 16, newevalB);
               newevalB = daNewEvalB;
               deepMate = true;
             }
@@ -2657,7 +2698,7 @@ function App() {
       highlightKingSquare(chessGame, "big");
       let newevalB = await workerD.getEval(newFenny, 18);//fix --is this line and below needed?
       if(Math.abs(newevalB) > 1000 && Math.abs(evalA) > 300 && Math.abs(evalA) > Math.abs(newevalB) * 0.5){
-        const [daNewEvalB] = await resolveEval(newFenny, 16);
+        const [daNewEvalB] = await resolveEval(newFenny, 16, newevalB);
         newevalB = daNewEvalB;
       }
       const difference = evalA - newevalB;
