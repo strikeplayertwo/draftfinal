@@ -788,7 +788,7 @@ function App() {
           setUserProgress(prev => ({
             ...prev,
             openings_level_2: updatedOpenings,
-            openings_level_3: [...prev.openings_level_3, opening],
+            openings_level_3: updatedNextOpenings,
           }));
           await supabase
             .from("user_progress")
@@ -814,7 +814,7 @@ function App() {
           setUserProgress(prev => ({
             ...prev,
             openings_level_3: updatedOpenings,
-            openings_level_4: [...prev.openings_level_4, opening],
+            openings_level_4: updatedNextOpenings,
           }));
           await supabase
             .from("user_progress")
