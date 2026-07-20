@@ -2239,8 +2239,8 @@ function App() {
       }
       console.log("Accuracy " + accuracy + " this: " + thisaccuracy + " Moves: " + movesplayed);
 
-      const bonuses: Record<number, number> = { 1: 25, 2: 50, 3: 80, 4: 125, 5: 200 };
-      const streakbonus = streaker >= 6 ? 300 : (bonuses[streaker] ?? 0);
+      const bonuses: Record<number, number> = { 1: 25, 2: 50, 3: 80, 4: 125, 5: 200, 6: 300};
+      const streakbonus = streaker >= 7 ? 500 : (bonuses[streaker] ?? 0);
       let msg = "";
       for (let i = 0; i < streaker; i++){
         msg += "🔥";
@@ -2769,6 +2769,7 @@ function App() {
     if (opening !== "None") {
       if(eligiblePracticeLines[0]){
         setShowEffex("Practice: " + eligiblePracticeLines[0]?.label);
+        setDisplayAlerts(eligiblePracticeLines[0]?.label);
         stopEffex();
       }
       if(practiceLines.length !== selectedLines.length){
@@ -2830,6 +2831,7 @@ function App() {
           }
           //setShowEffex("Correct ✅");
           setShowEffex("Next: " + (eligiblePracticeLines[eligiblePracticeLines.indexOf(practiceLine) + 1]?.label ?? "End of Practice"));
+          setDisplayAlerts(eligiblePracticeLines[eligiblePracticeLines.indexOf(practiceLine) + 1]?.label ?? "");
           stopEffex();
         }
 
