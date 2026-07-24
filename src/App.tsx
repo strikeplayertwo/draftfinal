@@ -12,7 +12,7 @@ import { createClient, User } from "@supabase/supabase-js";
 //import { C } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js';
 
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
-
+//aaaaa
 type Arrow = {
   startSquare: Square;
   endSquare: Square;
