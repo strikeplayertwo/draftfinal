@@ -79,6 +79,41 @@ export async function extractFENsFromGames(pgnText: string, limit = 469, opening
   console.log(fens.length + " fens generated from " + opening);
   return fens;
 }
+
+export async function midArrows(pgnText: string, gMoves: string[], opening: string): Promise<string[]> {
+  const gamesText = splitPGNGames(pgnText, opening);
+  const matchGameMoves: string[] = [];
+  for(const gameText of gamesText){
+    let isMatch = true;
+    const moves: string[] = gameText.split(/\r?\n\r?\n(?=\[Event )/)[1].split(/\r?\n/).filter(line => line.trim().length > 0 && !line.startsWith("[")).join(" ").split(" ").filter(token => !token.includes(".") && token.trim().length > 0);
+    console.log("moves: " + moves);
+    const tMoves = moves.splice(0, gMoves.length);
+    console.log("moves: " + moves + " tMoves: " + tMoves);
+    for(let i = 0; i < gMoves.length; i++){
+      if(!tMoves.includes(gMoves[i])){
+        isMatch = false;
+        break;
+      }
+    }
+    if(isMatch){
+      const nMoves = moves.splice(0,10);//test--make sure is next 10 moves?
+      console.log("moves: " + moves + " nMoves: " + nMoves);
+      for(const nMove of nMoves) matchGameMoves.push(nMove);
+    }
+  }
+  console.log(matchGameMoves.length + " moves found for gMoves" + gMoves);
+  const cMoves: string[] = [];;
+  const vMoves: string[] = [];
+  const minMatchCount = 0.3 * matchGameMoves.length / 10;
+  for(const matchGameMove of matchGameMoves){
+    if(vMoves.includes(matchGameMove)) continue;
+    const matchCount = matchGameMoves.filter(m => m === matchGameMove).length;
+    vMoves.push(matchGameMove);
+    if(matchCount >= minMatchCount)cMoves.push(matchGameMove);
+  }
+  return cMoves;
+}
+
 /*
 async function generateRandomFens(){
     const response = await fetch("/lichess_elite_2023-07.pgn");
