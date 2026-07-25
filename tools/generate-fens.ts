@@ -85,10 +85,11 @@ export async function midArrows(pgnText: string, gMoves: string[], opening: stri
   const matchGameMoves: string[] = [];
   for(const gameText of gamesText){
     let isMatch = true;
-    const moves: string[] = gameText.split(/\r?\n\r?\n(?=\[Event )/)[1].split(/\r?\n/).filter(line => line.trim().length > 0 && !line.startsWith("[")).join(" ").split(" ").filter(token => !token.includes(".") && token.trim().length > 0);
-    console.log("moves: " + moves);
+    const parsed = parse(gameText)[0];
+    const moves: string[] = parsed?.moves.map((m: any) => m.move) || [];
+    //console.log("moves: " + moves);
     const tMoves = moves.splice(0, gMoves.length);
-    console.log("moves: " + moves + " tMoves: " + tMoves);
+    //console.log("moves: " + moves + " tMoves: " + tMoves);
     for(let i = 0; i < gMoves.length; i++){
       if(!tMoves.includes(gMoves[i])){
         isMatch = false;
@@ -97,7 +98,7 @@ export async function midArrows(pgnText: string, gMoves: string[], opening: stri
     }
     if(isMatch){
       const nMoves = moves.splice(0,10);//test--make sure is next 10 moves?
-      console.log("moves: " + moves + " nMoves: " + nMoves);
+      console.log("Match! Order: " + tMoves + " moves: " + moves + " nMoves: " + nMoves);
       for(const nMove of nMoves) matchGameMoves.push(nMove);
     }
   }
@@ -111,6 +112,7 @@ export async function midArrows(pgnText: string, gMoves: string[], opening: stri
     vMoves.push(matchGameMove);
     if(matchCount >= minMatchCount)cMoves.push(matchGameMove);
   }
+  console.log("cMoves: " + cMoves);
   return cMoves;
 }
 

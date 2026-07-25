@@ -1,13 +1,14 @@
 import { useEffect, useState, useRef } from 'react';
 import { flushSync } from 'react-dom';
-import { extractFENsFromGames } from '../tools/generate-fens';
+import { extractFENsFromGames, midArrows } from '../tools/generate-fens';
 import { Chessboard, PieceDropHandlerArgs, SquareHandlerArgs } from "react-chessboard";
 import { Chess, Square } from 'chess.js';
 //import moveAudio from './assets/sounds/move.mp3';
 //import captureAudio from './assets/sounds/capture.mp3';
 import './App.css'
 import { workerA, workerB, workerC, workerD } from "./engine/stockfishWorker";
-import pgnData from "./assets/twic1326.pgn?raw";
+import pgnData from "./assets/twic1326.pgn?raw"; 
+import eliteData from "./assets/twic1326WithEngineGames.pgn?raw";
 import { createClient, User } from "@supabase/supabase-js";
 //import { C } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js';
 
@@ -306,7 +307,6 @@ function App() {
   });
   const openings = ["None", "Random", "Italian", "French", "Queen's Pawn Game", "Caro-Kann", "Queen's Indian Defense", "King's Indian Defense", "Reti", "London System", "Queen's Gambit Declined", "Gruenfeld", "Benoni", "English", "Petrov's", "Ruy Lopez", "Catalan", "Sicilian"];
   const [practiceEnded, setPracticeEnded] = useState(false);
-  
   const baseLineLengths: Record<string, number> = {"Sicilian": 2, "French": 4, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "London System": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 4, "Reti": 1, "Petrov's": 4, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Italian": 5 };
 
  // const pinkMode = false;
@@ -369,8 +369,6 @@ function App() {
     fetchAllOpeningLines();
   }, [user]);
 
-
-
   useEffect(() => {
     if (!user) return; // don't fetch if not logged in
 
@@ -420,7 +418,12 @@ function App() {
     fetchGameHistory();
     fetchDailyGameHistory();
     fetchProgress();
-    }, [user]);
+
+    const NajdorfMoves = "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Be3 e5 7. Nb3 Be6 8. f3 h5 9. Qd2";
+    const TrimmedNajdorf = NajdorfMoves.replace(/\d+\.\s*/g, "").trim().split(/\s+/).filter(Boolean);
+    console.log("TrimmedNajdorf: " + TrimmedNajdorf);
+    midArrows(eliteData, TrimmedNajdorf , "Sicilian");
+  }, [user]);
 
   useEffect(() => {
     // Get current session on load
