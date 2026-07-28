@@ -1792,7 +1792,9 @@ function App() {
         console.log("resolve success: " + daEval + " depth: " + startDepth);
         if (Math.trunc(daEval) !== daEval) {
           const bline = await workerB.getBestLine(fen, startDepth);
-          if(bline.mate) mate = bline.pv;
+          if(bline){
+            if(bline.mate) mate = bline.pv;
+          }
         }
       }else{
         console.log("resolve failure: " + daEval);
@@ -2154,6 +2156,7 @@ function App() {
       disbrilcounter = brilcounter;
       disbmcounter = bmcounter;
       let missedmate = false;
+      let generatedmate = false;
       if(Math.trunc(ourEval) === ourEval && Math.trunc(bestEval) !== bestEval){
         console.log("Player missed mate" + ourEval + " " + bestEval);
         setCurrentStreak(0);
@@ -2161,6 +2164,9 @@ function App() {
         console.log("Streak ended: " + ourEval + " " + bestEval);
         streaker = 0;
         missedmate = true;
+      }else if(Math.trunc(ourEval) !== ourEval){
+        console.log("Player generated mate");
+        generatedmate = true;
       }else if(ourEval > bestEval){
         console.log("Brilliant Move! " + ourEval + " " + bestEval);
         bonus = 200;
@@ -2273,6 +2279,11 @@ function App() {
       }
       console.log("EvalA: " + evalA + " ourOldEval: " + ourOldEval + " BestEval: " + bestEval + " OurEval: " + ourEval + " Bonus: " + bonus + " StreakBonus: " + streakbonus + " Dif: " + dif);
       setEvalHistory(prev => [...prev, evalA]);
+
+      if(generatedmate){
+        console.log("finding generated mate line");
+        mate = await workerA.getBestLine(chessGame.fen(), 20).then(r => { console.log("chooseFen generatedmate done", r); return r.mate; });
+      }
 
       if (mate !== null){
         const pv = result.pv;
