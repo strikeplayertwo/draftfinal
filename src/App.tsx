@@ -2153,7 +2153,15 @@ function App() {
       let disHighestStreak = highestStreak;
       disbrilcounter = brilcounter;
       disbmcounter = bmcounter;
-      if(ourEval > bestEval){
+      let missedmate = false;
+      if(Math.trunc(ourEval) === ourEval && Math.trunc(bestEval) !== bestEval){
+        console.log("Player missed mate" + ourEval + " " + bestEval);
+        setCurrentStreak(0);
+        setStreakMsg("Current Streak: 0");
+        console.log("Streak ended: " + ourEval + " " + bestEval);
+        streaker = 0;
+        missedmate = true;
+      }else if(ourEval > bestEval){
         console.log("Brilliant Move! " + ourEval + " " + bestEval);
         bonus = 200;
         setShowEffex("Brilliant Move ‼️ +200 eval, +2 streak");
@@ -2220,7 +2228,9 @@ function App() {
         streaker = 0;
       }
       let thisaccuracy = Math.round((100 * Math.exp((ourEval - bestEval) / 200)) * 10);
-      if(thisaccuracy > 1100){
+      if(missedmate){
+        thisaccuracy = 0;
+      }else if(thisaccuracy > 1100){
         thisaccuracy = 1100;
       }
       if (thisaccuracy > 1000){
@@ -2256,9 +2266,11 @@ function App() {
           stopEffex();
         }
       }
-
-    
-      evalA = (ourOldEval - bestEval + ourEval + bonus + streakbonus + dif);
+      if(missedmate){
+        evalA = ourOldEval - 200 + dif;
+      }else{
+        evalA = (ourOldEval - bestEval + ourEval + bonus + streakbonus + dif);
+      }
       console.log("EvalA: " + evalA + " ourOldEval: " + ourOldEval + " BestEval: " + bestEval + " OurEval: " + ourEval + " Bonus: " + bonus + " StreakBonus: " + streakbonus + " Dif: " + dif);
       setEvalHistory(prev => [...prev, evalA]);
 
@@ -2962,6 +2974,11 @@ function App() {
         if (screen !== "daily"){
           setChessPosition(chessGame.fen());
           setPosHistory([chessPosition]);
+          if(chessGame.isCheckmate() && screen === "classic"){
+            console.log("Successful mate in 1 detected");
+            triggerEnd("You win! Final result: You mate in 1 " + "Accuracy: " + accuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (brilcounter) + ", Best Moves Played: " + (bmcounter) + ", Starting Eval: " + startingEval, accuracy/10, "Win", gameOpening);
+            return;
+          }
         }else{
           setPosHistory(prev => [...prev, chessGame.fen()]);
           setDailySquares({});
