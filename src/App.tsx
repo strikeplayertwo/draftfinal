@@ -2436,14 +2436,14 @@ function App() {
     let daRandLineKey = "";
     //console.log("LINES: " + lines);
     let sourceLineKey = "";
-    if (selectedLines.length > 0){
+    if(selectedLines.length > 0){
       const randN = Math.floor(Math.random() * lines.length)
       const randLine = lines[randN];
       const randLineLabel = lineLabels[randN];
       daRandLineLabel = randLineLabel;
       daRandLineKey = lineKeys[randN];
       console.log("line: " + randLineLabel);
-      if (Math.random() < 0.35){
+      if(Math.random() < 0.35){
         console.log("35%");
         const randChess = new Chess();
         const lineUCIs = getLineUCIs(randLine);
