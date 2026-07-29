@@ -3,13 +3,14 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "CommonJS",
+    "ignoreDeprecations": "6.0",
     "moduleResolution": "node",
     "types": ["node"],
     "strict": true,
     "esModuleInterop": true,
     "composite": true,
   },
-  "include": ["tools/**/*.ts", "src/engine/generate-opening-fens.ts"]
+  "include": ["tools/**/*.ts", "src/engine/generate-opening-fens.ts", "scripts/process-pgns.ts"]
 }/*
 {
   "compilerOptions": {

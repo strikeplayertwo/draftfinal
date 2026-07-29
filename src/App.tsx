@@ -8,9 +8,10 @@ import { Chess, Square } from 'chess.js';
 import './App.css'
 import { workerA, workerB, workerC, workerD } from "./engine/stockfishWorker";
 import pgnData from "./assets/twic1326.pgn?raw"; 
-import eliteData from "./assets/lichess_elite_2025-11.pgn?raw";
+//import eliteData from "./assets/lichess_elite_2025-11.pgn?raw";
 import { createClient, User } from "@supabase/supabase-js";
 //import { C } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js';
+//import { asyncWrapProviders } from 'async_hooks';
 
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
 //aaaaa
@@ -433,14 +434,14 @@ function App() {
           console.log("Processing line: " + line.line_key + " with moves: " + line.moves);
           const moves = line.moves.replace(/\d+\.\s*/g, "").trim().split(/\s+/).filter(Boolean);
           if(moves.length > 0){
-            midArrows(eliteData, moves, opening);
+            //midArrows(eliteData, moves, opening);
           }
         }
       }
       console.log("done midArrows processing");
     }
     started++;
-    if(started === 0) processMidArrows();
+    //if(started === 0) processMidArrows();
 
     //const NajdorfMoves = "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Be3 e5 7. Nb3 Be6 8. f3 h5 9. Qd2";
     //const TrimmedNajdorf = NajdorfMoves.replace(/\d+\.\s*/g, "").trim().split(/\s+/).filter(Boolean);
@@ -1753,23 +1754,20 @@ function App() {
     return fens;
   }*/
 
-  async function chooseFirstFen(opening: string = "None", plyLength: number = 10): Promise<string> {
-    const daFens = await extractFENsFromGames(pgnData,94, opening, plyLength);
+  /*async function chooseFirstFen(opening: string = "None", plyLength: number = 10): Promise<string> {
+    if(Object.keys(openingFensData).length === 0){
+      console.warn("Opening fens not loaded yet");
+      return "";
+    }
+    const daFens = getFENsForOpening(opening);
+    //const daFens = await extractFENsFromGames(pgnData,94, opening, plyLength);
     while(daFens.length < 94){
       //const makeupFens = await extractFENsFromGames(pgnData, 94 - daFens.length, "None", plyLength);
       const randoN = Math.floor(Math.random() * 468);
-      const makeupFens = await extractFENsFromGames(pgnData, randoN + 1, "None", plyLength, randoN);
+      const makeupFens = getFENsForOpening("None", 94);
+      //const makeupFens = await extractFENsFromGames(pgnData, randoN + 1, "None", plyLength, randoN);
       daFens.push(...makeupFens);
     }
-    /*const prog = openingProgressMap[opening];
-    let mainline = "";
-    if (prog) {
-      mainline = prog.main_line;
-    }
-    if (opening !== "None"){
-      const generatedFens = await generateFENsFromOpening(mainline);
-      daFens.push(...generatedFens);
-    }*/
     
     setFens(daFens);
 
@@ -1781,6 +1779,24 @@ function App() {
         return newFen;
       }
     }
+  }*/
+
+  async function chooseFirstFen(opening: string = "None", plyLength: number = 6): Promise<string> {
+    const daFens = await getFENsForOpening(opening); // now async
+    setFens(daFens);
+
+    if (daFens.length === 0) return "";
+
+    let attempts = 0;
+    while (attempts < Math.min(daFens.length * 3, 100)) {
+      const newFen = daFens[Math.floor(Math.random() * daFens.length)];
+      if (!newFen) { attempts++; continue; }
+      const evalB = await workerA.getEval(newFen, 10);
+      if (Math.abs(evalB) < 30) return newFen;
+      attempts++;
+    }
+
+    return daFens[Math.floor(Math.random() * daFens.length)];
   }
 
   function withTimeout<T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> {
@@ -2803,6 +2819,35 @@ function App() {
     }
   }*/
 
+  const openingFensCache = useRef<Record<string, string[]>>({});
+
+  async function getFENsForOpening(opening: string, limit = 469): Promise<string[]> {
+    // Return from cache if already loaded
+    if (openingFensCache.current[opening]) {
+      return openingFensCache.current[opening].slice(0, limit);
+    }
+
+    const filename = opening.toLowerCase().replace(/[^a-z0-9]/g, "_");
+    const base = import.meta.env.BASE_URL;
+    console.log("Fetching:", `/opening-fens/${filename}.json`);
+    try{
+      const res = await fetch(`${base}opening-fens/${filename}.json`);
+      if (!res.ok) throw new Error("Not found");
+      const fens: string[] = await res.json();
+      openingFensCache.current[opening] = fens;
+      return fens.slice(0, limit);
+    }catch{
+      console.warn(`No fens found for ${opening}, falling back to None`);
+      if (openingFensCache.current["None"]) {
+        return openingFensCache.current["None"].slice(0, limit);
+      }
+      const res = await fetch(`${base}opening-fens/none.json`);
+      const fens: string[] = await res.json();
+      openingFensCache.current["None"] = fens;
+      return fens.slice(0, limit);
+    }
+  }
+
   async function startOpening(opening: string) {
     setScreen("classic");
     setGameOpening(opening);
@@ -3388,7 +3433,7 @@ function App() {
                 style={{ marginTop: 10, width: "100%" }}
                 onClick={async () => {
                   setShowLineSelect(false);
-                  await startOpening(pendingOpening); // ← extracted function, see Step 4
+                  await startOpening(pendingOpening);
                 }}
               >
                 Start
