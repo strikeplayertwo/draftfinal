@@ -98,7 +98,7 @@ export async function midArrows(pgnText: string, gMoves: string[], opening: stri
     }
     if(isMatch){
       const nMoves = moves.splice(0,10);//test--make sure is next 10 moves?
-      console.log("Match! Order: " + tMoves + " moves: " + moves + " nMoves: " + nMoves);
+      //console.log("Match! Order: " + tMoves + " moves: " + moves + " nMoves: " + nMoves);
       for(const nMove of nMoves) matchGameMoves.push(nMove);
     }
   }
