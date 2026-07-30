@@ -435,7 +435,7 @@ function App() {
           console.log("Processing line: " + line.line_key + " with moves: " + line.moves);
           const moves = line.moves.replace(/\d+\.\s*/g, "").trim().split(/\s+/).filter(Boolean);
           if(moves.length > 0){
-            midArrows(opMoves, moves, opening);
+            await midArrows(opMoves, moves, opening);
           }
         }
       }

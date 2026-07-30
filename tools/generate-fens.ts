@@ -1,6 +1,18 @@
 import {parse} from 'pgn-parser'
 import {Chess} from "chess.js";
 
+async function sanToUciMultiple(startPos: string, sanMoves: string[]): Promise<string[]> {
+  const openingMover = new Chess(startPos);
+  let ucis = [];
+  for (let i = 0; i < sanMoves.length; i++){
+    try {
+      const moveData = openingMover.move(sanMoves[i]);
+      ucis.push(`${moveData.from}${moveData.to}${moveData.promotion || ''}`);
+    } catch {
+    }
+  }
+  return ucis;
+}
 
 function splitPGNGames(pgnText: string, openingFilter: string): string[] {
   if(openingFilter.toLowerCase() === "petrov's"){
@@ -80,8 +92,18 @@ export async function extractFENsFromGames(pgnText: string, limit = 469, opening
   return fens;
 }
 
+//for uciToSan: 
+//load gMoves & save fen
+//if match in cMoves use that
+
 export async function midArrows(openingMoves: string[], gMoves: string[], opening: string): Promise<string[]> {
+  const chessGame = new Chess();
+  for(let i = 0; i < gMoves.length; i++){
+    chessGame.move(gMoves[i]);
+  }
+  const basePos = chessGame.fen();
   const matchGameMoves: string[] = [];
+  const aMoves: Record<string, string> = {};
   for(const openingMoveString of openingMoves){
     let isMatch = true;
     //console.log("moves: " + moves);
@@ -95,22 +117,33 @@ export async function midArrows(openingMoves: string[], gMoves: string[], openin
       }
     }
     if(isMatch){
-      const nMoves = moves.splice(0,10);//test--make sure is next 10 moves?
-      //console.log("Match! Order: " + tMoves + " moves: " + moves + " nMoves: " + nMoves);
-      for(const nMove of nMoves) matchGameMoves.push(nMove);
+      const nMoves: string[] = moves.splice(0,10);//test--make sure is next 10 moves?
+      const nMovesUCI = await sanToUciMultiple(basePos, nMoves);
+      //console.log("Match! Order: " + tMoves + " moves: " + moves + " nMoves: " + nMoves + " nMovesUCI: " + nMovesUCI);
+      for(let i = 0; i < nMoves.length; i++){
+        matchGameMoves.push(nMoves[i]);
+        const nMove = nMoves[i];
+        if(!(aMoves[nMove])) aMoves[nMove] = nMovesUCI[i];
+      }
     }
   }
   console.log(matchGameMoves.length + " moves found for gMoves" + gMoves);
-  const cMoves: string[] = [];;
+  const cMoves: string[] = [];
+  const cMovesUCI: string[] = [];
   const vMoves: string[] = [];
   const minMatchCount = 0.3 * matchGameMoves.length / 10;
   for(const matchGameMove of matchGameMoves){
     if(vMoves.includes(matchGameMove)) continue;
     const matchCount = matchGameMoves.filter(m => m === matchGameMove).length;
     vMoves.push(matchGameMove);
-    if(matchCount >= minMatchCount)cMoves.push(matchGameMove);
+    if(matchCount >= minMatchCount){
+      cMoves.push(matchGameMove);
+      cMovesUCI.push(aMoves[matchGameMove]);
+      //aMoves.current[matchGameMove] = "";
+    }
   }
-  console.log("cMoves: " + cMoves);
+  console.log("cMoves: " + cMoves + " cMovesUCI: " + cMovesUCI);
+  // + " aMoves: " + JSON.stringify(aMoves, null, 2));
   return cMoves;
 }
 
