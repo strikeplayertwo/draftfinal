@@ -80,14 +80,12 @@ export async function extractFENsFromGames(pgnText: string, limit = 469, opening
   return fens;
 }
 
-export async function midArrows(pgnText: string, gMoves: string[], opening: string): Promise<string[]> {
-  const gamesText = splitPGNGames(pgnText, opening);
+export async function midArrows(openingMoves: string[], gMoves: string[], opening: string): Promise<string[]> {
   const matchGameMoves: string[] = [];
-  for(const gameText of gamesText){
+  for(const openingMoveString of openingMoves){
     let isMatch = true;
-    const parsed = parse(gameText)[0];
-    const moves: string[] = parsed?.moves.map((m: any) => m.move) || [];
     //console.log("moves: " + moves);
+    const moves = openingMoveString.split(" ");
     const tMoves = moves.splice(0, gMoves.length);
     //console.log("moves: " + moves + " tMoves: " + tMoves);
     for(let i = 0; i < gMoves.length; i++){

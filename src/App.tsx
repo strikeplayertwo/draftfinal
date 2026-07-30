@@ -309,7 +309,7 @@ function App() {
   const openings = ["None", "Random", "Italian", "French", "Queen's Pawn Game", "Caro-Kann", "Queen's Indian Defense", "King's Indian Defense", "Reti", "London System", "Queen's Gambit Declined", "Gruenfeld", "Benoni", "English", "Petrov's", "Ruy Lopez", "Catalan", "Sicilian"];
   const [practiceEnded, setPracticeEnded] = useState(false);
   const baseLineLengths: Record<string, number> = {"Sicilian": 2, "French": 4, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "London System": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 4, "Reti": 1, "Petrov's": 4, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Italian": 5 };
-  let started = -1;
+  const [started, setStarted] = useState(-2);
 
  // const pinkMode = false;
    /*[!cSquare]:{
@@ -324,33 +324,33 @@ function App() {
 
   const [openingLines, setOpeningLines] = useState<Record<string, OpeningLine[]>>({});
 
-  async function fetchAllOpeningLines() {
-    if (!user) return;
+  async function fetchAllOpeningLines(){
+    if(!user) return;
     const { data, error } = await supabase
       .from("opening_lines")
       .select("opening, line_key, moves")
       .eq("user_id", user.id);
 
-    if (error) {
+    if(error){
       console.error("Failed to fetch opening lines:", error);
       return;
     }
 
-    if (!data || data.length === 0) {
+    if(!data || data.length === 0){
       // New user — insert all defaults
       const { error: insertError } = await supabase
         .from("opening_lines")
         .insert(DEFAULT_OPENING_LINES.map(l => ({ ...l, user_id: user!.id })));
 
-      if (insertError) {
+      if(insertError){
         console.error("Failed to initialize opening lines:", insertError);
         return;
       }
 
       // Set local state from defaults
       const grouped: Record<string, OpeningLine[]> = {};
-      for (const l of DEFAULT_OPENING_LINES) {
-        if (!grouped[l.opening]) grouped[l.opening] = [];
+      for(const l of DEFAULT_OPENING_LINES){
+        if(!grouped[l.opening]) grouped[l.opening] = [];
         grouped[l.opening].push({ line_key: l.line_key, moves: l.moves });
       }
       setOpeningLines(grouped);
@@ -359,49 +359,49 @@ function App() {
 
     // Existing user — group and set state as before
     const grouped: Record<string, OpeningLine[]> = {};
-    for (const row of data) {
-      if (!grouped[row.opening]) grouped[row.opening] = [];
+    for(const row of data){
+      if(!grouped[row.opening]) grouped[row.opening] = [];
       grouped[row.opening].push({ line_key: row.line_key, moves: row.moves });
     }
     setOpeningLines(grouped);
   }
 
   useEffect(() => {
-    if (!user) return;
+    if(!user) return;
     fetchAllOpeningLines();
   }, [user]);
 
   useEffect(() => {
-    if (!user) return; // don't fetch if not logged in
+    if(!user) return; // don't fetch if not logged in
 
-    async function fetchGameHistory() {
-      if (!user) return;
+    async function fetchGameHistory(){
+      if(!user) return;
       const { data } = await supabase
         .from("classic_game_results")
         .select()
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
-      if (data) setGameHistory(data);
+      if(data) setGameHistory(data);
     }
 
-    async function fetchDailyGameHistory() {
-      if (!user) return;
+    async function fetchDailyGameHistory(){
+      if(!user) return;
       const { data } = await supabase
         .from("daily_game_results")
         .select()
         .eq("user_id", user.id)
         .order("created_at", { ascending: false });
-      if (data) setDailyGameHistory(data);
+      if(data) setDailyGameHistory(data);
     }
 
-    async function fetchProgress() {
+    async function fetchProgress(){
       const { data, error } = await supabase
         .from("user_progress")
         .select("level, small_level, openings_level_1, openings_level_2, openings_level_3, openings_level_4")
         .eq("user_id", user!.id)
         .single();
 
-      if (error || !data) {
+      if(error || !data){
         // First time user — create their row
         await supabase.from("user_progress").insert({
           user_id: user!.id,
@@ -412,7 +412,7 @@ function App() {
           openings_level_3: [],
           openings_level_4: [],
         });
-      } else {
+      }else{
         setUserProgress(data);
       }
     }
@@ -421,9 +421,10 @@ function App() {
     fetchDailyGameHistory();
     fetchProgress();
     
-    async function processMidArrows(){
-      console.log("starting midArrows processing");
-      for (const opening of openings) {
+    async function processMidArrows(debug: number){
+      console.log("starting midArrows processing" + debug);
+      for(const opening of openings){
+        const opMoves = await getMovesForOpening(opening, 3000)
         const lines = await supabase
           .from("opening_lines")
           .select("line_key, moves")
@@ -434,14 +435,19 @@ function App() {
           console.log("Processing line: " + line.line_key + " with moves: " + line.moves);
           const moves = line.moves.replace(/\d+\.\s*/g, "").trim().split(/\s+/).filter(Boolean);
           if(moves.length > 0){
-            //midArrows(eliteData, moves, opening);
+            midArrows(opMoves, moves, opening);
           }
         }
       }
       console.log("done midArrows processing");
     }
-    started++;
-    //if(started === 0) processMidArrows();
+    setStarted(started + 1);
+    if(started > 0){
+      console.log(started);
+      processMidArrows(started)
+    }else{
+      console.log("no" + started);
+    }
 
     //const NajdorfMoves = "1. e4 c5 2. Nf3 d6 3. d4 cxd4 4. Nxd4 Nf6 5. Nc3 a6 6. Be3 e5 7. Nb3 Be6 8. f3 h5 9. Qd2";
     //const TrimmedNajdorf = NajdorfMoves.replace(/\d+\.\s*/g, "").trim().split(/\s+/).filter(Boolean);
@@ -1781,7 +1787,7 @@ function App() {
     }
   }*/
 
-  async function chooseFirstFen(opening: string = "None", plyLength: number = 6): Promise<string> {
+  async function chooseFirstFen(opening: string = "None"): Promise<string> {
     const daFens = await getFENsForOpening(opening); // now async
     setFens(daFens);
 
@@ -2848,6 +2854,29 @@ function App() {
     }
   }
 
+  const openingMovesCache = useRef<Record<string, string[]>>({});
+
+  async function getMovesForOpening(opening: string, limit = 469): Promise<string[]> {
+    // Return from cache if already loaded
+    if (openingMovesCache.current[opening]) {
+      return openingMovesCache.current[opening].slice(0, limit);
+    }
+
+    const filename = opening.toLowerCase().replace(/[^a-z0-9]/g, "_");
+    const base = import.meta.env.BASE_URL;
+    console.log("Fetching:", `/opening-moves/${filename}.json`);
+    try{
+      const res = await fetch(`${base}opening-moves/${filename}.json`);
+      if (!res.ok) throw new Error("Not found");
+      const moves: string[] = await res.json();
+      openingMovesCache.current[opening] = moves;
+      return moves.slice(0, limit);
+    }catch{
+      console.warn(`No moves found for ${opening}`);
+      return [];
+    }
+  }
+
   async function startOpening(opening: string) {
     setScreen("classic");
     setGameOpening(opening);
@@ -2952,7 +2981,7 @@ function App() {
     if (opening !== "None") {
       await new Promise(resolve => setTimeout(resolve, 2000));
     }
-    const startFen = await chooseFirstFen(opening, 10);
+    const startFen = await chooseFirstFen(opening);
     newGame.load(startFen);
     chessGameRef.current = newGame;
     smallGameRef.current = new Chess(startFen);
