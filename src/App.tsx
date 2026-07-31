@@ -422,8 +422,9 @@ function App() {
     fetchProgress();
     
     async function processMidArrows(debug: number){
-      console.log("starting midArrows processing" + debug);
+      //console.log("starting midArrows processing" + debug);
       for(const opening of openings){
+        const opLines: Record<string, string[]> = {};
         if(opening === "Random" || opening === "None") continue;
         const opMoves = await getMovesForOpening(opening, 3000)
         const lines = await supabase
@@ -432,19 +433,22 @@ function App() {
           .filter("line_key", "not.ilike", "%challenge%")
           .eq("opening", opening);
         for(const line of lines.data || []){
-          console.log("Processing line: " + line.line_key + " with moves: " + line.moves);
+          //console.log("Processing line: " + line.line_key + " with moves: " + line.moves);
           const moves = line.moves.replace(/\d+\.\s*/g, "").trim().split(/\s+/).filter(Boolean);
           if(moves.length > 0){
-            await midArrows(opMoves, moves, opening);
+            const lineMoves = await midArrows(opMoves, moves, opening);
+            opLines[line.line_key] = lineMoves;
           }
         }
+        console.log(opening);
+        console.log(JSON.stringify(opLines));
       }
-      console.log("done midArrows processing");
+      //console.log("done midArrows processing");
     }
     setStarted(started + 1);
     if(started > 0){
       console.log(started);
-      //processMidArrows(started)
+      processMidArrows(started)
     }else{
       console.log("no" + started);
     }
@@ -2887,7 +2891,7 @@ function App() {
 
     const filename = opening.toLowerCase().replace(/[^a-z0-9]/g, "_");
     const base = import.meta.env.BASE_URL;
-    console.log("Fetching:", `/opening-moves/${filename}.json`);
+    //console.log("Fetching:", `/opening-moves/${filename}.json`);
     try{
       const res = await fetch(`${base}opening-moves/${filename}.json`);
       if (!res.ok) throw new Error("Not found");

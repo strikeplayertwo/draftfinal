@@ -127,7 +127,7 @@ export async function midArrows(openingMoves: string[], gMoves: string[], openin
       }
     }
   }
-  console.log(matchGameMoves.length + " moves found for gMoves" + gMoves);
+  //console.log(matchGameMoves.length + " moves found for gMoves" + gMoves);
   const cMoves: string[] = [];
   const cMovesUCI: string[] = [];
   const vMoves: string[] = [];
@@ -142,9 +142,9 @@ export async function midArrows(openingMoves: string[], gMoves: string[], openin
       //aMoves.current[matchGameMove] = "";
     }
   }
-  console.log("cMoves: " + cMoves + " cMovesUCI: " + cMovesUCI);
+  //console.log("cMoves: " + cMoves + " cMovesUCI: " + cMovesUCI);
   // + " aMoves: " + JSON.stringify(aMoves, null, 2));
-  return cMoves;
+  return cMovesUCI;
 }
 
 /*
