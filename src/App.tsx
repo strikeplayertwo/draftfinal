@@ -444,7 +444,7 @@ function App() {
     setStarted(started + 1);
     if(started > 0){
       console.log(started);
-      processMidArrows(started)
+      //processMidArrows(started)
     }else{
       console.log("no" + started);
     }
@@ -2830,6 +2830,7 @@ function App() {
   async function getFENsForOpening(opening: string, limit = 469): Promise<string[]> {
     // Return from cache if already loaded
     if (openingFensCache.current[opening]) {
+      console.log("idk what this does either");
       return openingFensCache.current[opening].slice(0, limit);
     }
 
@@ -2840,17 +2841,39 @@ function App() {
       const res = await fetch(`${base}opening-fens/${filename}.json`);
       if (!res.ok) throw new Error("Not found");
       const fens: string[] = await res.json();
+      //console.log(fens);
       openingFensCache.current[opening] = fens;
-      return fens.slice(0, limit);
+      //console.log(openingFensCache.current[opening]);
+      const sendFens: string[] = [];
+      while (sendFens.length < limit){
+        sendFens.push(fens[Math.trunc(Math.random() * fens.length)]);
+      }
+      console.log(sendFens.length + " generated from total " + fens.length);
+      return sendFens;
     }catch{
       console.warn(`No fens found for ${opening}, falling back to None`);
       if (openingFensCache.current["None"]) {
+        console.log("idk what this does");
         return openingFensCache.current["None"].slice(0, limit);
       }
-      const res = await fetch(`${base}opening-fens/none.json`);
-      const fens: string[] = await res.json();
-      openingFensCache.current["None"] = fens;
-      return fens.slice(0, limit);
+      //const res = await fetch(`${base}opening-fens/none.json`);
+      //const fens: string[] = await res.json();
+      //openingFensCache.current["None"] = fens;
+      const sendFens: string[] = [];
+      while (sendFens.length < limit){
+        const randOpening = openings[Math.trunc(2 + (Math.random() * (openings.length - 2)))];
+        const filename = randOpening.toLowerCase().replace(/[^a-z0-9]/g, "_");
+        console.log(randOpening);
+        const res = await fetch(`${base}opening-fens/${filename}.json`);
+        if (!res.ok) throw new Error("Not found");
+        const fens: string[] = await res.json();
+        const startN = Math.trunc(Math.random() * fens.length);
+        for(let i = startN; i < startN + 50 && i < fens.length; i++){
+          sendFens.push(fens[i]);
+        }
+      }
+      console.log(sendFens.length + " fens found for None");
+      return sendFens;
     }
   }
 
