@@ -424,11 +424,11 @@ function App() {
     async function processMidArrows(debug: number){
       console.log("starting midArrows processing" + debug);
       for(const opening of openings){
+        if(opening === "Random" || opening === "None") continue;
         const opMoves = await getMovesForOpening(opening, 3000)
         const lines = await supabase
           .from("opening_lines")
           .select("line_key, moves")
-          //filter out challenge lines
           .filter("line_key", "not.ilike", "%challenge%")
           .eq("opening", opening);
         for(const line of lines.data || []){
@@ -1788,7 +1788,7 @@ function App() {
   }*/
 
   async function chooseFirstFen(opening: string = "None"): Promise<string> {
-    const daFens = await getFENsForOpening(opening); // now async
+    const daFens = await getFENsForOpening(opening);
     setFens(daFens);
 
     if (daFens.length === 0) return "";

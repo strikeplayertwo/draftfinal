@@ -5,10 +5,10 @@ import {parse} from 'pgn-parser'
 const pgnText = fs.readFileSync("src/assets/lichess_elite_2025-11.pgn", "utf-8");
 
 function splitPGNGames(pgnText: string, opening = "None"): string[]{
-  if(opening.toLowerCase() === "grünfeld"){
-    opening = "Gruenfeld";
-  }else if(opening.toLowerCase() === "réti"){
-    opening = "Reti";
+  if(opening.toLowerCase() === "gruenfeld"){
+    opening = "Grünfeld";
+  }else if(opening.toLowerCase() === "reti"){
+    opening = "Réti";
   }
 
   const games = pgnText
