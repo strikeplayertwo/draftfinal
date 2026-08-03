@@ -311,7 +311,7 @@ function App() {
   const baseLineLengths: Record<string, number> = {"Sicilian": 2, "French": 4, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "London System": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 4, "Reti": 1, "Petrov's": 4, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Italian": 5 };
   const [started, setStarted] = useState(-2);
 
- // const pinkMode = false;
+  let isPinkMode = false;
    /*[!cSquare]:{
           backgroundColor: 'rgba(255, 0, 204, 0.75)'
         }*/
@@ -445,10 +445,37 @@ function App() {
       }
       //console.log("done midArrows processing");
     }
+
+    async function generateLineMoves(){
+      const opLines: Record<string, string[]> = {};
+      for(const opening of openings){
+        if(opening === "Random" || opening === "None") continue;
+        const opString = opening.toLowerCase() + ".";
+        const opMoves = await getMovesForOpening(opening, 3000)
+        const lines = await supabase
+          .from("opening_lines")
+          .select("line_key, moves")
+          .filter("line_key", "not.ilike", "%challenge%")
+          .eq("opening", opening);
+        for(const line of lines.data || []){
+          //console.log("Processing line: " + line.line_key + " with moves: " + line.moves);
+          const moves = line.moves.replace(/\d+\.\s*/g, "").trim().split(/\s+/).filter(Boolean);
+          if(moves.length > 0){
+            const lineMoves = await midArrows(opMoves, moves, opening);
+            const lineString = opString + line.line_key;
+            opLines[lineString] = lineMoves;
+          }
+        }
+      }
+      console.log(JSON.stringify(opLines));
+    }
+
+
     setStarted(started + 1);
     if(started > 0){
       console.log(started);
-      processMidArrows(started)
+      //processMidArrows(started)
+      //generateLineMoves();
     }else{
       console.log("no" + started);
     }
@@ -3278,6 +3305,7 @@ function App() {
     position: chessPosition,
     squareStyles: smallSquares,
     id: 'board1',
+    darkSquareStyle: isPinkMode? { backgroundColor: '#ff66b3'} : { backgroundColor: '#b58863'},
   };
 
   const bigBoardOptions = {
@@ -3286,6 +3314,7 @@ function App() {
     position: bigChessPosition,
     squareStyles: optionSquares,
     id: 'board2',
+    darkSquareStyle: isPinkMode? { backgroundColor: '#ff66b3'} : { backgroundColor: '#b58863'},
   };
 
   const dailyBoardOptions = {
