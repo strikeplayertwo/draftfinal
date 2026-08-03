@@ -729,6 +729,7 @@ function App() {
   const [dailySquares, setDailySquares] = useState<Record<string, React.CSSProperties>>({});
   const [smallSquares, setSmallSquares] = useState<Record<string, React.CSSProperties>>({});
   const [arrows, setArrows] = useState<Arrow[]>([]);
+  const [arrows2, setArrows2] = useState<Arrow[]>([]);
   const [oldEval, setOldEval] = useState(-10000);
   const isAnalyzing = useRef(false);
   const [moveInfos, setMoveInfos] = useState<MoveInfo[]>([]);
@@ -3007,6 +3008,24 @@ function App() {
             }
           }
           //setShowEffex("Correct ✅");
+          const filename = opening.toLowerCase().replace(/[^a-z0-9]/g, "_");
+          const base = import.meta.env.BASE_URL;
+          try{
+            const res = await fetch(`${base}opening-midarrows/${filename}.json`);
+            if (!res.ok) throw new Error("Not found");
+            const moves: Record<string, string[]> = await res.json();
+            if(moves[practiceLine.key]){
+              for(const move of moves[practiceLine.key]){
+                const from = move.substring(0, 2);
+                const to = move.substring(2, 4);
+                setArrows2(prev => [...prev, {
+                  startSquare: from as Square, endSquare: to as Square, color: "#ffaa00"
+                }]);
+              }
+            }
+          }catch{
+            console.log("midarrows error");
+          }
           setShowEffex("Next: " + (eligiblePracticeLines[eligiblePracticeLines.indexOf(practiceLine) + 1]?.label ?? "End of Practice"));
           setDisplayAlerts(eligiblePracticeLines[eligiblePracticeLines.indexOf(practiceLine) + 1]?.label ?? "");
           stopEffex();
@@ -3028,7 +3047,8 @@ function App() {
           await waitAddMoves(userProgress.userMinPly);
           setMoveInfos([]);
         }*/
-        await new Promise(resolve => setTimeout(resolve, 1000)); // brief pause between lines
+        await new Promise(resolve => setTimeout(resolve, 5000)); // brief pause between lines
+        setArrows2([]);
       }
       setPracticeEnded(true);
     }
@@ -3309,6 +3329,7 @@ function App() {
   };
 
   const bigBoardOptions = {
+    arrows: arrows2,
     onPieceDrop,
     onSquareClick,
     position: bigChessPosition,

@@ -6,6 +6,7 @@
   "scripts": {
     "process-pgns": "npx tsx scripts/process-pgns.ts",
     "pgns-moves": "npx tsx scripts/pgns-moves.ts",
+    "gen-midarrows": "npx tsx scripts/gen-midarrows.ts",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
