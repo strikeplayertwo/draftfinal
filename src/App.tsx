@@ -3038,7 +3038,6 @@ function App() {
         }*/
 
         await playerRunThru(openingFens);
-        setReqMove("none");
 
         /*if (openingFens.length - 1 < userProgress.userMinPly) {
           setReqMove("add");
@@ -3047,7 +3046,12 @@ function App() {
           await waitAddMoves(userProgress.userMinPly);
           setMoveInfos([]);
         }*/
-        await new Promise(resolve => setTimeout(resolve, 5000)); // brief pause between lines
+        await new Promise(resolve => setTimeout(resolve, 8000));
+        setReqMove("none");
+        if(arrows2.length > 0){
+          console.log("arrows2");
+          await new Promise(resolve => setTimeout(resolve, 5000));
+        }else console.log("nah" + arrows2);
         setArrows2([]);
       }
       setPracticeEnded(true);
@@ -3330,6 +3334,22 @@ function App() {
 
   const bigBoardOptions = {
     arrows: arrows2,
+    arrowOptions: {
+      colors: {
+        default: "#ffaa00", // yellow
+        shift: "#4caf50", // green
+        ctrl: "#f44336", // red
+        alt: "#9c27b0", // purple
+        meta: "#fbbf24", // amber/yellowish
+      },
+      arrowLengthReducerDenominator: 8,
+      sameTargetArrowLengthReducerDenominator: 4,
+      arrowWidthDenominator: 6,
+      activeArrowWidthMultiplier: 0.9,
+      opacity: 0.65,
+      activeOpacity: 0.5,
+      arrowStartOffset: 0,
+    },
     onPieceDrop,
     onSquareClick,
     position: bigChessPosition,

@@ -136,7 +136,7 @@ export async function midArrows(openingMoves: string[], gMoves: string[], openin
     if(vMoves.includes(matchGameMove)) continue;
     const matchCount = matchGameMoves.filter(m => m === matchGameMove).length;
     vMoves.push(matchGameMove);
-    if(matchCount >= minMatchCount){
+    if(matchCount >= minMatchCount && cMoves.length < 8){
       cMoves.push(matchGameMove);
       cMovesUCI.push(aMoves[matchGameMove]);
       //aMoves.current[matchGameMove] = "";
