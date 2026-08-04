@@ -3458,7 +3458,7 @@ function App() {
                     padding: "10px 16px",
                     //cursor: isUnlocked ? "pointer" : "not-allowed",
                     cursor: "pointer",
-                    color: isBeaten ? "rgb(0, 200, 0)" : isBeatenTwice ? "rgb(230, 140, 0)" : isBeatenThrice ? "rgb(50, 0, 200)" : "#e6edf3",
+                    color: isBeaten ? "rgb(50, 0, 200)" : isBeatenTwice ? "rgb(136, 49, 113)" : isBeatenThrice ? "rgb(0, 200, 0)" : "#e6edf3",
                     //color: isUnlocked ? "#e6edf3" : "#8b949e",
                     fontSize: "0.9rem",
                     opacity: levelUnlocks[userProgress.level + 1]?.includes(opening) ? 0.4 : 1,

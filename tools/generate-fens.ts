@@ -117,7 +117,7 @@ export async function midArrows(openingMoves: string[], gMoves: string[], openin
       }
     }
     if(isMatch){
-      const nMoves: string[] = moves.splice(0,10);//test--make sure is next 10 moves?
+      const nMoves: string[] = moves.splice(0,8);//test--make sure is next 10 moves?
       const nMovesUCI = await sanToUciMultiple(basePos, nMoves);
       //console.log("Match! Order: " + tMoves + " moves: " + moves + " nMoves: " + nMoves + " nMovesUCI: " + nMovesUCI);
       for(let i = 0; i < nMoves.length; i++){
@@ -128,18 +128,29 @@ export async function midArrows(openingMoves: string[], gMoves: string[], openin
     }
   }
   //console.log(matchGameMoves.length + " moves found for gMoves" + gMoves);
-  const cMoves: string[] = [];
+  const cMoves: string[] = [];//chosen moves
   const cMovesUCI: string[] = [];
-  const vMoves: string[] = [];
-  const minMatchCount = 0.3 * matchGameMoves.length / 10;
+  const cMovesCount: number[] = [];
+  const uMoves: string[] = [];//unique moves
+  const uMovesCount: number[] = [];
+  const minMatchCount = 0.3 * matchGameMoves.length / 8;
   for(const matchGameMove of matchGameMoves){
-    if(vMoves.includes(matchGameMove)) continue;
+    if(uMoves.includes(matchGameMove)) continue;
     const matchCount = matchGameMoves.filter(m => m === matchGameMove).length;
-    vMoves.push(matchGameMove);
-    if(matchCount >= minMatchCount && cMoves.length < 8){
-      cMoves.push(matchGameMove);
-      cMovesUCI.push(aMoves[matchGameMove]);
-      //aMoves.current[matchGameMove] = "";
+    uMoves.push(matchGameMove);
+    uMovesCount.push(matchCount);
+  }
+  for(let i = 0; i < uMoves.length; i++){
+    //find top 6 moves with count > minMatchCount
+    if(uMovesCount[i] > minMatchCount && cMoves.length < 6){
+      cMoves.push(uMoves[i]);
+      cMovesUCI.push(aMoves[uMoves[i]]);
+      cMovesCount.push(uMovesCount[i]);
+    }else if(uMovesCount[i] > Math.min(...cMovesCount) && cMoves.length === 6){
+      const minIndex = cMovesCount.indexOf(Math.min(...cMovesCount));
+      cMoves[minIndex] = uMoves[i];
+      cMovesUCI[minIndex] = aMoves[uMoves[i]];
+      cMovesCount[minIndex] = uMovesCount[i];
     }
   }
   //console.log("cMoves: " + cMoves + " cMovesUCI: " + cMovesUCI);
