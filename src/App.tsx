@@ -475,6 +475,7 @@ function App() {
     if(started > 0){
       console.log(started);
       //processMidArrows(started)
+      //console.log("starting");
       //generateLineMoves();
     }else{
       console.log("no" + started);
@@ -3015,12 +3016,23 @@ function App() {
             if (!res.ok) throw new Error("Not found");
             const moves: Record<string, string[]> = await res.json();
             if(moves[practiceLine.key]){
-              for(const move of moves[practiceLine.key]){
+              for(let i = 0; i < moves[practiceLine.key].length; i++){
+                const move = moves[practiceLine.key][i];
                 const from = move.substring(0, 2);
                 const to = move.substring(2, 4);
-                setArrows2(prev => [...prev, {
-                  startSquare: from as Square, endSquare: to as Square, color: "#ffaa00"
-                }]);
+                if(i === 0){
+                  setArrows2(prev => [...prev, {
+                    startSquare: from as Square, endSquare: to as Square, color: "#4caf50"
+                  }]);
+                }else if(i === 1){
+                  setArrows2(prev => [...prev, {
+                    startSquare: from as Square, endSquare: to as Square, color: "#4ca2af"
+                  }]);
+                }else{
+                  setArrows2(prev => [...prev, {
+                    startSquare: from as Square, endSquare: to as Square, color: "#ffaa00"
+                  }]);
+                }
               }
             }
           }catch{

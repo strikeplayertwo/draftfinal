@@ -103,6 +103,8 @@ export async function midArrows(openingMoves: string[], gMoves: string[], openin
   }
   const basePos = chessGame.fen();
   const matchGameMoves: string[] = [];
+  const nextMoves: string[] = [];
+  const responseMoves: string[] = [];
   const aMoves: Record<string, string> = {};
   for(const openingMoveString of openingMoves){
     let isMatch = true;
@@ -117,10 +119,16 @@ export async function midArrows(openingMoves: string[], gMoves: string[], openin
       }
     }
     if(isMatch){
-      const nMoves: string[] = moves.splice(0,8);//test--make sure is next 10 moves?
+      //find most common next 2 moves
+
+      const nMoves: string[] = moves.splice(0,6);//test--make sure is next 10 moves?
+      //const iMoves: string[] = [nMoves[0], nMoves[1]];
       const nMovesUCI = await sanToUciMultiple(basePos, nMoves);
       //console.log("Match! Order: " + tMoves + " moves: " + moves + " nMoves: " + nMoves + " nMovesUCI: " + nMovesUCI);
       for(let i = 0; i < nMoves.length; i++){
+        if(i === 0){
+          nextMoves.push(nMoves[i]);
+        }else if(i === 1) responseMoves.push(nMoves[i]);
         matchGameMoves.push(nMoves[i]);
         const nMove = nMoves[i];
         if(!(aMoves[nMove])) aMoves[nMove] = nMovesUCI[i];
@@ -129,11 +137,37 @@ export async function midArrows(openingMoves: string[], gMoves: string[], openin
   }
   //console.log(matchGameMoves.length + " moves found for gMoves" + gMoves);
   const cMoves: string[] = [];//chosen moves
-  const cMovesUCI: string[] = [];
+  let cMovesUCI: string[] = [];
   const cMovesCount: number[] = [];
   const uMoves: string[] = [];//unique moves
+  const uNextMoves: string[] = [];
+  const uResponseMoves: string[] = [];
+  let nextRecordCount = 0;
+  let finalNextMove = "";
+  let responseRecordCount = 0;
+  let finalResponseMove = "";
   const uMovesCount: number[] = [];
-  const minMatchCount = 0.3 * matchGameMoves.length / 8;
+  const minMatchCount = 0.5 * matchGameMoves.length / 6;
+  for(const nextMove of nextMoves){
+    if(uNextMoves.includes(nextMove)) continue;
+    uNextMoves.push(nextMove);
+    const nextCount = nextMoves.filter(m => m === nextMove).length;
+    if(nextCount > nextRecordCount){
+      nextRecordCount = nextCount;
+      finalNextMove = nextMove;
+    }
+  }
+  for(const responseMove of responseMoves){
+    if(uResponseMoves.includes(responseMove)) continue;
+    uResponseMoves.push(responseMove);
+    const responseCount = responseMoves.filter(m => m === responseMove).length;
+    if(responseCount > responseRecordCount){
+      responseRecordCount = responseCount;
+      finalResponseMove = responseMove;
+    }
+  }
+  const finalNextMoveUCI = aMoves[finalNextMove];
+  const finalResponseMoveUCI = aMoves[finalResponseMove];
   for(const matchGameMove of matchGameMoves){
     if(uMoves.includes(matchGameMove)) continue;
     const matchCount = matchGameMoves.filter(m => m === matchGameMove).length;
@@ -153,6 +187,31 @@ export async function midArrows(openingMoves: string[], gMoves: string[], openin
       cMovesCount[minIndex] = uMovesCount[i];
     }
   }
+  if(cMovesUCI.includes(finalResponseMoveUCI) && cMovesUCI.includes(finalNextMoveUCI)){
+    cMovesUCI[cMovesUCI.indexOf(finalResponseMoveUCI)] === cMovesUCI[1];
+    cMovesUCI[1] = finalResponseMoveUCI;
+    cMovesUCI[cMovesUCI.indexOf(finalNextMoveUCI)] === cMovesUCI[0];
+    cMovesUCI[0] = finalNextMoveUCI;
+  }else if(!cMovesUCI.includes(finalResponseMoveUCI) && !cMovesUCI.includes(finalNextMoveUCI)){
+    cMovesUCI.unshift(finalResponseMoveUCI);
+    cMovesUCI.unshift(finalNextMoveUCI);
+  }else if(cMovesUCI.includes(finalResponseMoveUCI)){
+    cMovesUCI.unshift(finalNextMoveUCI);
+    cMovesUCI[cMovesUCI.indexOf(finalResponseMoveUCI)] === cMovesUCI[1];
+    cMovesUCI[1] = finalResponseMoveUCI;
+  }else{
+    cMovesUCI.unshift(finalResponseMoveUCI);
+    cMovesUCI[cMovesUCI.indexOf(finalResponseMoveUCI)] === cMovesUCI[1];
+    cMovesUCI[1] = finalResponseMoveUCI;
+    cMovesUCI[cMovesUCI.indexOf(finalNextMoveUCI)] === cMovesUCI[0];
+    cMovesUCI[0] = finalNextMoveUCI;
+  }
+  /*if(cMoves.length > 0){
+    const mostIndex = cMovesCount.indexOf(Math.max(...cMovesCount));
+    const mostMove = cMoves[mostIndex];
+    const mostMoveUCI = cMovesUCI[mostIndex];
+    if(mostMoveUCI.includes("1") || mostMoveUCI.includes("2") || mostMoveUCI.includes("3") || mostMoveUCI.includes("4")){}
+  }*/
   //console.log("cMoves: " + cMoves + " cMovesUCI: " + cMovesUCI);
   // + " aMoves: " + JSON.stringify(aMoves, null, 2));
   return cMovesUCI;
