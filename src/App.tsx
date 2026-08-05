@@ -475,7 +475,7 @@ function App() {
     if(started > 0){
       console.log(started);
       //processMidArrows(started)
-      //console.log("starting");
+      //console.log("startingz");
       //generateLineMoves();
     }else{
       console.log("no" + started);
@@ -2647,7 +2647,7 @@ function App() {
               chessGame.move({from: swapMove.substring(0, 2), to: swapMove.substring(2, 4), promotion: 'q'});
               console.log("swapmate successful?" + evalA + " " + evalB);
             }catch{
-              console.log("invalid move in mateSwapFen");
+              console.log("invalid move in mateSwapFen" + swapMove);
             }
             setBigChessPosition(chessGame.fen());
             highlightKingSquare(chessGame, "big");
@@ -3026,7 +3026,7 @@ function App() {
                   }]);
                 }else if(i === 1){
                   setArrows2(prev => [...prev, {
-                    startSquare: from as Square, endSquare: to as Square, color: "#4ca2af"
+                    startSquare: from as Square, endSquare: to as Square, color: "#4c4faf"
                   }]);
                 }else{
                   setArrows2(prev => [...prev, {

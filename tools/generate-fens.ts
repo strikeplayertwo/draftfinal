@@ -166,8 +166,8 @@ export async function midArrows(openingMoves: string[], gMoves: string[], openin
       finalResponseMove = responseMove;
     }
   }
-  const finalNextMoveUCI = aMoves[finalNextMove];
-  const finalResponseMoveUCI = aMoves[finalResponseMove];
+  const finalNextMoveUCI = aMoves[finalNextMove] || null;
+  const finalResponseMoveUCI = aMoves[finalResponseMove] || null;
   for(const matchGameMove of matchGameMoves){
     if(uMoves.includes(matchGameMove)) continue;
     const matchCount = matchGameMoves.filter(m => m === matchGameMove).length;
@@ -187,25 +187,52 @@ export async function midArrows(openingMoves: string[], gMoves: string[], openin
       cMovesCount[minIndex] = uMovesCount[i];
     }
   }
-  if(cMovesUCI.includes(finalResponseMoveUCI) && cMovesUCI.includes(finalNextMoveUCI)){
-    cMovesUCI[cMovesUCI.indexOf(finalResponseMoveUCI)] === cMovesUCI[1];
-    cMovesUCI[1] = finalResponseMoveUCI;
-    cMovesUCI[cMovesUCI.indexOf(finalNextMoveUCI)] === cMovesUCI[0];
-    cMovesUCI[0] = finalNextMoveUCI;
-  }else if(!cMovesUCI.includes(finalResponseMoveUCI) && !cMovesUCI.includes(finalNextMoveUCI)){
-    cMovesUCI.unshift(finalResponseMoveUCI);
-    cMovesUCI.unshift(finalNextMoveUCI);
-  }else if(cMovesUCI.includes(finalResponseMoveUCI)){
-    cMovesUCI.unshift(finalNextMoveUCI);
-    cMovesUCI[cMovesUCI.indexOf(finalResponseMoveUCI)] === cMovesUCI[1];
-    cMovesUCI[1] = finalResponseMoveUCI;
-  }else{
-    cMovesUCI.unshift(finalResponseMoveUCI);
-    cMovesUCI[cMovesUCI.indexOf(finalResponseMoveUCI)] === cMovesUCI[1];
-    cMovesUCI[1] = finalResponseMoveUCI;
-    cMovesUCI[cMovesUCI.indexOf(finalNextMoveUCI)] === cMovesUCI[0];
-    cMovesUCI[0] = finalNextMoveUCI;
+  
+  if(finalResponseMoveUCI !== null){
+    const idx = cMovesUCI.indexOf(finalResponseMoveUCI);
+    if(idx !== -1) cMovesUCI.splice(idx, 1);
   }
+  if(finalNextMoveUCI !== null){
+    const idx = cMovesUCI.indexOf(finalNextMoveUCI);
+    if(idx !== -1) cMovesUCI.splice(idx, 1);
+  }
+
+  if(finalResponseMoveUCI !== null) cMovesUCI.unshift(finalResponseMoveUCI);
+  if(finalNextMoveUCI !== null) cMovesUCI.unshift(finalNextMoveUCI);
+
+  /*if(cMovesUCI.includes(finalResponseMoveUCI) && cMovesUCI.includes(finalNextMoveUCI)){
+    const temp = cMovesUCI[1];
+    const temp2 = cMovesUCI[0];
+    const save = cMovesUCI.indexOf(finalResponseMoveUCI);
+    const save2 = cMovesUCI.indexOf(finalNextMoveUCI);
+    cMovesUCI[1] = finalResponseMoveUCI;
+    cMovesUCI[0] = finalNextMoveUCI;
+    cMovesUCI[save] = temp;
+    cMovesUCI[save2] = temp2;
+  }else if(!cMovesUCI.includes(finalResponseMoveUCI) && !cMovesUCI.includes(finalNextMoveUCI)){
+    if(finalResponseMoveUCI !== ""){
+      cMovesUCI.unshift(finalResponseMoveUCI);
+    }
+    if(finalNextMoveUCI !== ""){
+      cMovesUCI.unshift(finalNextMoveUCI);
+    }
+  }else if(cMovesUCI.includes(finalResponseMoveUCI)){
+    const temp = cMovesUCI[0];
+    const save = cMovesUCI.indexOf(finalResponseMoveUCI);
+    if(finalNextMoveUCI !== ""){
+      cMovesUCI.unshift(finalNextMoveUCI);
+    }
+    cMovesUCI[1] = finalResponseMoveUCI;
+    cMovesUCI[save] === temp;
+  }else{
+    const temp = cMovesUCI[1];
+    const temp2 = cMovesUCI[0];
+    const save2 = cMovesUCI.indexOf(finalNextMoveUCI);
+    cMovesUCI.unshift(finalResponseMoveUCI);
+    cMovesUCI[1] = finalResponseMoveUCI;
+    cMovesUCI[0] = finalNextMoveUCI;
+    cMovesUCI[save2 + 1] === temp2;
+  }*/
   /*if(cMoves.length > 0){
     const mostIndex = cMovesCount.indexOf(Math.max(...cMovesCount));
     const mostMove = cMoves[mostIndex];
