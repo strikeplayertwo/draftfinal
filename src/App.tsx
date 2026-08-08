@@ -186,6 +186,7 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
   { opening: "Ruy Lopez", line_key: "open", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Nxe4" },
   { opening: "Ruy Lopez", line_key: "marshall", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 O-O 8. c3 d5" },
   // King's Indian
+  { opening: "Ruy Lopez", line_key: "classical", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 Bc5"},
   { opening: "King's Indian Defense", line_key: "base_line", moves: "1. d4 Nf6 2. c4 g6" },
   //{ opening: "King's Indian", line_key: "main_line", moves: "1. d4 Nf6 2. c4 g6" },
   // Queen's Pawn Game
@@ -237,6 +238,24 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
   { opening: "Catalan", line_key: "closed_main_line", moves: "1. d4 Nf6 2. c4 e6 3. g3 d5 4. Bg2 Be7 5. Nf3 O-O 6. O-O dxc4" },
   // Italian
   { opening: "Italian", line_key: "base_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4" },
+  { opening: "Italian", line_key: "giuoco_piano", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5" },
+  { opening: "Italian", line_key: "giuoco_pianissimo", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. d3" },
+  { opening: "Italian", line_key: "hungarian_defense", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Be7 4. d4" },
+  { opening: "Italian", line_key: "two_knights_defense", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6" },
+  { opening: "Italian", line_key: "two_knights_defense_4_Nc3", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. Nc3 Nxe4" },
+  { opening: "Italian", line_key: "ulvestad", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. Ng5 d5 5. exd5 b5" },
+  { opening: "Italian", line_key: "fritz", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. Ng5 d5 5. exd5 Nd4 6. c3 b5 7. Bf1 Nxd5" },
+  { opening: "Italian", line_key: "fried_liver_attack", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. Ng5 d5" },
+  { opening: "Italian", line_key: "traxler", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. Ng5 Bc5" },
+  { opening: "Italian", line_key: "blackburn", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. Ng5 d5 5. exd5 Na5 6. Bb5+ c6 7. dxc6 bxc6 8. Qf3"},
+  { opening: "Italian", line_key: "schilling-kostic_gambit", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nd4 4. Nxd4" },
+  { opening: "Italian", line_key: "classical", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6" },
+  { opening: "Italian", line_key: "classical_greco_gambit", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6 5. d4 exd4 6. cxd4 Bb4+ 7. Bd2 Nxe4 8. Bxb4" },
+  { opening: "Italian", line_key: "birds_attack", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6 5. b4 Bb6 6. d3 d6" },
+
+
+
+
   //{ opening: "Italian", line_key: "main_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4" },
 ];
 
@@ -336,7 +355,27 @@ function App() {
       return;
     }
 
-    if(!data || data.length === 0){
+    const existingKeys = new Set(
+      (data ?? []).map(row => `${row.opening}__${row.line_key}`)
+    );
+
+    const missingLines = DEFAULT_OPENING_LINES.filter(
+      l => !existingKeys.has(`${l.opening}__${l.line_key}`)
+    );
+
+    if(missingLines.length > 0){
+      console.log("missing lines " + JSON.stringify(missingLines));
+      console.log(`Adding ${missingLines.length} missing lines for user`);
+      const { error: insertError } = await supabase
+        .from("opening_lines")
+        .insert(missingLines.map(l => ({ ...l, user_id: user!.id })));
+
+      if(insertError){
+        console.error("Failed to insert missing lines:", insertError);
+      }
+    }
+
+    /*if(!data || data.length === 0){
       // New user — insert all defaults
       const { error: insertError } = await supabase
         .from("opening_lines")
@@ -355,11 +394,14 @@ function App() {
       }
       setOpeningLines(grouped);
       return;
-    }
+    }*/
 
-    // Existing user — group and set state as before
+    const allLines = [
+      ...(data ?? []),
+      ...missingLines.map(l => ({ opening: l.opening, line_key: l.line_key, moves: l.moves }))
+    ];
     const grouped: Record<string, OpeningLine[]> = {};
-    for(const row of data){
+    for(const row of allLines){
       if(!grouped[row.opening]) grouped[row.opening] = [];
       grouped[row.opening].push({ line_key: row.line_key, moves: row.moves });
     }
@@ -3038,9 +3080,6 @@ function App() {
           }catch{
             console.log("midarrows error");
           }
-          setShowEffex("Next: " + (eligiblePracticeLines[eligiblePracticeLines.indexOf(practiceLine) + 1]?.label ?? "End of Practice"));
-          setDisplayAlerts(eligiblePracticeLines[eligiblePracticeLines.indexOf(practiceLine) + 1]?.label ?? "");
-          stopEffex();
         }
 
         /*async function waitAddMoves(minMoves: number) {
@@ -3065,6 +3104,9 @@ function App() {
           await new Promise(resolve => setTimeout(resolve, 5000));
         }else console.log("nah" + arrows2);
         setArrows2([]);
+        setShowEffex("Next: " + (eligiblePracticeLines[eligiblePracticeLines.indexOf(practiceLine) + 1]?.label ?? "End of Practice"));
+        setDisplayAlerts(eligiblePracticeLines[eligiblePracticeLines.indexOf(practiceLine) + 1]?.label ?? "");
+        stopEffex();
       }
       setPracticeEnded(true);
     }
