@@ -143,7 +143,13 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
   { opening: "English", line_key: "agincourt", moves: "1. c4 e6 2. Nf3 d5 3. g3" },
   { opening: "English", line_key: "neo_catalan", moves: "1. c4 e6 2. Nf3 d5 3. g3 Nf6 4. Bg2 Be7 5. O-O" },
   // French
-  { opening: "French", line_key: "base_line", moves: "1. e4 e6 2. d4 d5" },
+  { opening: "French", line_key: "base_line", moves: "1. e4 e6" },
+  { opening: "French", line_key: "main_line", moves: "1. e4 e6 2. d4 d5" },
+  { opening: "French", line_key: "chigorin", moves: "1. e4 e6 2. Qe2" },  
+  { opening: "French", line_key: "steiner", moves: "1. e4 e6 2. c4" },
+  { opening: "French", line_key: "alapin_gambit", moves: "1. e4 e6 2. d4 d5 3. Be3" },
+  { opening: "French", line_key: "paulsen", moves: "1. e4 e6 2. d4 d5 3. Nc3" },
+  { opening: "French", line_key: "tarrasch", moves: "1. e4 e6 2. d4 d5 3. Nd2" },
   //{ opening: "French", line_key: "main_line", moves: "1. e4 e6 2. d4 d5" },
   // Sicilian
   { opening: "Sicilian", line_key: "base_line", moves: "1. e4 c5" },
@@ -177,6 +183,9 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
   { opening: "Sicilian", line_key: "Closed_a6", moves: "1. e4 c5 2. Nc3 a6" },
   { opening: "Sicilian", line_key: "Grand_Prix", moves: "1. e4 c5 2. Nc3 Nc6 3. f4" },
   { opening: "Sicilian", line_key: "Grand_Prix_Accelerated", moves: "1. e4 c5 2. f4 d5" },
+  { opening: "Sicilian", line_key: "french", moves: "1. e4 c5 2. Nf3 e6" },
+  { opening: "Sicilian", line_key: "taimanov", moves: "1. e4 c5 2. Nf3 e6 3. d4 cxd4 4. Nxd4 Nc6" },
+  { opening: "Sicilian", line_key: "taimanov_szen", moves: "1. e4 c5 2. Nf3 e6 3. d4 cxd4 4. Nxd4 Nc6 5. Nb5 d6 6. c4" },
   // Ruy Lopez
   { opening: "Ruy Lopez", line_key: "base_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5" },
   //{ opening: "Ruy Lopez", line_key: "main_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5" },
@@ -302,6 +311,7 @@ function App() {
   const tryFenRef = useRef<Chess | null>(null);
   const [accuracy, setAccuracy] = useState(100);
   const [screen, setScreen] = useState<"title" | "versus" | "classic" | "daily" | "settings" | "analytics">("title");
+  const [streak35Count, setStreak35Count] = useState(0);
 
   //supabase stuff
   const [user, setUser] = useState<User | null>(null);
@@ -327,7 +337,7 @@ function App() {
   });
   const openings = ["None", "Random", "Italian", "French", "Queen's Pawn Game", "Caro-Kann", "Queen's Indian Defense", "King's Indian Defense", "Reti", "London System", "Queen's Gambit Declined", "Gruenfeld", "Benoni", "English", "Petrov's", "Ruy Lopez", "Catalan", "Sicilian"];
   const [practiceEnded, setPracticeEnded] = useState(false);
-  const baseLineLengths: Record<string, number> = {"Sicilian": 2, "French": 4, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "London System": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 4, "Reti": 1, "Petrov's": 4, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Italian": 5 };
+  const baseLineLengths: Record<string, number> = {"Sicilian": 2, "French": 2, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "London System": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 4, "Reti": 1, "Petrov's": 4, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Italian": 5 };
   const [started, setStarted] = useState(-2);
 
   let isPinkMode = false;
@@ -2406,13 +2416,18 @@ function App() {
       }
 
       if (mate !== null){
+        console.log("mate not null");
         const pv = result.pv;
         for (let i = 0; i < Math.abs(mate) + 5; i++){
           if (chessGame.isGameOver() === false){
             setBigChessPosition(chessGame.fen());
             await new Promise(resolve => setTimeout(resolve, 500));
             const move = pv?.split(" ")?.[i];
+            try{
             chessGame.move({from: move?.substring(0, 2) as Square, to: move?.substring(2, 4) as Square, promotion: 'q'});
+            }catch(error){
+              console.log("huh" + error);
+            }
             flushSync(() => {
               setBigChessPosition(chessGame.fen());
             });
@@ -2524,7 +2539,8 @@ function App() {
       daRandLineLabel = randLineLabel;
       daRandLineKey = lineKeys[randN];
       console.log("line: " + randLineLabel);
-      if(Math.random() < 0.35){
+      if(Math.random() < 0.35 && streak35Count < 1){
+        setStreak35Count(streak35Count + 1);
         console.log("35%");
         const randChess = new Chess();
         const lineUCIs = getLineUCIs(randLine);
@@ -2558,7 +2574,7 @@ function App() {
             const challengeChance = (openingMinPly - lineUCIs.length - 1)/openingMinPly;
             console.log("Chance for challenge move: " + challengeChance + " " + openingMinPly + " " + lineUCIs.length);
 
-            if(Math.random() < challengeChance){
+            if(Math.random() < challengeChance && randLineLabel !== "Base Line"){
               posType = "new challenge line";
               //setShowEffex("CHALLENGE MOVE!");
               //nextEffex("CHALLENGE MOVE!");
@@ -2573,6 +2589,7 @@ function App() {
         }
       }else{
         console.log("65%");
+        setStreak35Count(0);
       }
     }
 
@@ -2682,6 +2699,10 @@ function App() {
             console.log("SWAPMATE DETECTED" + newFens);
             
             //const daMate = await workerC.getBestLine(newFens, 26);
+            if(daMate === ""){
+              console.log("regetting swapmate");
+              daMate = (await workerC.getBestLine(newFens, 26)).pv;
+            }
             const matePV = daMate?.split(" ");
             const swapMove = matePV[0];
             chessGame.load(newFens);
@@ -2818,10 +2839,23 @@ function App() {
       setIsChallenge(newSourceLineKey);
       console.log("newSourceLineKey: " + newSourceLineKey);
     }else{//random line position
-      let rand2N = Math.floor(Math.random() * (randFens.length - baseLineLengths[gameOpening])) + baseLineLengths[gameOpening];
+      let rand2N = 0;
       if(daRandLineKey === "base_line"){
         rand2N = Math.floor(Math.random() * randFens.length);
-      }
+      }else{
+        const pastFens = randFens;
+        pastFens.splice(0, baseLineLengths[gameOpening]);
+        const entryFens = [];
+        for(let i = 0; i < pastFens.length; i++){
+          const thisFen = pastFens[i];
+          for(let j = -1; j < i; j++){
+            entryFens.push(thisFen);
+          }
+        }
+        const randoFen = entryFens[Math.trunc(Math.random() * entryFens.length)];
+        rand2N = randFens.indexOf(randoFen);
+        console.log("selected " + randoFen + " with chance " + entryFens.length);
+      }     
       
       newFenny = randFens[rand2N];
       const daReqMove = uciToSan(daLineUcis[rand2N],randFens[rand2N])
