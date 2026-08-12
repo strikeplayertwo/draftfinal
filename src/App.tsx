@@ -2183,6 +2183,7 @@ function App() {
         }else{
           setAccuracy(thisaccuracy);
         }
+        console.log("Accuracy " + accuracy + " this: " + thisaccuracy + " Moves: " + movesplayed);
         evalA += 100;
       }else if(ourEval - bestEval >= -50){
         console.log("acceptable challenge response: " + ourEval + " " + bestEval);
@@ -2190,9 +2191,10 @@ function App() {
         setShowEffex("Acceptable Move 👍 +25 eval");
         //fix -- show analysis on small board?
         stopEffex();
-        let thisaccuracy = 8500;
+        let thisaccuracy = 850;
         setBColors(prev => [...prev, "rgb(221, 255, 0)"]);
         displayAccuracy = Math.round(((accuracy * (movesplayed) + thisaccuracy) / (movesplayed + 1)));
+        console.log("Accuracy " + accuracy + " this: " + thisaccuracy + " Moves: " + movesplayed);
         if (movesplayed !== 0){
           setAccuracy(displayAccuracy);
         }else{
@@ -2207,6 +2209,7 @@ function App() {
         let thisaccuracy = 0;
         setBColors(prev => [...prev, "rgb(125, 0, 0)"]);
         displayAccuracy = Math.round(((accuracy * (movesplayed) + thisaccuracy) / (movesplayed + 1)));
+        console.log("Accuracy " + accuracy + " this: " + thisaccuracy + " Moves: " + movesplayed);
         if (movesplayed !== 0){
           setAccuracy(displayAccuracy);
         }else{
@@ -2418,7 +2421,7 @@ function App() {
       if (mate !== null){
         console.log("mate not null");
         const pv = result.pv;
-        for (let i = 0; i < Math.abs(mate) + 5; i++){
+        for (let i = 0; i < Math.abs(mate) * 2; i++){
           if (chessGame.isGameOver() === false){
             setBigChessPosition(chessGame.fen());
             await new Promise(resolve => setTimeout(resolve, 500));
@@ -2571,8 +2574,9 @@ function App() {
             setIsChallenge(daRandLineKey);
             console.log("daRandLineLabel: " + daRandLineLabel);
           }else{
-            const challengeChance = (openingMinPly - lineUCIs.length - 1)/openingMinPly;
+            let challengeChance = (openingMinPly - lineUCIs.length - 1)/openingMinPly;
             console.log("Chance for challenge move: " + challengeChance + " " + openingMinPly + " " + lineUCIs.length);
+            if(challengeChance > 0.2) challengeChance = 0.2;
 
             if(Math.random() < challengeChance && randLineLabel !== "Base Line"){
               posType = "new challenge line";
@@ -2854,11 +2858,16 @@ function App() {
         }
         const randoFen = entryFens[Math.trunc(Math.random() * entryFens.length)];
         rand2N = randFens.indexOf(randoFen);
+        console.log(entryFens);
+        console.log("rand2N " + rand2N + " randFens " + randFens);
         console.log("selected " + randoFen + " with chance " + entryFens.length);
+        console.log(daLineUcis);
       }     
       
       newFenny = randFens[rand2N];
-      const daReqMove = uciToSan(daLineUcis[rand2N],randFens[rand2N])
+      let daReqMove = "";
+      if(daRandLineKey === "base_line"){ daReqMove = uciToSan(daLineUcis[rand2N],randFens[rand2N]);}
+      else {daReqMove = uciToSan(daLineUcis[rand2N + baseLineLengths[gameOpening]],randFens[rand2N]);}
       setReqMove(daReqMove);
       setIsChallenge("");
     }
