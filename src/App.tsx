@@ -72,7 +72,7 @@ type MoveInfo = {
 const levelUnlocks: Record<number, string[]> = {
   2: ["Random", "French", "Italian", "Queen's Pawn Game"],
   3: ["Caro-Kann", "Queen's Indian Defense", "King's Indian Defense"],
-  4: ["Reti", "London System", "Queen's Gambit Declined"],
+  4: ["Reti", "London System", "Queen's Gambit Declined", "Scotch"],
   5: ["Benoni", "English", "Gruenfeld"],
   6: ["Ruy Lopez", "Catalan", "Sicilian", "Petrov's"],
 };
@@ -190,12 +190,22 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
   { opening: "Ruy Lopez", line_key: "base_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5" },
   //{ opening: "Ruy Lopez", line_key: "main_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5" },
   { opening: "Ruy Lopez", line_key: "closed", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7" },
-  { opening: "Ruy Lopez", line_key: "berlin", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 Nf6" },
   { opening: "Ruy Lopez", line_key: "exchange", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Bxc6" },
   { opening: "Ruy Lopez", line_key: "open", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Nxe4" },
   { opening: "Ruy Lopez", line_key: "marshall", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 a6 4. Ba4 Nf6 5. O-O Be7 6. Re1 b5 7. Bb3 O-O 8. c3 d5" },
+  { opening: "Ruy Lopez", line_key: "berlin_defense", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 Nf6" },
+  { opening: "Ruy Lopez", line_key: "classical_defense", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 Bc5"},
+  { opening: "Ruy Lopez", line_key: "schliemann_defense", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5" },
+  { opening: "Ruy Lopez", line_key: "cozio_defense", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 Nge7" },
+  // Scotch
+  { opening: "Scotch", line_key: "base_line", moves: "1. e4 e5 2. Nf3 Nc6 3. d4" }, 
+  { opening: "Scotch", line_key: "main_line", moves: "1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4" },   
+  { opening: "Scotch", line_key: "steinitz", moves: "1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Qh4" },   
+  { opening: "Scotch", line_key: "steinitz_modern", moves: "1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Qh4 5. Nc3 Bb4" },   
+  { opening: "Scotch", line_key: "classical", moves: "1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Bc5" },   
+  { opening: "Scotch", line_key: "schmidt", moves: "1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Nf6" },  
+  { opening: "Scotch", line_key: "schmidt_main_line", moves: "1. e4 e5 2. Nf3 Nc6 3. d4 exd4 4. Nxd4 Nf6 5. Nxc6 bxc6" },   
   // King's Indian
-  { opening: "Ruy Lopez", line_key: "classical", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5 Bc5"},
   { opening: "King's Indian Defense", line_key: "base_line", moves: "1. d4 Nf6 2. c4 g6" },
   //{ opening: "King's Indian", line_key: "main_line", moves: "1. d4 Nf6 2. c4 g6" },
   // Queen's Pawn Game
@@ -235,6 +245,8 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
   { opening: "Petrov's", line_key: "paulsen_attack", moves: "1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nc4" },
   { opening: "Petrov's", line_key: "classical_karklins_martinovsky", moves: "1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nd3" },
   { opening: "Petrov's", line_key: "kaufmann_attack", moves: "1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nf3 Nxe4 5. c4" },
+  { opening: "Petrov's", line_key: "mason_showalter", moves: "1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nf3 Nxe4 5. d4 d5 6. Bd3 Nc6" },
+  { opening: "Petrov's", line_key: "marshall", moves: "1. e4 e5 2. Nf3 Nf6 3. Nxe5 d6 4. Nf3 Nxe4 5. d4 d5 6. Bd3 Bd6" },
   // Benoni
   { opening: "Benoni", line_key: "base_line", moves: "1. d4 Nf6 2. c4 c5" },
   { opening: "Benoni", line_key: "main_line", moves: "1. d4 Nf6 2. c4 c5 3. d5" },
@@ -261,9 +273,8 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
   { opening: "Italian", line_key: "classical", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6" },
   { opening: "Italian", line_key: "classical_greco_gambit", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6 5. d4 exd4 6. cxd4 Bb4+ 7. Bd2 Nxe4 8. Bxb4" },
   { opening: "Italian", line_key: "birds_attack", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6 5. b4 Bb6 6. d3 d6" },
-
-
-
+  { opening: "Italian", line_key: "ponziani_steinitz_gambit", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. Ng5 Nxe4 5. Bxf7 Ke7 6. d4" },
+  
 
   //{ opening: "Italian", line_key: "main_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4" },
 ];
@@ -335,9 +346,9 @@ function App() {
     openings_level_3: [],
     openings_level_4: [],
   });
-  const openings = ["None", "Random", "Italian", "French", "Queen's Pawn Game", "Caro-Kann", "Queen's Indian Defense", "King's Indian Defense", "Reti", "London System", "Queen's Gambit Declined", "Gruenfeld", "Benoni", "English", "Petrov's", "Ruy Lopez", "Catalan", "Sicilian"];
+  const openings = ["None", "Random", "Italian", "French", "Queen's Pawn Game", "Caro-Kann", "Queen's Indian Defense", "King's Indian Defense", "Reti", "London System", "Queen's Gambit Declined", "Scotch", "Gruenfeld", "Benoni", "English", "Petrov's", "Ruy Lopez", "Catalan", "Sicilian"];
   const [practiceEnded, setPracticeEnded] = useState(false);
-  const baseLineLengths: Record<string, number> = {"Sicilian": 2, "French": 2, "Caro-Kann": 2, "English": 1, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "London System": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 4, "Reti": 1, "Petrov's": 4, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Italian": 5 };
+  const baseLineLengths: Record<string, number> = {"Sicilian": 2, "French": 2, "Caro-Kann": 2, "English": 1, "Scotch": 5, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "London System": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 4, "Reti": 1, "Petrov's": 4, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Italian": 5 };
   const [started, setStarted] = useState(-2);
 
   let isPinkMode = false;
@@ -420,7 +431,7 @@ function App() {
 
   useEffect(() => {
     if(!user) return;
-    fetchAllOpeningLines();
+    if(started > -1) fetchAllOpeningLines();
   }, [user]);
 
   useEffect(() => {
@@ -527,8 +538,8 @@ function App() {
     if(started > 0){
       console.log(started);
       //processMidArrows(started)
-      //console.log("startingz");
-      //generateLineMoves();
+      console.log("startingz");
+      generateLineMoves();
     }else{
       console.log("no" + started);
     }
@@ -2856,10 +2867,11 @@ function App() {
             entryFens.push(thisFen);
           }
         }
-        const randoFen = entryFens[Math.trunc(Math.random() * entryFens.length)];
+        const randN = Math.random();
+        const randoFen = entryFens[Math.trunc(entryFens.length - ((randN ** 2) * entryFens.length))];
         rand2N = randFens.indexOf(randoFen);
-        console.log(entryFens);
-        console.log("rand2N " + rand2N + " randFens " + randFens);
+        console.log("entryFens: " + entryFens);
+        console.log("randN " + randN + " rand2N " + rand2N + " randFens " + randFens);
         console.log("selected " + randoFen + " with chance " + entryFens.length);
         console.log(daLineUcis);
       }     

@@ -147,7 +147,7 @@ export async function midArrows(openingMoves: string[], gMoves: string[], openin
   let responseRecordCount = 0;
   let finalResponseMove = "";
   const uMovesCount: number[] = [];
-  const minMatchCount = 0.5 * matchGameMoves.length / 6;
+  const minMatchCount = 0.49 * matchGameMoves.length / 6;
   for(const nextMove of nextMoves){
     if(uNextMoves.includes(nextMove)) continue;
     uNextMoves.push(nextMove);
