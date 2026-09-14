@@ -5,6 +5,12 @@
   margin: 0 auto;
 }
 
+.tierz {
+  position: relative;
+  top: 375px;
+  left: 650px;
+}
+
 .game-container {
   position: relative;
   width: 100%;
