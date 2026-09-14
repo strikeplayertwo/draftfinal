@@ -52,6 +52,7 @@ type RankInfo = {
 type UserProgress = {
   level: number;
   small_level: number;
+  tier: string;
   openings_level_1: string[];
   openings_level_2: string[];
   openings_level_3: string[];
@@ -76,6 +77,11 @@ const levelUnlocks: Record<number, string[]> = {
   5: ["Benoni", "English", "Gruenfeld"],
   6: ["Ruy Lopez", "Catalan", "Sicilian", "Petrov's"],
 };
+
+const tierChange: Record<number, string> = {
+  5: "Pro", 10: "Hacker", 15: "God", 20: "Mafia Boss", 30: "Yakuza Boss", 40: "Venture Capitalist", 50: "Bead User"
+};
+//if(userProgress.small_level === 3 || userProgress.small_level === 4 || userProgress.small_level === 6 || userProgress.small_level === 8 || userProgress.small_level === 9 || userProgress.small_level === 19){
 
 
 function EvalGraph({ evals, bPosHistory, bColors, onJumpToMove }: EvalGraphProps) {
@@ -186,6 +192,7 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
   { opening: "Sicilian", line_key: "french", moves: "1. e4 c5 2. Nf3 e6" },
   { opening: "Sicilian", line_key: "taimanov", moves: "1. e4 c5 2. Nf3 e6 3. d4 cxd4 4. Nxd4 Nc6" },
   { opening: "Sicilian", line_key: "taimanov_szen", moves: "1. e4 c5 2. Nf3 e6 3. d4 cxd4 4. Nxd4 Nc6 5. Nb5 d6 6. c4" },
+  { opening: "Sicilian", line_key: "paulsen_basman", moves: "1. e4 c5 2. Nf3 e6 3. d4 cxd4 4. Nxd4 Bc5" },
   // Ruy Lopez
   { opening: "Ruy Lopez", line_key: "base_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5" },
   //{ opening: "Ruy Lopez", line_key: "main_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bb5" },
@@ -253,6 +260,10 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
   { opening: "Benoni", line_key: "3_g6", moves: "1. d4 Nf6 2. c4 c5 3. d5 g6 4. Nc3" },
   { opening: "Benoni", line_key: "benko_gambit", moves: "1. d4 Nf6 2. c4 c5 3. d5 b5" },
   { opening: "Benoni", line_key: "czech", moves: "1. d4 Nf6 2. c4 c5 3. d5 e6 4. Nc3" },
+  { opening: "Benoni", line_key: "snake", moves: "1. d4 Nf6 2. c4 c5 3. d5 e6 4. Nc3 exd5 5. cxd5 Bd6" },
+  { opening: "Benoni", line_key: "kings_pawn", moves: "1. d4 Nf6 2. c4 c5 3. d5 e6 4. Nc3 exd5 5. cxd5 d6 6. e4" },
+  { opening: "Benoni", line_key: "pawn_storm", moves: "1. d4 Nf6 2. c4 c5 3. d5 e6 4. Nc3 exd5 5. cxd5 d6 6. e4 g6 7. f4 Bg7" },
+  { opening: "Benoni", line_key: "classical", moves: "1. d4 Nf6 2. c4 c5 3. d5 e6 4. Nc3 exd5 5. cxd5 d6 6. e4 g6 7. Nf3" },
   // Catalan
   { opening: "Catalan", line_key: "base_line", moves: "1. d4 Nf6 2. c4 e6 3. g3" },
   { opening: "Catalan", line_key: "main_line", moves: "1. d4 Nf6 2. c4 e6 3. g3 d5 4. cxd5 exd5 5. Nf3" },
@@ -273,7 +284,7 @@ const DEFAULT_OPENING_LINES: { opening: string; line_key: string; moves: string 
   { opening: "Italian", line_key: "classical", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6" },
   { opening: "Italian", line_key: "classical_greco_gambit", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6 5. d4 exd4 6. cxd4 Bb4+ 7. Bd2 Nxe4 8. Bxb4" },
   { opening: "Italian", line_key: "birds_attack", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Bc5 4. c3 Nf6 5. b4 Bb6 6. d3 d6" },
-  { opening: "Italian", line_key: "ponziani_steinitz_gambit", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. Ng5 Nxe4 5. Bxf7 Ke7 6. d4" },
+  { opening: "Italian", line_key: "ponziani_steinitz_gambit", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4 Nf6 4. Ng5 Nxe4 5. Bxf7+ Ke7 6. d4" },
   
 
   //{ opening: "Italian", line_key: "main_line", moves: "1. e4 e5 2. Nf3 Nc6 3. Bc4" },
@@ -341,6 +352,7 @@ function App() {
   const [userProgress, setUserProgress] = useState<UserProgress>({
     level: 1, 
     small_level: 1,
+    tier: "Noob",
     openings_level_1: ["None"],
     openings_level_2: [],
     openings_level_3: [],
@@ -351,7 +363,7 @@ function App() {
   const baseLineLengths: Record<string, number> = {"Sicilian": 2, "French": 2, "Caro-Kann": 2, "English": 1, "Scotch": 5, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "London System": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 4, "Reti": 1, "Petrov's": 4, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Italian": 5 };
   const [started, setStarted] = useState(-2);
 
-  let isPinkMode = false;
+  let isPinkMode = true;
    /*[!cSquare]:{
           backgroundColor: 'rgba(255, 0, 204, 0.75)'
         }*/
@@ -460,7 +472,7 @@ function App() {
     async function fetchProgress(){
       const { data, error } = await supabase
         .from("user_progress")
-        .select("level, small_level, openings_level_1, openings_level_2, openings_level_3, openings_level_4")
+        .select("level, small_level, tier, openings_level_1, openings_level_2, openings_level_3, openings_level_4")
         .eq("user_id", user!.id)
         .single();
 
@@ -470,6 +482,7 @@ function App() {
           user_id: user!.id,
           level: 1,
           small_level: 1,
+          tier: "Noob",
           openings_level_1: ["None"],
           openings_level_2: [],
           openings_level_3: [],
@@ -538,8 +551,8 @@ function App() {
     if(started > 0){
       console.log(started);
       //processMidArrows(started)
-      console.log("startingz");
-      generateLineMoves();
+      //console.log("startingz");
+      //generateLineMoves();
     }else{
       console.log("no" + started);
     }
@@ -590,7 +603,7 @@ function App() {
       .eq("user_id", user.id);
 
     if (!error) {
-      setUserProgress({ level: newLevel, small_level: userProgress.small_level, openings_level_1: updated, openings_level_2: userProgress.openings_level_2, openings_level_3: userProgress.openings_level_3, openings_level_4: userProgress.openings_level_4});
+      setUserProgress({ level: newLevel, small_level: userProgress.small_level, tier: userProgress.tier, openings_level_1: updated, openings_level_2: userProgress.openings_level_2, openings_level_3: userProgress.openings_level_3, openings_level_4: userProgress.openings_level_4});
       if (newUnlocks.length > 0) {
         //setGameResult(prev => `${prev}\nLevel ${newLevel}! Unlocked: ${newUnlocks.join(", ")}`);
         setGameResult(prev => 
@@ -901,6 +914,16 @@ function App() {
         if(userProgress.small_level === 3 || userProgress.small_level === 4 || userProgress.small_level === 6 || userProgress.small_level === 8 || userProgress.small_level === 9 || userProgress.small_level === 19){
           levelUp();
           console.log("Level up!" + opening + " " + userProgress.small_level);
+          if(tierChange[userProgress.small_level] !== null){
+            setUserProgress(prev => ({
+              ...prev,
+              tier: tierChange[userProgress.small_level],
+            }));
+            await supabase
+              .from("user_progress")
+              .update({ tier: tierChange[userProgress.small_level] })
+              .eq("user_id", user!.id);
+          }
         }
       }else if (userProgress.openings_level_2?.includes(opening)){
         if(userProgress.level >= 6){
@@ -926,6 +949,16 @@ function App() {
           if(userProgress.small_level === 3 || userProgress.small_level === 4 || userProgress.small_level === 6 || userProgress.small_level === 8 || userProgress.small_level === 9 || userProgress.small_level === 19){
             levelUp();
             console.log("Level up!" + opening + " " + userProgress.small_level);
+            if(tierChange[userProgress.small_level] !== null){
+              setUserProgress(prev => ({
+                ...prev,
+                tier: tierChange[userProgress.small_level],
+              }));
+              await supabase
+                .from("user_progress")
+                .update({ tier: tierChange[userProgress.small_level] })
+                .eq("user_id", user!.id);
+            }
           }
         }
       }else{//3
@@ -952,6 +985,16 @@ function App() {
           if(userProgress.small_level === 3 || userProgress.small_level === 4 || userProgress.small_level === 6 || userProgress.small_level === 8 || userProgress.small_level === 9 || userProgress.small_level === 19){
             levelUp();
             console.log("Level up!" + opening + " " + userProgress.small_level);
+            if(tierChange[userProgress.small_level] !== null){
+              setUserProgress(prev => ({
+                ...prev,
+                tier: tierChange[userProgress.small_level],
+              }));
+              await supabase
+                .from("user_progress")
+                .update({ tier: tierChange[userProgress.small_level] })
+                .eq("user_id", user!.id);
+            }
           }
         }
       }
@@ -1046,6 +1089,7 @@ function App() {
     let fenBeforeMove = "";
     if (moveType === "real"){
       fenAfterMove = chessGame.fen();
+      //chessGame.ascii
       fenBeforeMove = oldFen;
     }else{
       fenAfterMove = chessPos;
@@ -3695,6 +3739,8 @@ function App() {
         }}>Daily</button>
         <button onClick={() => setScreen("settings")}>Settings</button>
         <button onClick={() => setScreen("analytics")}>Analytics</button>
+        <div className="tierz">{userProgress.tier}</div>
+        <div className="tierz">{"Lvl " + userProgress.small_level}</div>
       </div>
     );
   }
