@@ -8,7 +8,8 @@
 .tierz {
   position: relative;
   top: 375px;
-  left: 650px;
+  left: 1280px;
+  width: 100px;
 }
 
 .game-container {

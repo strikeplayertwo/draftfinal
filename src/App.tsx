@@ -57,6 +57,15 @@ type UserProgress = {
   openings_level_2: string[];
   openings_level_3: string[];
   openings_level_4: string[];
+  unlocked_achievements: string[];
+  white_stake: string[];
+  red_stake: string[];
+  green_stake: string[];
+  black_stake: string[];
+  blue_stake: string[];
+  purple_stake: string[];
+  orange_stake: string[];
+  gold_stake: string[];
 };
 
 type MoveInfo = {
@@ -319,7 +328,7 @@ function App() {
   const [DisplayAlerts, setDisplayAlerts] = useState("");
   const [PosList, setPosList] = useState("");
   const chessGameRef = useRef<Chess | null>(null);
-  const [fenScores, setFenScores] = useState(0);
+  const [fenScores, setFenScores] = useState<number[]>([]);
   const [bPosHistory, setBPosHistory] = useState<string[]>([]);
   const [bColors, setBColors] = useState<string[]>([]);
   const smallGameRef = useRef<Chess | null>(null);
@@ -357,11 +366,24 @@ function App() {
     openings_level_2: [],
     openings_level_3: [],
     openings_level_4: [],
+    unlocked_achievements: [],
+    white_stake: [],
+    red_stake: [],
+    green_stake: [],
+    black_stake: [],
+    blue_stake: [],
+    purple_stake: [],
+    orange_stake: [],
+    gold_stake: []
   });
   const openings = ["None", "Random", "Italian", "French", "Queen's Pawn Game", "Caro-Kann", "Queen's Indian Defense", "King's Indian Defense", "Reti", "London System", "Queen's Gambit Declined", "Scotch", "Gruenfeld", "Benoni", "English", "Petrov's", "Ruy Lopez", "Catalan", "Sicilian"];
   const [practiceEnded, setPracticeEnded] = useState(false);
   const baseLineLengths: Record<string, number> = {"Sicilian": 2, "French": 2, "Caro-Kann": 2, "English": 1, "Scotch": 5, "Ruy Lopez": 5, "King's Indian": 4, "Queen's Pawn Game": 2, "London System": 7, "Queen's Indian": 6, "Queen's Gambit Declined": 4, "Reti": 1, "Petrov's": 4, "Benoni": 4, "Gruenfeld": 6, "Catalan": 5, "Italian": 5 };
   const [started, setStarted] = useState(-2);
+
+  //achievement and stake stuff
+  const [rossolimo, setRossolimo] = useState(false);
+  const [stake, setStake] = useState<string>("");
 
   let isPinkMode = true;
    /*[!cSquare]:{
@@ -472,7 +494,7 @@ function App() {
     async function fetchProgress(){
       const { data, error } = await supabase
         .from("user_progress")
-        .select("level, small_level, tier, openings_level_1, openings_level_2, openings_level_3, openings_level_4")
+        .select("level, small_level, tier, openings_level_1, openings_level_2, openings_level_3, openings_level_4, unlocked_achievements, white_stake, red_stake, green_stake, black_stake, blue_stake, purple_stake, orange_stake, gold_stake")
         .eq("user_id", user!.id)
         .single();
 
@@ -487,6 +509,15 @@ function App() {
           openings_level_2: [],
           openings_level_3: [],
           openings_level_4: [],
+          unlocked_achievements: [],
+          white_stake: [],
+          red_stake: [],
+          green_stake: [],
+          black_stake: [],
+          blue_stake: [],
+          purple_stake: [],
+          orange_stake: [],
+          gold_stake: []
         });
       }else{
         setUserProgress(data);
@@ -603,7 +634,7 @@ function App() {
       .eq("user_id", user.id);
 
     if (!error) {
-      setUserProgress({ level: newLevel, small_level: userProgress.small_level, tier: userProgress.tier, openings_level_1: updated, openings_level_2: userProgress.openings_level_2, openings_level_3: userProgress.openings_level_3, openings_level_4: userProgress.openings_level_4});
+      setUserProgress({ level: newLevel, small_level: userProgress.small_level, tier: userProgress.tier, openings_level_1: updated, openings_level_2: userProgress.openings_level_2, openings_level_3: userProgress.openings_level_3, openings_level_4: userProgress.openings_level_4, unlocked_achievements: userProgress.unlocked_achievements, white_stake: userProgress.white_stake, red_stake: userProgress.red_stake, green_stake: userProgress.green_stake, black_stake: userProgress.black_stake, blue_stake: userProgress.blue_stake, purple_stake: userProgress.purple_stake, orange_stake: userProgress.orange_stake, gold_stake: userProgress.gold_stake});
       if (newUnlocks.length > 0) {
         //setGameResult(prev => `${prev}\nLevel ${newLevel}! Unlocked: ${newUnlocks.join(", ")}`);
         setGameResult(prev => 
@@ -878,7 +909,19 @@ function App() {
   }
 
   async function triggerEnd(finalmessage: string, accuracy: number, result: string, opening: string){
-    if (result === "Win" && !userProgress.openings_level_4?.includes(opening)) {
+    if(result === "Win" && opening === "English" && !userProgress.unlocked_achievements?.includes("C4!!!")){
+      await supabase
+        .from("user_progress")
+        .update({ unlocked_achievements: [...userProgress.unlocked_achievements, "C4!!!"]})
+        .eq("user_id", user!.id);
+    }else if(result === "Win" && rossolimo && opening === "Sicilian" && !userProgress.unlocked_achievements?.includes("Chess speaks for itself")){
+      await supabase
+        .from("user_progress")
+        .update({ unlocked_achievements: [...userProgress.unlocked_achievements, "Chess speaks for itself"]})
+        .eq("user_id", user!.id);
+    }
+
+    if (result === "Win") {
       if (userProgress.openings_level_1?.includes(opening)){
         const updatedOpenings = (userProgress.openings_level_1 ?? []).filter(o => o !== opening);
         await supabase
@@ -961,7 +1004,7 @@ function App() {
             }
           }
         }
-      }else{//3
+      }else if (userProgress.openings_level_3?.includes(opening)){
         if(userProgress.level >= 7){
           const updatedOpenings = (userProgress.openings_level_3 ?? []).filter(o => o !== opening);
           await supabase
@@ -996,6 +1039,19 @@ function App() {
                 .eq("user_id", user!.id);
             }
           }
+        }
+      }else if (stake !== 0){
+        const stakeString = userProgress. + stake + "_stake"
+        if (userProgress.openings_level_4?.includes(opening) && !userProgress.white_stake?.includes(opening)){
+          const newWhiteStake = 
+          setUserProgress(prev => ({
+            ...prev,
+            white_stake: userProgress.white_stake, opening
+          }));
+          await supabase
+            .from("user_progress")
+            .update({ small_level: userProgress.small_level + 1 })
+            .eq("user_id", user!.id);
         }
       }
     }
@@ -1826,7 +1882,7 @@ function App() {
       console.log(i);
     }
     setDailyFens(chosenFens);
-    setFenScores(chosenScores.reduce((a, b) => a + b, 0));
+    setFenScores(chosenScores);
     setDailyBestMoves(chosenMoves);
     return chosenFens;
   }
@@ -2091,6 +2147,12 @@ function App() {
     }else{
       setBColors(prev => [...prev, "rgb(255, 0, 0)"]);
     }
+    if(thisaccuracy >= 800 && fenScores[movesplayed] >= 80 && !userProgress.unlocked_achievements?.includes("The 80 80 Rule")){
+      await supabase
+        .from("user_progress")
+        .update({ unlocked_achievements: [...userProgress.unlocked_achievements, "The 80 80 Rule"]})
+        .eq("user_id", user!.id);
+    }
     const displayAccuracy = Math.round(((accuracy * (movesplayed) + thisaccuracy) / (movesplayed + 1)));
     if (movesplayed !== 0){
       setAccuracy(displayAccuracy);
@@ -2113,7 +2175,7 @@ function App() {
       setBigChessPosition(chessGame.fen());
       highlightKingSquare(chessGame, "daily");
     }else{
-      const dailyScore = (displayAccuracy * fenScores / 2500);
+      const dailyScore = (displayAccuracy * (fenScores.reduce((a, b) => a + b, 0)) / 2500);
       const displayScore = Math.round(dailyScore);
       await saveAndRankResult(dailyScore, displayAccuracy/10);
       //dailyTriggerEnd("Daily Challenge Completed! Final Accuracy: " + displayAccuracy/10 + ". Final Score: " + displayScore, displayAccuracy/10, dailyScore);
@@ -2188,6 +2250,60 @@ function App() {
     return openingMinPly;
   }
 
+  async function valueMove(attackerValues: number[], defenderValues: number[], startValue: number, moverValue: number): Promise<number> {
+    /**
+     * Attacking side: opponent
+     * Defending side: player moving OR sacrificing
+     */
+    let isMyTurn = false;
+    let ourPieces = attackerValues;
+    let daStarted = false;
+    while(ourPieces.length > 0){
+      console.log("iteration");
+      //each side will capture if any even amount of captures is nonnegative
+      
+      let stmPieces = attackerValues;
+      let oppPieces = defenderValues;
+      if (isMyTurn === true){
+        [stmPieces, oppPieces] = [oppPieces, stmPieces];
+      }
+      let thisValue = 0;
+      if (daStarted === false){
+        oppPieces.unshift(moverValue);
+        console.log(oppPieces + " | " + stmPieces);
+      }
+      let currentValue = oppPieces[0];
+      console.log("evaluating should I take " + currentValue + " with " + stmPieces + " against " + oppPieces);
+      while (stmPieces.length > 0){
+        thisValue += oppPieces[0];
+        oppPieces = oppPieces.slice(1);
+        if(oppPieces.length > 0){
+          thisValue -= stmPieces[0];
+        }
+        stmPieces = stmPieces.slice(1);
+        if(thisValue >= 0) break;
+      }
+      if(thisValue >= 0){
+        startValue += isMyTurn ? currentValue : -1 * currentValue;
+        if (isMyTurn === false){
+          //if(daStarted === true) 
+          defenderValues = defenderValues.slice(1);
+          ourPieces = defenderValues;
+        }else{
+          attackerValues = attackerValues.slice(1);
+          ourPieces = attackerValues;
+        }
+        isMyTurn = isMyTurn ? false : true;
+        if(daStarted === false) daStarted = true;
+        console.log("end of iteration. " + attackerValues + " | " + defenderValues);
+      }else{
+        break;
+      }
+    }
+    
+    return startValue;
+  }
+
   async function chooseFen(fenBeforeMove: string, playerzMove: string) {
     const playerMove = uciToSan(playerzMove, fenBeforeMove);
     const chessGame = chessGameRef.current;
@@ -2208,6 +2324,13 @@ function App() {
     let disbmcounter = bmcounter;
 
     if(isChallenge !== ""){
+      if(fenBeforeMove === "rnbqkb1r/pp2ppp1/2p2n1p/6N1/3P4/8/PPP2PPP/R1BQKBNR w KQkq - 0 6" && playerMove === "Nxf7" && !userProgress.unlocked_achievements?.includes("Because I said so")){
+        await supabase
+          .from("user_progress")
+          .update({ unlocked_achievements: [...userProgress.unlocked_achievements, "Because I said so"]})
+          .eq("user_id", user!.id);
+      }
+      
       console.log("Evaluating challenge move: " + isChallenge);
       const stockfishSetup = await workerD.getBestLine(fenBeforeMove, 20).then(r => { console.log("chooseFen workerB done", r); return r; });
       const ourEval = -1 * await workerC.getEval(chessGame.fen(), 20);
@@ -2446,6 +2569,73 @@ function App() {
       }
       console.log("Accuracy " + accuracy + " this: " + thisaccuracy + " Moves: " + movesplayed);
 
+      if(thisaccuracy >= 1000 && playerMove === "h4" && !userProgress.unlocked_achievements?.includes("H4!!!")){
+        await supabase
+          .from("user_progress")
+          .update({ unlocked_achievements: [...userProgress.unlocked_achievements, "H4!!!"]})
+          .eq("user_id", user!.id);
+      }else if(thisaccuracy >= 1000 && playerMove === "g6" && !userProgress.unlocked_achievements?.includes("Like a G6")){
+        await supabase
+          .from("user_progress")
+          .update({ unlocked_achievements: [...userProgress.unlocked_achievements, "Like a G6"]})
+          .eq("user_id", user!.id);
+      }
+      if(streaker >= 7 && !userProgress.unlocked_achievements?.includes("Lucky 7")){
+        await supabase
+          .from("user_progress")
+          .update({ unlocked_achievements: [...userProgress.unlocked_achievements, "Lucky 7"]})
+          .eq("user_id", user!.id);
+      }
+      if(thisaccuracy < 1000 && !userProgress.unlocked_achievements?.includes("Pardon my French")){
+        tryFenGame.load(fenBeforeMove);
+        try{
+          if(tryFenGame.move({from: playerzMove.substring(0, 2), to: playerzMove.substring(2, 4), promotion: 'q'}).isEnPassant() === true){
+            await supabase
+              .from("user_progress")
+              .update({ unlocked_achievements: [...userProgress.unlocked_achievements, "Pardon my French"]})
+              .eq("user_id", user!.id);
+          }
+        }catch{
+          console.log("achievement error");
+        }
+      }
+      console.log("starting valuemove");
+      const chezzGame = new Chess(fenBeforeMove);
+      console.log("starting valuemove 1a");
+      const startPiece = chezzGame.get(playerzMove.substring(2, 4) as Square);
+      const startValue = startPiece ? PIECE_VALUES[startPiece.type] : 0;
+      chezzGame.move({from: playerzMove.substring(0, 2) as Square, to: playerzMove.substring(2, 4) as Square, promotion: 'q'});
+      const tgtSquare = playerzMove.substring(2, 4) as Square;
+      console.log("starting valuemove 1b");
+      const attackers = chezzGame.attackers(tgtSquare, chezzGame.turn() === "w" ? "w" : "b");
+      console.log("starting valuemove 1c");
+      const defenders = chezzGame.attackers(tgtSquare, chezzGame.turn() === "w" ? "b" : "w");
+      console.log("starting valuemove 2");
+      const attackerValues = attackers.map(a => {
+        const piece = chezzGame.get(a);
+        return piece ? PIECE_VALUES[piece.type] : 0;
+      });
+      console.log("starting valuemove 2b");
+      const defenderValues = defenders.map(d => {
+        const piece = chezzGame.get(d);
+        return piece ? PIECE_VALUES[piece.type] : 0;
+      });
+      //also need to order attackervalues from least to most
+      attackerValues.sort((a, b) => a - b);
+      defenderValues.sort((a, b) => a - b);
+      const moverPiece = chezzGame.get(playerzMove.substring(2,4) as Square);
+      const moverValue = moverPiece ? PIECE_VALUES[moverPiece.type] : 0;
+      console.log("starting valuemove final " + attackerValues + " | " + defenderValues);
+      const value = await valueMove(attackerValues, defenderValues, startValue, moverValue);
+      console.log(attackerValues + " | " + defenderValues + " startvalue: " + startValue + " valueMove: " + value);
+
+      if(value < 0 && thisaccuracy >= 1000 && !userProgress.unlocked_achievements?.includes("THE ROOOOOK!!!")){
+        await supabase
+          .from("user_progress")
+          .update({ unlocked_achievements: [...userProgress.unlocked_achievements, "THE ROOOOOK!!!"]})
+          .eq("user_id", user!.id);
+      }
+
       const bonuses: Record<number, number> = { 1: 25, 2: 50, 3: 80, 4: 125, 5: 200, 6: 300};
       const streakbonus = streaker >= 7 ? 500 : (bonuses[streaker] ?? 0);
       let msg = "";
@@ -2482,7 +2672,7 @@ function App() {
             await new Promise(resolve => setTimeout(resolve, 500));
             const move = pv?.split(" ")?.[i];
             try{
-            chessGame.move({from: move?.substring(0, 2) as Square, to: move?.substring(2, 4) as Square, promotion: 'q'});
+              chessGame.move({from: move?.substring(0, 2) as Square, to: move?.substring(2, 4) as Square, promotion: 'q'});
             }catch(error){
               console.log("huh" + error);
             }
@@ -2525,6 +2715,7 @@ function App() {
         }
       }
     }
+
     
     let posType = "choose random";
     const openingMaxPly = await getOpeningMaxPly(gameOpening);
@@ -3222,6 +3413,9 @@ function App() {
     setOldFen(newGame.fen());
     highlightKingSquare(newGame, "big");
     setBPosHistory([newGame.fen()]);
+    if(selectedLines.includes("Rossolimo_Attack") || selectedLines.includes("rossolimo_attack")){
+      setRossolimo(true);
+    }
   }
 
   async function onSquareClick({
@@ -3723,6 +3917,10 @@ function App() {
         </div>
         <button onClick={async () => {
           setScreen("daily");
+          //if player has played daily game that day, show daily stats instead of starting game
+          if (dailyGameHistory.length > 0 && new Date(dailyGameHistory[0].created_at).toDateString() === new Date().toDateString()){
+            return;
+          }
           setMovesPlayed(0);
           setGameStatus("Moves played: 0");
           setShowPosList(true);
