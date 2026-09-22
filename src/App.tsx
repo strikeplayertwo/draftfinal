@@ -58,14 +58,7 @@ type UserProgress = {
   openings_level_3: string[];
   openings_level_4: string[];
   unlocked_achievements: string[];
-  white_stake: string[];
-  red_stake: string[];
-  green_stake: string[];
-  black_stake: string[];
-  blue_stake: string[];
-  purple_stake: string[];
-  orange_stake: string[];
-  gold_stake: string[];
+  stakes: string[];
 };
 
 type MoveInfo = {
@@ -355,6 +348,7 @@ function App() {
   //opening stuff
   const [resolvedFens, setResolvedFens] = useState<string[]>([]);
   const [showOpeningSelect, setShowOpeningSelect] = useState(false);
+  const [showStakeSelect, setShowStakeSelect] = useState(false);
   const [gameOpening, setGameOpening] = useState("None");
   const [reqMove, setReqMove] = useState<string>("none");
   const [isChallenge, setIsChallenge] = useState<string>("");
@@ -367,14 +361,7 @@ function App() {
     openings_level_3: [],
     openings_level_4: [],
     unlocked_achievements: [],
-    white_stake: [],
-    red_stake: [],
-    green_stake: [],
-    black_stake: [],
-    blue_stake: [],
-    purple_stake: [],
-    orange_stake: [],
-    gold_stake: []
+    stakes: []
   });
   const openings = ["None", "Random", "Italian", "French", "Queen's Pawn Game", "Caro-Kann", "Queen's Indian Defense", "King's Indian Defense", "Reti", "London System", "Queen's Gambit Declined", "Scotch", "Gruenfeld", "Benoni", "English", "Petrov's", "Ruy Lopez", "Catalan", "Sicilian"];
   const [practiceEnded, setPracticeEnded] = useState(false);
@@ -383,7 +370,11 @@ function App() {
 
   //achievement and stake stuff
   const [rossolimo, setRossolimo] = useState(false);
-  const [stake, setStake] = useState<string>("");
+  const [stake, setStake] = useState<number>(0);
+  /*const STAKE_COLORS: Record<number, string> = {
+    1: "White", 2: "Red", 3: "Green", 4: "Black", 5: "Blue", 6: "Purple", 7: "Orange", 8: "Gold"
+  };*/
+  const STAKE_COLORS = ["White", "Red", "Green", "Black", "Blue", "Purple", "Orange", "Gold"];
 
   let isPinkMode = true;
    /*[!cSquare]:{
@@ -494,7 +485,7 @@ function App() {
     async function fetchProgress(){
       const { data, error } = await supabase
         .from("user_progress")
-        .select("level, small_level, tier, openings_level_1, openings_level_2, openings_level_3, openings_level_4, unlocked_achievements, white_stake, red_stake, green_stake, black_stake, blue_stake, purple_stake, orange_stake, gold_stake")
+        .select("level, small_level, tier, openings_level_1, openings_level_2, openings_level_3, openings_level_4, unlocked_achievements, stakes")
         .eq("user_id", user!.id)
         .single();
 
@@ -510,14 +501,7 @@ function App() {
           openings_level_3: [],
           openings_level_4: [],
           unlocked_achievements: [],
-          white_stake: [],
-          red_stake: [],
-          green_stake: [],
-          black_stake: [],
-          blue_stake: [],
-          purple_stake: [],
-          orange_stake: [],
-          gold_stake: []
+          stakes: []
         });
       }else{
         setUserProgress(data);
@@ -634,7 +618,7 @@ function App() {
       .eq("user_id", user.id);
 
     if (!error) {
-      setUserProgress({ level: newLevel, small_level: userProgress.small_level, tier: userProgress.tier, openings_level_1: updated, openings_level_2: userProgress.openings_level_2, openings_level_3: userProgress.openings_level_3, openings_level_4: userProgress.openings_level_4, unlocked_achievements: userProgress.unlocked_achievements, white_stake: userProgress.white_stake, red_stake: userProgress.red_stake, green_stake: userProgress.green_stake, black_stake: userProgress.black_stake, blue_stake: userProgress.blue_stake, purple_stake: userProgress.purple_stake, orange_stake: userProgress.orange_stake, gold_stake: userProgress.gold_stake});
+      setUserProgress({ level: newLevel, small_level: userProgress.small_level, tier: userProgress.tier, openings_level_1: updated, openings_level_2: userProgress.openings_level_2, openings_level_3: userProgress.openings_level_3, openings_level_4: userProgress.openings_level_4, unlocked_achievements: userProgress.unlocked_achievements, stakes: userProgress.stakes});
       if (newUnlocks.length > 0) {
         //setGameResult(prev => `${prev}\nLevel ${newLevel}! Unlocked: ${newUnlocks.join(", ")}`);
         setGameResult(prev => 
@@ -1041,16 +1025,16 @@ function App() {
           }
         }
       }else if (stake !== 0){
-        const stakeString = userProgress. + stake + "_stake"
-        if (userProgress.openings_level_4?.includes(opening) && !userProgress.white_stake?.includes(opening)){
-          const newWhiteStake = 
+        const stakeCount = (userProgress.stakes ?? []).filter(o => o === opening).length;
+        if (stake > stakeCount) {//stake completion
+          const updatedStakes: string[] = [userProgress.stakes + opening];
           setUserProgress(prev => ({
             ...prev,
-            white_stake: userProgress.white_stake, opening
+            stakes: updatedStakes
           }));
           await supabase
             .from("user_progress")
-            .update({ small_level: userProgress.small_level + 1 })
+            .update({ stakes: updatedStakes })
             .eq("user_id", user!.id);
         }
       }
@@ -1994,7 +1978,9 @@ function App() {
       const newFen = daFens[Math.floor(Math.random() * daFens.length)];
       if (!newFen) { attempts++; continue; }
       const evalB = await workerA.getEval(newFen, 10);
-      if (Math.abs(evalB) < 30) return newFen;
+      const targetEval = stake >= 2 ? -100 : 30;
+      const targetEval2 = stake >= 2 ? -200 : -30;
+      if (evalB >= targetEval2 && evalB <= targetEval) return newFen;
       attempts++;
     }
 
@@ -3762,8 +3748,8 @@ function App() {
           <button onClick={() => setShowOpeningSelect(prev => !prev)}>
             Classic Mode ▾
           </button>
-
-          {showOpeningSelect && (
+          
+          {showOpeningSelect && ( 
             <div style={{
               position: "absolute",
               top: "100%",
@@ -3902,6 +3888,57 @@ function App() {
                   </div>
                 );
               })}
+
+              <button style = {{background: "#ff9500"}} onClick={() => setShowStakeSelect(prev => !prev)}>
+                {STAKE_COLORS[stake - 1]} Stake
+              </button>
+
+              {showStakeSelect && ( 
+                <div style={{
+                  position: "absolute",
+                  top: "100%",
+                  left: 0,
+                  background: "#ff9500",
+                  border: "1px solid #30363d",
+                  borderRadius: 8,
+                  zIndex: 1000,
+                  minWidth: 200,
+                  padding: "8px 0"
+                }}>
+                  {STAKE_COLORS
+                  .map(stakeColor => {
+                    const stakeCount = (userProgress.stakes ?? []).filter(o => o === pendingOpening).length;
+                    const isUnlocked = stakeCount >= STAKE_COLORS.indexOf(stakeColor);
+                    return (
+                      <div
+                        key={stakeColor}
+                        onClick={async () => {
+                          if(isUnlocked){
+                            setShowStakeSelect(false);
+                            setStake(STAKE_COLORS.indexOf(stakeColor) + 1);
+                          }
+                        }}
+                      style={{
+                        padding: "10px 16px",
+                        cursor: isUnlocked ? "pointer" : "not-allowed",
+                        color: isUnlocked ? "#e6edf3" : "#8b949e",
+                        fontSize: "0.9rem",
+                      }}
+                      onMouseEnter={e => {
+                        if(isUnlocked){
+                          e.currentTarget.style.background = "#21262d";
+                        }else{
+                        }
+                      }}
+                      onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                    >
+                      {stakeColor} {isUnlocked ? "" : "🔒"}
+                    </div>
+                  );
+                  })}
+                </div>
+              )}
+
               <button
                 style={{ marginTop: 10, width: "100%" }}
                 onClick={async () => {
@@ -3913,7 +3950,7 @@ function App() {
               </button>
             </div>
           )}
-
+          
         </div>
         <button onClick={async () => {
           setScreen("daily");
