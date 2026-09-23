@@ -894,15 +894,23 @@ function App() {
 
   async function triggerEnd(finalmessage: string, accuracy: number, result: string, opening: string){
     if(result === "Win" && opening === "English" && !userProgress.unlocked_achievements?.includes("C4!!!")){
-      await supabase
-        .from("user_progress")
-        .update({ unlocked_achievements: [...userProgress.unlocked_achievements, "C4!!!"]})
-        .eq("user_id", user!.id);
+      const { data, error } = await supabase
+        .rpc('unlock_achievement', { 
+          user_id: user!.id, 
+          achievement_name: "C4!!!"
+        });
+      if(error){
+        console.log(data + " " + error);
+      }
     }else if(result === "Win" && rossolimo && opening === "Sicilian" && !userProgress.unlocked_achievements?.includes("Chess speaks for itself")){
-      await supabase
-        .from("user_progress")
-        .update({ unlocked_achievements: [...userProgress.unlocked_achievements, "Chess speaks for itself"]})
-        .eq("user_id", user!.id);
+      const { data, error } = await supabase
+        .rpc('unlock_achievement', { 
+          user_id: user!.id, 
+          achievement_name: "Chess speaks for itself"
+        });
+      if(error){
+        console.log(data + " " + error);
+      }
     }
 
     if (result === "Win") {
@@ -1027,7 +1035,8 @@ function App() {
       }else if (stake !== 0){
         const stakeCount = (userProgress.stakes ?? []).filter(o => o === opening).length;
         if (stake > stakeCount) {//stake completion
-          const updatedStakes: string[] = [userProgress.stakes + opening];
+          console.log("STAKE WIN " + stake + " " + stakeCount);
+          const updatedStakes: string[] = [...(userProgress.stakes || []), opening];
           setUserProgress(prev => ({
             ...prev,
             stakes: updatedStakes
@@ -1036,6 +1045,8 @@ function App() {
             .from("user_progress")
             .update({ stakes: updatedStakes })
             .eq("user_id", user!.id);
+        }else{
+          console.log("STAKE FAIL " + stake + " " + stakeCount);
         }
       }
     }
@@ -2134,10 +2145,14 @@ function App() {
       setBColors(prev => [...prev, "rgb(255, 0, 0)"]);
     }
     if(thisaccuracy >= 800 && fenScores[movesplayed] >= 80 && !userProgress.unlocked_achievements?.includes("The 80 80 Rule")){
-      await supabase
-        .from("user_progress")
-        .update({ unlocked_achievements: [...userProgress.unlocked_achievements, "The 80 80 Rule"]})
-        .eq("user_id", user!.id);
+      const { data, error } = await supabase
+        .rpc('unlock_achievement', { 
+          user_id: user!.id, 
+          achievement_name: "The 80 80 Rule"
+        });
+      if(error){
+        console.log(data + " " + error);
+      }
     }
     const displayAccuracy = Math.round(((accuracy * (movesplayed) + thisaccuracy) / (movesplayed + 1)));
     if (movesplayed !== 0){
@@ -2311,10 +2326,14 @@ function App() {
 
     if(isChallenge !== ""){
       if(fenBeforeMove === "rnbqkb1r/pp2ppp1/2p2n1p/6N1/3P4/8/PPP2PPP/R1BQKBNR w KQkq - 0 6" && playerMove === "Nxf7" && !userProgress.unlocked_achievements?.includes("Because I said so")){
-        await supabase
-          .from("user_progress")
-          .update({ unlocked_achievements: [...userProgress.unlocked_achievements, "Because I said so"]})
-          .eq("user_id", user!.id);
+        const { data, error } = await supabase
+          .rpc('unlock_achievement', { 
+            user_id: user!.id, 
+            achievement_name: "Because I said so"
+          });
+        if(error){
+          console.log(data + " " + error);
+        }
       }
       
       console.log("Evaluating challenge move: " + isChallenge);
@@ -2367,8 +2386,9 @@ function App() {
         evalA += 25;
       }else{
         console.log("bad challenge response: " + ourEval + " " + bestEval);
-        setDif(-100);
-        setShowEffex("Bad Move ❌ -100 eval");
+        const diff = stake >= 5 ? -150 : -100
+        setDif(diff);
+        setShowEffex("Bad Move ❌ " + diff + " eval");
         stopEffex();
         let thisaccuracy = 0;
         setBColors(prev => [...prev, "rgb(125, 0, 0)"]);
@@ -2379,7 +2399,7 @@ function App() {
         }else{
           setAccuracy(thisaccuracy);
         }
-        evalA -= 100;
+        evalA += diff;
       }
       setEvalHistory(prev => [...prev, evalA]);
     }else if (reqMove !== "none"){
@@ -2398,8 +2418,9 @@ function App() {
         evalA += 50;
         //console.log("Checkpoint 1");
       }else{
-        setDif(-50);
-        setShowEffex("Incorrect ❌ (" + reqMove + ") -50 eval");
+        const diff = stake >= 5 ? -75 : -50
+        setDif(diff);
+        setShowEffex("Incorrect ❌ (" + reqMove + ") " + diff + " eval");
         stopEffex();
         let thisaccuracy = 0;
         setBColors(prev => [...prev, "rgb(125, 0, 0)"]);
@@ -2409,7 +2430,7 @@ function App() {
         }else{
           setAccuracy(thisaccuracy);
         }
-        evalA -= 50;
+        evalA += diff;
       }
       setEvalHistory(prev => [...prev, evalA]);
 
@@ -2454,6 +2475,7 @@ function App() {
       disbmcounter = bmcounter;
       let missedmate = false;
       let generatedmate = false;
+      let lostEval = 0;
       if(Math.trunc(ourEval) === ourEval && Math.trunc(bestEval) !== bestEval){
         console.log("Player missed mate" + ourEval + " " + bestEval);
         setCurrentStreak(0);
@@ -2487,8 +2509,8 @@ function App() {
         streaker += 3;
       }else if (ourEval === bestEval){
         console.log("Best Move!");
-        bonus = 25;
-        setShowEffex("Best Move⭐ +25 eval");
+        if (stake < 6) bonus = 25;
+        setShowEffex("Best Move⭐ +" + bonus + " eval");
         setbmcounter(prev => prev + 1);
         disbmcounter++;
         doublemessage = true;
@@ -2523,12 +2545,14 @@ function App() {
           return next;
         });
         streaker++;
+        if(stake >= 5) lostEval = ourEval - bestEval;
       }else{
         console.log("Bad Move!");
         setCurrentStreak(0);
         setStreakMsg("Current Streak: 0");
         console.log("Streak ended: " + ourEval + " " + bestEval);
         streaker = 0;
+        if(stake >= 5) lostEval = ourEval - bestEval;
       }
       let thisaccuracy = Math.round((100 * Math.exp((ourEval - bestEval) / 200)) * 10);
       if(missedmate){
@@ -2556,30 +2580,46 @@ function App() {
       console.log("Accuracy " + accuracy + " this: " + thisaccuracy + " Moves: " + movesplayed);
 
       if(thisaccuracy >= 1000 && playerMove === "h4" && !userProgress.unlocked_achievements?.includes("H4!!!")){
-        await supabase
-          .from("user_progress")
-          .update({ unlocked_achievements: [...userProgress.unlocked_achievements, "H4!!!"]})
-          .eq("user_id", user!.id);
+        const { data, error } = await supabase
+          .rpc('unlock_achievement', { 
+            user_id: user!.id, 
+            achievement_name: "H4!!!"
+          });
+        if(error){
+          console.log(data + " " + error);
+        }
       }else if(thisaccuracy >= 1000 && playerMove === "g6" && !userProgress.unlocked_achievements?.includes("Like a G6")){
-        await supabase
-          .from("user_progress")
-          .update({ unlocked_achievements: [...userProgress.unlocked_achievements, "Like a G6"]})
-          .eq("user_id", user!.id);
+        const { data, error } = await supabase
+          .rpc('unlock_achievement', { 
+            user_id: user!.id, 
+            achievement_name: "Like a G6"
+          });
+        if(error){
+          console.log(data + " " + error);
+        }
       }
       if(streaker >= 7 && !userProgress.unlocked_achievements?.includes("Lucky 7")){
-        await supabase
-          .from("user_progress")
-          .update({ unlocked_achievements: [...userProgress.unlocked_achievements, "Lucky 7"]})
-          .eq("user_id", user!.id);
+        const { data, error } = await supabase
+          .rpc('unlock_achievement', { 
+            user_id: user!.id, 
+            achievement_name: "Lucky 7"
+          });
+        if(error){
+          console.log(data + " " + error);
+        }
       }
       if(thisaccuracy < 1000 && !userProgress.unlocked_achievements?.includes("Pardon my French")){
         tryFenGame.load(fenBeforeMove);
         try{
           if(tryFenGame.move({from: playerzMove.substring(0, 2), to: playerzMove.substring(2, 4), promotion: 'q'}).isEnPassant() === true){
-            await supabase
-              .from("user_progress")
-              .update({ unlocked_achievements: [...userProgress.unlocked_achievements, "Pardon my French"]})
-              .eq("user_id", user!.id);
+            const { data, error } = await supabase
+          .rpc('unlock_achievement', { 
+            user_id: user!.id, 
+            achievement_name: "Pardon my French"
+          });
+        if(error){
+          console.log(data + " " + error);
+        }
           }
         }catch{
           console.log("achievement error");
@@ -2616,14 +2656,20 @@ function App() {
       console.log(attackerValues + " | " + defenderValues + " startvalue: " + startValue + " valueMove: " + value);
 
       if(value < 0 && thisaccuracy >= 1000 && !userProgress.unlocked_achievements?.includes("THE ROOOOOK!!!")){
-        await supabase
-          .from("user_progress")
-          .update({ unlocked_achievements: [...userProgress.unlocked_achievements, "THE ROOOOOK!!!"]})
-          .eq("user_id", user!.id);
+        const { data, error } = await supabase
+          .rpc('unlock_achievement', { 
+            user_id: user!.id, 
+            achievement_name: "THE ROOOOOK!!!"
+          });
+        if(error){
+          console.log(data + " " + error);
+        }
       }
 
       const bonuses: Record<number, number> = { 1: 25, 2: 50, 3: 80, 4: 125, 5: 200, 6: 300};
-      const streakbonus = streaker >= 7 ? 500 : (bonuses[streaker] ?? 0);
+      let streakbonus = streaker >= 7 ? 500 : (bonuses[streaker] ?? 0);
+      if (stake >= 4 && thisaccuracy < 1000) streakbonus = 0;
+      if (stake >= 7 && streakbonus > 100) streakbonus = 100;
       let msg = "";
       for (let i = 0; i < streaker; i++){
         msg += "🔥";
@@ -2637,10 +2683,11 @@ function App() {
         }
       }
       if(missedmate){
-        evalA = ourOldEval - 200 + dif;
+        evalA = stake >= 5 ? (ourOldEval - 450 + dif) : (ourOldEval - 300 + dif);
       }else{
         evalA = (ourOldEval - bestEval + ourEval + bonus + streakbonus + dif);
       }
+      if (lostEval != 0) evalA += (Math.trunc(lostEval / 2));
       console.log("EvalA: " + evalA + " ourOldEval: " + ourOldEval + " BestEval: " + bestEval + " OurEval: " + ourEval + " Bonus: " + bonus + " StreakBonus: " + streakbonus + " Dif: " + dif);
       setEvalHistory(prev => [...prev, evalA]);
 
@@ -2897,6 +2944,15 @@ function App() {
       const MAX_ATTEMPTS = 400;
       while (attempts < MAX_ATTEMPTS) {
         let newFens = fens[Math.floor(Math.random() * fens.length)];
+        let score = 0, pieces, cpCount, clarity, onslaught, multiplier, bestMove;
+        if(stake >= 3) {
+          [score, pieces, cpCount, clarity, onslaught, multiplier, bestMove] = await predictCPL(newFens, 10, true, -91, -41, 10, -80, -40);
+        }
+        while(stake >= 3 && score < 20){
+          console.log(stake + " STAKE");
+          newFens = fens[Math.floor(Math.random() * fens.length)];
+          [score, pieces, cpCount, clarity, onslaught, multiplier, bestMove] = await predictCPL(newFens, 10, true, -91, -41, 10, -80, -40);
+        }
         while(bPosHistory.includes(newFens) === true || bigChessPosition === newFens){
           console.log("skipping duplicate fen" + newFens);
           if(bigChessPosition === newFens){
@@ -2916,7 +2972,7 @@ function App() {
         }
         if(evalB !== Math.trunc(evalB)){
           console.log("MATE DETECTED");
-          if((evalA > evalB && evalB > 0 && (Math.abs(evalB * 10) % 10 === 1)) || (evalA < evalB && evalB < 0 && (Math.abs(evalB * 10) % 10 === 1))){
+          if((evalA > evalB && evalB > 0 && (Math.abs(evalB * 10) % 10 === 1) && (stake < 8 || evalA >= 600)) || (evalA < evalB && evalB < 0 && (Math.abs(evalB * 10) % 10 === 1))){
             console.log("MATE SUCCESSFUL");
             const newevalB = evalB;
             
@@ -2930,7 +2986,7 @@ function App() {
             setBPosHistory(prev => [...prev, newFens]);
             shortAlerts(newFens, "");
             return;
-          }else if((Math.abs(evalA) > Math.abs(evalB) && evalB < 0 && (Math.abs((evalB * 10) % 10) === 1)) || (Math.abs(evalA) > Math.abs(evalB) && evalB > 0 && (Math.abs(evalB * 10) % 10 === 1))){
+          }else if((Math.abs(evalA) > Math.abs(evalB) && evalB < 0 && (Math.abs((evalB * 10) % 10) === 1) && (stake < 8 || Math.abs(evalA) >= 600)) || (Math.abs(evalA) > Math.abs(evalB) && evalB > 0 && (Math.abs(evalB * 10) % 10 === 1))){
             //above line can be simplified
             console.log("SWAPMATE DETECTED" + newFens);
             
@@ -3916,6 +3972,7 @@ function App() {
                           if(isUnlocked){
                             setShowStakeSelect(false);
                             setStake(STAKE_COLORS.indexOf(stakeColor) + 1);
+                            console.log(STAKE_COLORS.indexOf(stakeColor) + 1);
                           }
                         }}
                       style={{
