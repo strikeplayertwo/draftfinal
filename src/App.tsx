@@ -896,8 +896,8 @@ function App() {
     if(result === "Win" && opening === "English" && !userProgress.unlocked_achievements?.includes("C4!!!")){
       const { data, error } = await supabase
         .rpc('unlock_achievement', { 
-          user_id: user!.id, 
-          achievement_name: "C4!!!"
+          p_user_id: user!.id, 
+          p_achievement_name: "C4!!!"
         });
       if(error){
         console.log(data + " " + error);
@@ -905,11 +905,11 @@ function App() {
     }else if(result === "Win" && rossolimo && opening === "Sicilian" && !userProgress.unlocked_achievements?.includes("Chess speaks for itself")){
       const { data, error } = await supabase
         .rpc('unlock_achievement', { 
-          user_id: user!.id, 
-          achievement_name: "Chess speaks for itself"
+          p_user_id: user!.id, 
+          p_achievement_name: "Chess speaks for itself"
         });
       if(error){
-        console.log(data + " " + error);
+        console.log(data + " " + error.message + " " + error.hint);
       }
     }
 
@@ -2147,8 +2147,8 @@ function App() {
     if(thisaccuracy >= 800 && fenScores[movesplayed] >= 80 && !userProgress.unlocked_achievements?.includes("The 80 80 Rule")){
       const { data, error } = await supabase
         .rpc('unlock_achievement', { 
-          user_id: user!.id, 
-          achievement_name: "The 80 80 Rule"
+          p_user_id: user!.id, 
+          p_achievement_name: "The 80 80 Rule"
         });
       if(error){
         console.log(data + " " + error);
@@ -2306,6 +2306,16 @@ function App() {
   }
 
   async function chooseFen(fenBeforeMove: string, playerzMove: string) {
+    /*const { data, error } = await supabase
+      .rpc('unlock_achievement', { 
+        p_user_id: user!.id, 
+        p_p_achievement_name: "test"
+      });
+    if(error){
+      console.log(data + " " + error.message + " " + error.hint);
+    }else{
+      console.log("DATA" + data);
+    }*/
     const playerMove = uciToSan(playerzMove, fenBeforeMove);
     const chessGame = chessGameRef.current;
     if (!chessGame) return;
@@ -2328,8 +2338,8 @@ function App() {
       if(fenBeforeMove === "rnbqkb1r/pp2ppp1/2p2n1p/6N1/3P4/8/PPP2PPP/R1BQKBNR w KQkq - 0 6" && playerMove === "Nxf7" && !userProgress.unlocked_achievements?.includes("Because I said so")){
         const { data, error } = await supabase
           .rpc('unlock_achievement', { 
-            user_id: user!.id, 
-            achievement_name: "Because I said so"
+            p_user_id: user!.id, 
+            p_achievement_name: "Because I said so"
           });
         if(error){
           console.log(data + " " + error);
@@ -2582,8 +2592,8 @@ function App() {
       if(thisaccuracy >= 1000 && playerMove === "h4" && !userProgress.unlocked_achievements?.includes("H4!!!")){
         const { data, error } = await supabase
           .rpc('unlock_achievement', { 
-            user_id: user!.id, 
-            achievement_name: "H4!!!"
+            p_user_id: user!.id, 
+            p_achievement_name: "H4!!!"
           });
         if(error){
           console.log(data + " " + error);
@@ -2591,8 +2601,8 @@ function App() {
       }else if(thisaccuracy >= 1000 && playerMove === "g6" && !userProgress.unlocked_achievements?.includes("Like a G6")){
         const { data, error } = await supabase
           .rpc('unlock_achievement', { 
-            user_id: user!.id, 
-            achievement_name: "Like a G6"
+            p_user_id: user!.id, 
+            p_achievement_name: "Like a G6"
           });
         if(error){
           console.log(data + " " + error);
@@ -2601,8 +2611,8 @@ function App() {
       if(streaker >= 7 && !userProgress.unlocked_achievements?.includes("Lucky 7")){
         const { data, error } = await supabase
           .rpc('unlock_achievement', { 
-            user_id: user!.id, 
-            achievement_name: "Lucky 7"
+            p_user_id: user!.id, 
+            p_achievement_name: "Lucky 7"
           });
         if(error){
           console.log(data + " " + error);
@@ -2614,8 +2624,8 @@ function App() {
           if(tryFenGame.move({from: playerzMove.substring(0, 2), to: playerzMove.substring(2, 4), promotion: 'q'}).isEnPassant() === true){
             const { data, error } = await supabase
           .rpc('unlock_achievement', { 
-            user_id: user!.id, 
-            achievement_name: "Pardon my French"
+            p_user_id: user!.id, 
+            p_achievement_name: "Pardon my French"
           });
         if(error){
           console.log(data + " " + error);
@@ -2658,8 +2668,8 @@ function App() {
       if(value < 0 && thisaccuracy >= 1000 && !userProgress.unlocked_achievements?.includes("THE ROOOOOK!!!")){
         const { data, error } = await supabase
           .rpc('unlock_achievement', { 
-            user_id: user!.id, 
-            achievement_name: "THE ROOOOOK!!!"
+            p_user_id: user!.id, 
+            p_achievement_name: "THE ROOOOOK!!!"
           });
         if(error){
           console.log(data + " " + error);
@@ -2946,13 +2956,14 @@ function App() {
         let newFens = fens[Math.floor(Math.random() * fens.length)];
         let score = 0, pieces, cpCount, clarity, onslaught, multiplier, bestMove;
         if(stake >= 3) {
-          [score, pieces, cpCount, clarity, onslaught, multiplier, bestMove] = await predictCPL(newFens, 10, true, -91, -41, 10, -80, -40);
+          [score, pieces, cpCount, clarity, onslaught, multiplier, bestMove] = await predictCPL(newFens, 8, true, -91, -41, 10, -80, -40);
         }
         while(stake >= 3 && score < 20){
           console.log(stake + " STAKE");
           newFens = fens[Math.floor(Math.random() * fens.length)];
-          [score, pieces, cpCount, clarity, onslaught, multiplier, bestMove] = await predictCPL(newFens, 10, true, -91, -41, 10, -80, -40);
+          [score, pieces, cpCount, clarity, onslaught, multiplier, bestMove] = await predictCPL(newFens, 8, true, -91, -41, 10, -80, -40);
         }
+        console.log("SCORE: " + score);
         while(bPosHistory.includes(newFens) === true || bigChessPosition === newFens){
           console.log("skipping duplicate fen" + newFens);
           if(bigChessPosition === newFens){
@@ -3801,7 +3812,12 @@ function App() {
           setScreen("versus");
         }}>Versus</button>
         <div style={{ position: "relative", display: "inline-block" }}>
-          <button onClick={() => setShowOpeningSelect(prev => !prev)}>
+          <button onClick={() => {
+            setShowOpeningSelect(prev => !prev);
+            if(showLineSelect) setShowLineSelect(false);
+            if(showStakeSelect) setShowStakeSelect(false);
+            userProgress.openings_level_4?.includes(pendingOpening) ? setStake(1) : setStake(0);
+            }}>
             Classic Mode ▾
           </button>
           
@@ -3945,8 +3961,15 @@ function App() {
                 );
               })}
 
-              <button style = {{background: "#ff9500"}} onClick={() => setShowStakeSelect(prev => !prev)}>
-                {STAKE_COLORS[stake - 1]} Stake
+              <button style = {{
+                background: userProgress.openings_level_4?.includes(pendingOpening) ? "#ff9500" : "#ff950079",
+                cursor: userProgress.openings_level_4?.includes(pendingOpening) ? "pointer" : "not-allowed",
+                color: userProgress.openings_level_4?.includes(pendingOpening) ? "#e6edf3" : "#8b949e",   
+                //outline: userProgress.openings_level_4?.includes(pendingOpening) ? "#e6edf3" : "#8b949e8d",   
+                }} onClick={() => {
+                  if (userProgress.openings_level_4?.includes(pendingOpening)) setShowStakeSelect(prev => !prev);
+                }}>
+                {stake === 0 && userProgress.openings_level_4?.includes(pendingOpening) ? "White" : STAKE_COLORS[stake - 1]} Stake {(userProgress.stakes ?? []).filter(o => o === pendingOpening).length > STAKE_COLORS.indexOf(STAKE_COLORS[stake - 1]) && stake > 0 ? "🏆" : ""}{userProgress.openings_level_4?.includes(pendingOpening) ? "" : "🔒"}
               </button>
 
               {showStakeSelect && ( 
@@ -3963,8 +3986,10 @@ function App() {
                 }}>
                   {STAKE_COLORS
                   .map(stakeColor => {
+                    //const stakeCount = userProgress.openings_level_4?.includes(pendingOpening) ? (userProgress.stakes ?? []).filter(o => o === pendingOpening).length : 0;
                     const stakeCount = (userProgress.stakes ?? []).filter(o => o === pendingOpening).length;
-                    const isUnlocked = stakeCount >= STAKE_COLORS.indexOf(stakeColor);
+                    const isUnlocked = stakeCount >= STAKE_COLORS.indexOf(stakeColor) && userProgress.openings_level_4?.includes(pendingOpening);
+                    const isBeaten = stakeCount > STAKE_COLORS.indexOf(stakeColor);
                     return (
                       <div
                         key={stakeColor}
@@ -3989,7 +4014,7 @@ function App() {
                       }}
                       onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
                     >
-                      {stakeColor} {isUnlocked ? "" : "🔒"}
+                      {stakeColor} {isUnlocked ? "" : "🔒"} {isBeaten ?  "🏆" : ""}
                     </div>
                   );
                   })}
