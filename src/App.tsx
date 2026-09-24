@@ -376,6 +376,21 @@ function App() {
   };*/
   const STAKE_COLORS = ["White", "Red", "Green", "Black", "Blue", "Purple", "Orange", "Gold"];
 
+  //newer stuff
+  const [nonePV, setNonePV] = useState<string>("");
+  const [stockEval, setStockEval] = useState<number>();
+  const [playersMove, setPlayersMove] = useState<string>("");
+
+  const nonePVRef = useRef(nonePV);
+  useEffect(() => {
+    nonePVRef.current = nonePV;
+  }, [nonePV]);
+
+  const stockEvalRef = useRef(stockEval);
+  useEffect(() => {
+    stockEvalRef.current = stockEval;
+  }, [stockEval]);
+
   let isPinkMode = true;
    /*[!cSquare]:{
           backgroundColor: 'rgba(255, 0, 204, 0.75)'
@@ -457,7 +472,41 @@ function App() {
   useEffect(() => {
     if(!user) return;
     if(started > -1) fetchAllOpeningLines();
+    //benchmarkWorker();
   }, [user]);
+
+  /*async function benchmarkWorker() {
+    const testFens = [
+      "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1",
+      "r1bqkbnr/pppp1ppp/2n5/4p3/4P3/5N2/PPPP1PPP/RNBQKB1R w KQkq - 2 3",
+      "r1bqk2r/pppp1ppp/2n2n2/2b1p3/2B1P3/2NP1N2/PPP2PPP/R1BQK2R b KQkq - 0 6",
+    ];
+    const depth = 10;
+    const runs = 5;
+
+    // Benchmark getBestLine
+    const t1 = performance.now();
+    for (let i = 0; i < runs; i++) {
+      for (const fen of testFens) {
+        const bestLine = await workerD.getEval(fen, depth);
+        //console.log("bL " + fen + " e" + bestLine.cp);
+      }
+    }
+    const bestLineTime = performance.now() - t1;
+
+    // Benchmark getEval
+    const t2 = performance.now();
+    for (let i = 0; i < runs; i++) {
+      for (const fen of testFens) {
+        const theEval = await workerD.getBestLine(fen, depth);
+        //console.log(fen + " e" + theEval);
+      }
+    }
+    const evalTime = performance.now() - t2;
+
+    console.log(`getBestLine: ${(bestLineTime / (runs * testFens.length)).toFixed(0)}ms avg`);
+    console.log(`getEval:     ${(evalTime / (runs * testFens.length)).toFixed(0)}ms avg`);
+  }*/
 
   useEffect(() => {
     if(!user) return; // don't fetch if not logged in
@@ -827,8 +876,10 @@ function App() {
   const [moveInfos, setMoveInfos] = useState<MoveInfo[]>([]);
 
   useEffect(() => {
+    //console.log("UPDATE");
     // Prevent re-entrant calls
     if (isAnalyzing.current) return;
+    //console.log("UPDATE2");
 
     const smallGame = smallGameRef.current;
     if (!smallGame) return;
@@ -857,6 +908,47 @@ function App() {
       highlightKingSquare(smallGame, "small");
     }
   }, [chessPosition]);
+
+  useEffect(() => {
+    console.log("BIGUPDATE");
+    setNonePV("");
+    setStockEval(undefined);
+    const startIt = async () => {
+      console.log("NONEPV STARTING");
+      try {
+        console.log("NONEPV 1 " + bigChessPosition);
+        const bestLine = await workerA.getBestLine(bigChessPosition, 18);
+        console.log("NONEPV 2 " + bigChessPosition);
+        const stockGame = new Chess(bigChessPosition);
+        try{
+          const stockMove = bestLine?.pv.split(" ")?.[0];
+          console.log("NONEPV 3 " + bestLine?.pv);
+          stockGame.move({ from: stockMove.charAt(0) + stockMove.charAt(1), to: stockMove.charAt(2) + stockMove.charAt(3) });
+          console.log("NONEPV 4 " + stockMove);
+        }catch (error){
+          console.log("EVALERROR" + error);
+        }
+        const stockfishEval = await workerB.getEval(stockGame.fen(), 20);
+        console.log("NONEPV " + bestLine?.pv);
+        setNonePV(bestLine?.pv);
+        if (movesplayed <= 0){
+          setStartingEval(stockfishEval);
+          setEvalHistory(prev => [...prev, stockfishEval]);
+          console.log("Starting Eval logged: " + oldFen);
+          setOldEval(stockfishEval);
+        }
+        setStockEval(stockfishEval);
+      } catch (error) {
+        console.log("EVALERROR");
+      }
+    }
+    if(started > -1 && reqMove === "none") {
+      console.log("STARTING");
+      startIt().then(() => {console.log("EVALDONE")}
+    )}else{
+      console.log(started + " | " + reqMove);
+    }
+  }, [bigChessPosition])
 
   function handleJumpToMove(index: number) {
     const smallGame = smallGameRef.current;
@@ -1153,15 +1245,27 @@ function App() {
     if (movesplayed > -3){
       try {
         console.log("findBestMove started", { moveType, fenAfterMove, fenBeforeMove });
-        const [result, result2] = await Promise.all([
-          workerA.getBestLine(fenAfterMove, 18).then(r => { console.log("workerA done", r); return r; }),
-          workerB.getBestLine(fenBeforeMove, 18).then(r => { console.log("workerB done", r); return r; }),
-        ]);
-        const pv = result.pv;
+        while (nonePVRef.current === ""){
+          console.log("waiting for nonePV" + nonePV);
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        console.log("done waiting " + nonePV + " | " + nonePVRef.current);
+        let result = nonePVRef.current;
+        if(oldMove !== nonePVRef.current.split(" ")[0]) {
+          result = (await workerD.getBestLine(chessPosition, 18)).pv;
+        }else{
+          console.log("skipping findBestMove evaluation");
+        }
+        const pv = result;
         console.log("PV: " + pv);
         const bestMove = pv?.split(" ")?.[0];
         const bestResponse = pv?.split(" ")?.[1];
         const nextResponse = pv?.split(" ")?.[2];
+
+        /*const [result, result2] = await Promise.all([
+          workerA.getBestLine(fenAfterMove, 18).then(r => { console.log("workerA done", r); return r; }),
+          workerB.getBestLine(fenBeforeMove, 18).then(r => { console.log("workerB done", r); return r; }),
+        ]);*/
         
         if (showBack2 === true && moveType === "analysis"){
           const lines = await workerB.getMultiPV(fenAfterMove, 18, 3);
@@ -1193,7 +1297,7 @@ function App() {
           setDisplayEval(formatted);
         };
 
-        const pv2 = result2.pv;
+        const pv2 = nonePVRef.current;
         const bestMove2 = pv2?.split(" ")?.[0];
         
         if (oldMove === bestMove2){
@@ -2322,12 +2426,6 @@ function App() {
     const tryFenGame = tryFenRef.current;
     if (!tryFenGame) return;
     let ourOldEval = oldEval;
-    if (movesplayed === 0){
-      ourOldEval = await workerC.getEval(oldFen, 20);//isnt this just the same as stockfishSetup?
-      setStartingEval(ourOldEval);
-      setEvalHistory(prev => [...prev, ourOldEval]);
-      console.log("Starting Eval logged: " + oldFen);
-    }
 
     let evalA = evalHistory[evalHistory.length - 1];
     let displayAccuracy = 0;
@@ -2445,22 +2543,35 @@ function App() {
       setEvalHistory(prev => [...prev, evalA]);
 
     }else{
-      const [result, stockfishSetup] = await Promise.all([
+
+      /*const [result, stockfishSetup] = await Promise.all([
         workerC.getBestLine(chessGame.fen(), 16).then(r => { console.log("chooseFen workerA done", r); return r; }),
         workerD.getBestLine(fenBeforeMove, 18).then(r => { console.log("chooseFen workerB done", r); return r; }),
-      ]);
-      let mate = result.mate;
+      ]);*/
+      while (nonePVRef.current === ""){
+        console.log("waiting for nonePV");
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      const stockfishSetup = nonePVRef.current;
+      while (stockEvalRef.current === undefined){
+        console.log("waiting for stockEval");
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      let ourEval = stockEvalRef.current;
+      //let mate = result.mate;
+
       let stockMate = "";
       let ourMate = "";
-      let ourEval = -1 * await workerC.getEval(chessGame.fen(), 20);
+      //let ourEval = -1 * await workerC.getEval(chessGame.fen(), 20);
       
       let bestEval = ourEval;
       let streaker = currentStreak;
 
-      const pvb = stockfishSetup.pv;
+      const pvb = stockfishSetup;
       const stockfishMove = pvb?.split(" ")?.[0];
       const stockfishMoveSAN = uciToSan(stockfishMove, fenBeforeMove);
       if(stockfishMoveSAN !== playerMove){
+        ourEval = await workerC.getEval(chessGame.fen(), 20);
         if(Math.abs(ourEval) > 1000){
           const [daOurEval, potMate] = await resolveEval(chessGame.fen(), 16, ourEval * -1);
           ourEval = -1 * daOurEval;
@@ -2700,7 +2811,7 @@ function App() {
       if (lostEval != 0) evalA += (Math.trunc(lostEval / 2));
       console.log("EvalA: " + evalA + " ourOldEval: " + ourOldEval + " BestEval: " + bestEval + " OurEval: " + ourEval + " Bonus: " + bonus + " StreakBonus: " + streakbonus + " Dif: " + dif);
       setEvalHistory(prev => [...prev, evalA]);
-
+      let mate = null;
       if(generatedmate){
         console.log("finding generated mate line");
         mate = await workerA.getBestLine(chessGame.fen(), 20).then(r => { console.log("chooseFen generatedmate done", r); return r.mate; });
@@ -2708,7 +2819,8 @@ function App() {
 
       if (mate !== null){
         console.log("mate not null");
-        const pv = result.pv;
+        console.log("finding generated mate line again?");
+        const pv = await workerB.getBestLine(chessGame.fen(), 20).then(r => { console.log("chooseFen generatedmate done", r); return r.pv; });
         for (let i = 0; i < Math.abs(mate) * 2; i++){
           if (chessGame.isGameOver() === false){
             setBigChessPosition(chessGame.fen());
@@ -2957,13 +3069,14 @@ function App() {
         let score = 0, pieces, cpCount, clarity, onslaught, multiplier, bestMove;
         if(stake >= 3) {
           [score, pieces, cpCount, clarity, onslaught, multiplier, bestMove] = await predictCPL(newFens, 8, true, -91, -41, 10, -80, -40);
+          console.log("SCORE: " + score);
         }
         while(stake >= 3 && score < 20){
           console.log(stake + " STAKE");
           newFens = fens[Math.floor(Math.random() * fens.length)];
           [score, pieces, cpCount, clarity, onslaught, multiplier, bestMove] = await predictCPL(newFens, 8, true, -91, -41, 10, -80, -40);
+          console.log("SCORE: " + score);
         }
-        console.log("SCORE: " + score);
         while(bPosHistory.includes(newFens) === true || bigChessPosition === newFens){
           console.log("skipping duplicate fen" + newFens);
           if(bigChessPosition === newFens){
