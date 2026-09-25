@@ -917,7 +917,9 @@ function App() {
       console.log("NONEPV STARTING");
       try {
         console.log("NONEPV 1 " + bigChessPosition);
-        const bestLine = await workerA.getBestLine(bigChessPosition, 18);
+        const depth = isChallenge === "" ? 18 : 20;
+        const bestLine = await workerA.getBestLine(bigChessPosition, depth);
+        setNonePV(bestLine?.pv);
         console.log("NONEPV 2 " + bigChessPosition);
         const stockGame = new Chess(bigChessPosition);
         try{
@@ -930,12 +932,11 @@ function App() {
         }
         const stockfishEval = await workerB.getEval(stockGame.fen(), 20);
         console.log("NONEPV " + bestLine?.pv);
-        setNonePV(bestLine?.pv);
         if (movesplayed <= 0){
-          setStartingEval(stockfishEval);
-          setEvalHistory(prev => [...prev, stockfishEval]);
+          setStartingEval(-1 * stockfishEval);
+          setEvalHistory(prev => [...prev, -1 * stockfishEval]);
           console.log("Starting Eval logged: " + oldFen);
-          setOldEval(stockfishEval);
+          setOldEval(-1 * stockfishEval);
         }
         setStockEval(stockfishEval);
       } catch (error) {
@@ -1245,7 +1246,7 @@ function App() {
     if (movesplayed > -3){
       try {
         console.log("findBestMove started", { moveType, fenAfterMove, fenBeforeMove });
-        while (nonePVRef.current === ""){
+        while (nonePVRef.current === "" && !(showBack2 === true)){
           console.log("waiting for nonePV" + nonePV);
           await new Promise(resolve => setTimeout(resolve, 100));
         }
@@ -1302,11 +1303,11 @@ function App() {
         
         if (oldMove === bestMove2){
           setArrows(
-          bestMove
+          nextResponse
             ? [
                 {
-                  startSquare: bestMove.substring(0, 2) as Square,
-                  endSquare: bestMove.substring(2, 4) as Square,
+                  startSquare: nextResponse.substring(0, 2) as Square,
+                  endSquare: nextResponse.substring(2, 4) as Square,
                   color: "rgb(0, 128, 0)",
                 },
                 ...(bestResponse
@@ -1570,7 +1571,7 @@ function App() {
         }
       }
     }
-    stmMaterial = Math.round(stmMaterial * 10)
+    /*stmMaterial = Math.round(stmMaterial * 10)
     oppMaterial = Math.round(oppMaterial * 10)
     if (Math.abs(stmMaterial - oppMaterial) > 7) {
       multiplier *= 1.1;
@@ -1579,7 +1580,7 @@ function App() {
     if (stmMaterial % 10 !== oppMaterial % 10) {
       multiplier *= 1.1;
       console.log("material difference: stm " + stmMaterial + " vs opp " + oppMaterial + " multiplier: " + multiplier);
-    }
+    }*/
     pieces.sort(a => {
       if (a[0] === "p") return 1;
       if (a[0] === "n") return 2;
@@ -2445,18 +2446,36 @@ function App() {
       }
       
       console.log("Evaluating challenge move: " + isChallenge);
-      const stockfishSetup = await workerD.getBestLine(fenBeforeMove, 20).then(r => { console.log("chooseFen workerB done", r); return r; });
-      const ourEval = -1 * await workerC.getEval(chessGame.fen(), 20);
+      while (nonePVRef.current === ""){
+        console.log("waiting for nonePV");
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      const stockfishSetup = nonePVRef.current;
+      //const stockfishSetup = await workerD.getBestLine(fenBeforeMove, 20).then(r => { console.log("chooseFen workerB done", r); return r; });
+      //const ourEval = -1 * await workerC.getEval(chessGame.fen(), 20);
+      let ourEval = -10000;
       let bestEval = ourEval;
-      const pvb = stockfishSetup.pv;
+      const pvb = stockfishSetup;
       const stockfishMove = pvb?.split(" ")?.[0];
       const stockfishMoveSAN = uciToSan(stockfishMove, fenBeforeMove);
       if(stockfishMoveSAN !== playerMove){       
-        tryFenGame.load(fenBeforeMove);
-        tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
-        bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 20);
+        //tryFenGame.load(fenBeforeMove);
+        //tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
+        //bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 20);
+        ourEval = -1 * await workerC.getEval(chessGame.fen(),20);
+        while (stockEvalRef.current === undefined){
+          console.log("waiting for stockEval");
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        bestEval = -1 * stockEvalRef.current;
         console.log(stockfishMove + " not equals " + playerMove);
       }else{
+        while (stockEvalRef.current === undefined){
+          console.log("waiting for stockEval");
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        bestEval = -1 * stockEvalRef.current;
+        ourEval = bestEval;
         console.log(stockfishMoveSAN + " equals " + playerMove);
       }
       if(ourEval - bestEval >= -30){
@@ -2553,25 +2572,26 @@ function App() {
         await new Promise(resolve => setTimeout(resolve, 100));
       }
       const stockfishSetup = nonePVRef.current;
-      while (stockEvalRef.current === undefined){
+      /*while (stockEvalRef.current === undefined){
         console.log("waiting for stockEval");
         await new Promise(resolve => setTimeout(resolve, 100));
       }
-      let ourEval = stockEvalRef.current;
+      let ourEval = stockEvalRef.current;*/
+      let ourEval = -10000;
+      let bestEval = -10000;
       //let mate = result.mate;
 
       let stockMate = "";
       let ourMate = "";
       //let ourEval = -1 * await workerC.getEval(chessGame.fen(), 20);
       
-      let bestEval = ourEval;
       let streaker = currentStreak;
 
       const pvb = stockfishSetup;
       const stockfishMove = pvb?.split(" ")?.[0];
       const stockfishMoveSAN = uciToSan(stockfishMove, fenBeforeMove);
       if(stockfishMoveSAN !== playerMove){
-        ourEval = await workerC.getEval(chessGame.fen(), 20);
+        ourEval = -1 * await workerC.getEval(chessGame.fen(), 20);
         if(Math.abs(ourEval) > 1000){
           const [daOurEval, potMate] = await resolveEval(chessGame.fen(), 16, ourEval * -1);
           ourEval = -1 * daOurEval;
@@ -2579,7 +2599,12 @@ function App() {
         }
         tryFenGame.load(fenBeforeMove);
         tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
-        bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 20);
+        //bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 20);
+        while (stockEvalRef.current === undefined){
+          console.log("waiting for stockEval");
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        bestEval = -1 * stockEvalRef.current;
         if(Math.abs(bestEval) > 1000){
           const [daBestEval, potMate] = await resolveEval(tryFenGame.fen(), 16, bestEval * -1);
           bestEval = -1 * daBestEval;
@@ -2587,6 +2612,12 @@ function App() {
         }
         console.log(stockfishMove + " not equals " + playerMove);
       }else{
+        while (stockEvalRef.current === undefined){
+          console.log("waiting for stockEval");
+          await new Promise(resolve => setTimeout(resolve, 100));
+        }
+        ourEval =  -1 * stockEvalRef.current;
+        bestEval = ourEval;
         console.log(stockfishMoveSAN + " equals " + playerMove);
       }
       let doublemessage = false;
@@ -2867,7 +2898,7 @@ function App() {
         console.log("player failed to find mate");
         if(ourEval > 800){
           //fix
-        }
+        }//vivian is the best
       }
     }
 
