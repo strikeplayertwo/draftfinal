@@ -121,7 +121,8 @@ function EvalGraph({ evals, bPosHistory, bColors, onJumpToMove }: EvalGraphProps
         const x = 
           bPosHistory.length === 1
             ? width / 2
-            : (i / (bPosHistory.length - 1)) * width;
+            : ((2 * i + 1) / (bPosHistory.length * 2)) * width;
+            //was i and bPos - 1
 
         const squareSize = 200 / bPosHistory.length;
         return (
@@ -1224,6 +1225,7 @@ function App() {
         ]
       : []
     );
+    //setPosHistory(prev => [...prev, chessPos]);
   }
 
   async function findBestMove(moveType: string, chessPos: string, beforeFen: string = ""): Promise<void> {
@@ -1246,10 +1248,12 @@ function App() {
     if (movesplayed > -3){
       try {
         console.log("findBestMove started", { moveType, fenAfterMove, fenBeforeMove });
+        if (moveType !== "analysis"){
         while (nonePVRef.current === "" && !(showBack2 === true)){
           console.log("waiting for nonePV" + nonePV);
           await new Promise(resolve => setTimeout(resolve, 100));
         }
+      }
         console.log("done waiting " + nonePV + " | " + nonePVRef.current);
         let result = nonePVRef.current;
         if(oldMove !== nonePVRef.current.split(" ")[0]) {
@@ -1298,7 +1302,10 @@ function App() {
           setDisplayEval(formatted);
         };
 
-        const pv2 = nonePVRef.current;
+        let pv2 = nonePVRef.current;
+        if(moveType === "analysis"){
+          pv2 = (await workerA.getBestLine(fenBeforeMove, 18)).pv;
+        }
         const bestMove2 = pv2?.split(" ")?.[0];
         
         if (oldMove === bestMove2){
@@ -2486,7 +2493,7 @@ function App() {
         //fix -- show analysis on small board?
         stopEffex();
         let thisaccuracy = 1000;
-        setBColors(prev => [...prev, "rgb(221, 255, 0)"]);
+        setBColors(prev => [...prev, "rgb(0, 251, 255)"]);
         displayAccuracy = Math.round(((accuracy * (movesplayed) + thisaccuracy) / (movesplayed + 1)));
         if (movesplayed !== 0){
           setAccuracy(displayAccuracy);
@@ -2502,7 +2509,7 @@ function App() {
         //fix -- show analysis on small board?
         stopEffex();
         let thisaccuracy = 850;
-        setBColors(prev => [...prev, "rgb(221, 255, 0)"]);
+        setBColors(prev => [...prev, "rgb(0, 137, 7)"]);
         displayAccuracy = Math.round(((accuracy * (movesplayed) + thisaccuracy) / (movesplayed + 1)));
         console.log("Accuracy " + accuracy + " this: " + thisaccuracy + " Moves: " + movesplayed);
         if (movesplayed !== 0){
@@ -2535,7 +2542,7 @@ function App() {
         setShowEffex("Correct ✅ +50 eval");
         stopEffex();
         let thisaccuracy = 1000;
-        setBColors(prev => [...prev, "rgb(221, 255, 0)"]);
+        setBColors(prev => [...prev, "rgb(0, 251, 255)"]);
         displayAccuracy = Math.round(((accuracy * (movesplayed) + thisaccuracy) / (movesplayed + 1)));
         if (movesplayed !== 0){
           setAccuracy(displayAccuracy);
@@ -4061,6 +4068,7 @@ function App() {
                 const isSelected = selectedLines.includes(key);
                 const isPractice = practiceLines.includes(key);
                 //const isPractice = false;
+                if (stake === 0 && userProgress.openings_level_4?.includes(pendingOpening)) setStake(1);
                 return (
                   <div key={key} style={{
                     display: "flex",
@@ -4200,7 +4208,7 @@ function App() {
         }}>Daily</button>
         <button onClick={() => setScreen("settings")}>Settings</button>
         <button onClick={() => setScreen("analytics")}>Analytics</button>
-        <div className="tierz">{userProgress.tier}</div>
+        <div className="tierz">{userProgress.tier.slice(1, -1)}</div>
         <div className="tierz">{"Lvl " + userProgress.small_level}</div>
       </div>
     );
