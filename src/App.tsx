@@ -89,6 +89,8 @@ const tierChange: Record<number, string> = {
 function EvalGraph({ evals, bPosHistory, bColors, onJumpToMove }: EvalGraphProps) {
   if (evals.length < 2) return null;
 
+  //console.log("e " + evals.length + " p" + bPosHistory.length + " c" + bColors.length);
+
   const width = 500;
   const height = 200;
 
@@ -305,6 +307,7 @@ function App() {
   const [movesplayed, setMovesPlayed] = useState(-1);
   const [gameResult, setGameResult] = useState("");
   const [showEffex, setShowEffex] = useState("");
+  const [showPopup, setShowPopup] = useState("");
   const [currentStreak, setCurrentStreak] = useState(0);
   const [streakMsg, setStreakMsg] = useState("Current Streak: 0");
   const [highestStreak, setHighestStreak] = useState(0);
@@ -330,12 +333,13 @@ function App() {
   const [dif, setDif] = useState(0);
   const [chessPosition, setChessPosition] = useState("");
   const [bigChessPosition, setBigChessPosition] = useState("");
+  const [beginPosition, setBeginPosition] = useState("");
   const [moveFrom, setMoveFrom] = useState('');
   const [oldMove, setOldMove] = useState('');
   const [oldFen, setOldFen] = useState("");
   const tryFenRef = useRef<Chess | null>(null);
   const [accuracy, setAccuracy] = useState(100);
-  const [screen, setScreen] = useState<"title" | "versus" | "classic" | "daily" | "settings" | "analytics">("title");
+  const [screen, setScreen] = useState<"title" | "versus" | "classic" | "daily" | "settings" | "analytics" | "beginner">("title");
   const [streak35Count, setStreak35Count] = useState(0);
 
   //supabase stuff
@@ -872,6 +876,7 @@ function App() {
   const [smallSquares, setSmallSquares] = useState<Record<string, React.CSSProperties>>({});
   const [arrows, setArrows] = useState<Arrow[]>([]);
   const [arrows2, setArrows2] = useState<Arrow[]>([]);
+  const [beginArrows, setBeginArrows] = useState<Arrow[]>([]);
   const [oldEval, setOldEval] = useState(-10000);
   const isAnalyzing = useRef(false);
   const [moveInfos, setMoveInfos] = useState<MoveInfo[]>([]);
@@ -988,6 +993,8 @@ function App() {
 
   async function triggerEnd(finalmessage: string, accuracy: number, result: string, opening: string){
     if(result === "Win" && opening === "English" && !userProgress.unlocked_achievements?.includes("C4!!!")){
+      setShowPopup("Achievement unlocked! " + "C4!!!");
+      stopPopup("");
       const { data, error } = await supabase
         .rpc('unlock_achievement', { 
           p_user_id: user!.id, 
@@ -997,6 +1004,8 @@ function App() {
         console.log(data + " " + error);
       }
     }else if(result === "Win" && rossolimo && opening === "Sicilian" && !userProgress.unlocked_achievements?.includes("Chess speaks for itself")){
+      setShowPopup("Achievement unlocked! " + "Chess speaks for itself");
+      stopPopup("");
       const { data, error } = await supabase
         .rpc('unlock_achievement', { 
           p_user_id: user!.id, 
@@ -1477,6 +1486,16 @@ function App() {
       await new Promise(resolve => setTimeout(resolve, 1500));
     }
     setShowEffex("");
+  }
+
+  async function stopPopup(damessage: string = "") {
+    await new Promise(resolve => setTimeout(resolve, 5000));
+    /*if(damessage !== ""){
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      setShowPopup(damessage);
+      await new Promise(resolve => setTimeout(resolve, 1500));
+    }*/
+    setShowPopup("");
   }
 
   const PIECE_VALUES: Record<string, number> = {
@@ -2257,6 +2276,8 @@ function App() {
       setBColors(prev => [...prev, "rgb(255, 0, 0)"]);
     }
     if(thisaccuracy >= 800 && fenScores[movesplayed] >= 80 && !userProgress.unlocked_achievements?.includes("The 80 80 Rule")){
+      setShowPopup("Achievement unlocked! " + "The 80 80 Rule");
+      stopPopup("");
       const { data, error } = await supabase
         .rpc('unlock_achievement', { 
           p_user_id: user!.id, 
@@ -2418,10 +2439,12 @@ function App() {
   }
 
   async function chooseFen(fenBeforeMove: string, playerzMove: string) {
-    /*const { data, error } = await supabase
+    /*setShowPopup("Achievement unlocked! " + "The 80 80 Rule");
+    stopPopup("");
+    const { data, error } = await supabase
       .rpc('unlock_achievement', { 
         p_user_id: user!.id, 
-        p_p_achievement_name: "test"
+        p_achievement_name: "test"
       });
     if(error){
       console.log(data + " " + error.message + " " + error.hint);
@@ -2434,6 +2457,7 @@ function App() {
     const tryFenGame = tryFenRef.current;
     if (!tryFenGame) return;
     let ourOldEval = oldEval;
+    if(movesplayed === 0) ourOldEval = startingEval;
 
     let evalA = evalHistory[evalHistory.length - 1];
     let displayAccuracy = 0;
@@ -2442,6 +2466,8 @@ function App() {
 
     if(isChallenge !== ""){
       if(fenBeforeMove === "rnbqkb1r/pp2ppp1/2p2n1p/6N1/3P4/8/PPP2PPP/R1BQKBNR w KQkq - 0 6" && playerMove === "Nxf7" && !userProgress.unlocked_achievements?.includes("Because I said so")){
+        setShowPopup("Achievement unlocked! " + "Because I said so");
+        stopPopup();
         const { data, error } = await supabase
           .rpc('unlock_achievement', { 
             p_user_id: user!.id, 
@@ -2493,7 +2519,7 @@ function App() {
         //fix -- show analysis on small board?
         stopEffex();
         let thisaccuracy = 1000;
-        setBColors(prev => [...prev, "rgb(0, 251, 255)"]);
+        setBColors(prev => [...prev, "rgb(0, 255, 55)"]);
         displayAccuracy = Math.round(((accuracy * (movesplayed) + thisaccuracy) / (movesplayed + 1)));
         if (movesplayed !== 0){
           setAccuracy(displayAccuracy);
@@ -2542,7 +2568,7 @@ function App() {
         setShowEffex("Correct ✅ +50 eval");
         stopEffex();
         let thisaccuracy = 1000;
-        setBColors(prev => [...prev, "rgb(0, 251, 255)"]);
+        setBColors(prev => [...prev, "rgb(0, 255, 55)"]);
         displayAccuracy = Math.round(((accuracy * (movesplayed) + thisaccuracy) / (movesplayed + 1)));
         if (movesplayed !== 0){
           setAccuracy(displayAccuracy);
@@ -2605,7 +2631,11 @@ function App() {
           ourMate = potMate;
         }
         tryFenGame.load(fenBeforeMove);
-        tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
+        try{
+          tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
+        }catch (Exception){
+          console.log(Exception + " EXCEPTION");
+        }
         //bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 20);
         while (stockEvalRef.current === undefined){
           console.log("waiting for stockEval");
@@ -2739,6 +2769,8 @@ function App() {
       console.log("Accuracy " + accuracy + " this: " + thisaccuracy + " Moves: " + movesplayed);
 
       if(thisaccuracy >= 1000 && playerMove === "h4" && !userProgress.unlocked_achievements?.includes("H4!!!")){
+        setShowPopup("Achievement unlocked! " + "H4!!!");
+        stopPopup();
         const { data, error } = await supabase
           .rpc('unlock_achievement', { 
             p_user_id: user!.id, 
@@ -2748,6 +2780,8 @@ function App() {
           console.log(data + " " + error);
         }
       }else if(thisaccuracy >= 1000 && playerMove === "g6" && !userProgress.unlocked_achievements?.includes("Like a G6")){
+        setShowPopup("Achievement unlocked! " + "Like a G6");
+        stopPopup();
         const { data, error } = await supabase
           .rpc('unlock_achievement', { 
             p_user_id: user!.id, 
@@ -2758,6 +2792,8 @@ function App() {
         }
       }
       if(streaker >= 7 && !userProgress.unlocked_achievements?.includes("Lucky 7")){
+        setShowPopup("Achievement unlocked! " + "Lucky 7");
+        stopPopup();
         const { data, error } = await supabase
           .rpc('unlock_achievement', { 
             p_user_id: user!.id, 
@@ -2771,14 +2807,16 @@ function App() {
         tryFenGame.load(fenBeforeMove);
         try{
           if(tryFenGame.move({from: playerzMove.substring(0, 2), to: playerzMove.substring(2, 4), promotion: 'q'}).isEnPassant() === true){
+            setShowPopup("Achievement unlocked! " + "Pardon my French");
+            stopPopup();
             const { data, error } = await supabase
-          .rpc('unlock_achievement', { 
-            p_user_id: user!.id, 
-            p_achievement_name: "Pardon my French"
-          });
-        if(error){
-          console.log(data + " " + error);
-        }
+              .rpc('unlock_achievement', { 
+                p_user_id: user!.id, 
+                p_achievement_name: "Pardon my French"
+              });
+            if(error){
+              console.log(data + " " + error);
+            }
           }
         }catch{
           console.log("achievement error");
@@ -2815,6 +2853,8 @@ function App() {
       console.log(attackerValues + " | " + defenderValues + " startvalue: " + startValue + " valueMove: " + value);
 
       if(value < 0 && thisaccuracy >= 1000 && !userProgress.unlocked_achievements?.includes("THE ROOOOOK!!!")){
+        setShowPopup("Achievement unlocked! " + "THE ROOOOOK!!!");
+        stopPopup();
         const { data, error } = await supabase
           .rpc('unlock_achievement', { 
             p_user_id: user!.id, 
@@ -2852,13 +2892,13 @@ function App() {
       let mate = null;
       if(generatedmate){
         console.log("finding generated mate line");
-        mate = await workerA.getBestLine(chessGame.fen(), 20).then(r => { console.log("chooseFen generatedmate done", r); return r.mate; });
+        mate = await workerA.getBestLine(chessGame.fen(), 30).then(r => { console.log("chooseFen generatedmate done", r); return r.mate; });
       }
 
       if (mate !== null){
         console.log("mate not null");
         console.log("finding generated mate line again?");
-        const pv = await workerB.getBestLine(chessGame.fen(), 20).then(r => { console.log("chooseFen generatedmate done", r); return r.pv; });
+        const pv = await workerB.getBestLine(chessGame.fen(), 30).then(r => { console.log("chooseFen generatedmate done", r); return r.pv; });
         for (let i = 0; i < Math.abs(mate) * 2; i++){
           if (chessGame.isGameOver() === false){
             setBigChessPosition(chessGame.fen());
@@ -3815,6 +3855,63 @@ function App() {
       }
     }
 
+  async function beginOnSquareClick({
+    square,
+    piece
+  }: SquareHandlerArgs){
+    const chessGame = chessGameRef.current;
+    if (!chessGame) return;
+    if (!moveFrom && piece){
+      const hasMoveOptions = getMoveOptions(square as Square);
+      if (hasMoveOptions){
+        setMoveFrom(square);
+      }
+      return;
+    }
+    const moves = chessGame.moves({
+      square: moveFrom as Square,
+      verbose: true
+    });
+    const foundMove = moves.find(m => m.from === moveFrom && m.to === square);
+    if (!foundMove) {
+      const hasMoveOptions = getMoveOptions(square as Square);
+      setMoveFrom(hasMoveOptions ? square: '');
+      return;
+    }
+    try {
+      const sendthatfen = chessGame.fen();
+      setOldFen(chessGame.fen());
+      chessGame.move({
+        from: moveFrom,
+        to: square,
+        promotion: 'q'
+      });
+      setOldMove(moveFrom + square);
+      if (screen !== "daily"){
+        setChessPosition(chessGame.fen());
+        setPosHistory([chessPosition]);
+        if(chessGame.isCheckmate() && screen === "classic"){
+          console.log("Successful mate in 1 detected");
+          triggerEnd("You win! Final result: You mate in 1 " + "Accuracy: " + accuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (brilcounter) + ", Best Moves Played: " + (bmcounter) + ", Starting Eval: " + startingEval, accuracy/10, "Win", gameOpening);
+          return;
+        }
+      }
+      chooseBFen(sendthatfen, moveFrom + square);
+      setFens(fens.filter(f => f !== sendthatfen));
+      console.log("removed fen: " + sendthatfen);
+    }catch {
+      const hasMoveOptions = getMoveOptions(square as Square);
+      if (hasMoveOptions){
+        setMoveFrom(square);
+      }
+      return;
+    }
+
+    setMoveFrom('');
+    setOptionSquares({});
+    setDailySquares({});
+  }
+
   function smallOnSquareClick({
     square,
     piece
@@ -3904,6 +4001,16 @@ function App() {
     onPieceDrop,
     onSquareClick,
     position: bigChessPosition,
+    squareStyles: optionSquares,
+    id: 'board2',
+    darkSquareStyle: isPinkMode? { backgroundColor: '#ff66b3'} : { backgroundColor: '#b58863'},
+  };
+
+  const beginBoardOptions = {
+    arrows: beginArrows,
+    onPieceDrop: onPieceDrop,
+    onSquareClick: beginOnSquareClick,
+    position: beginPosition,
     squareStyles: optionSquares,
     id: 'board2',
     darkSquareStyle: isPinkMode? { backgroundColor: '#ff66b3'} : { backgroundColor: '#b58863'},
@@ -4210,6 +4317,12 @@ function App() {
         <button onClick={() => setScreen("analytics")}>Analytics</button>
         <div className="tierz">{userProgress.tier.slice(1, -1)}</div>
         <div className="tierz">{"Lvl " + userProgress.small_level}</div>
+        <button className="begin" style={{
+          opacity: userProgress?.small_level > 1 ? 0 : 100,
+          cursor: userProgress?.small_level > 1 ? "default" : "pointer",
+        }}onClick={() => {
+          if(!(userProgress?.small_level > 1)) setScreen("beginner");
+        }}>Play Beginner Mode</button>
       </div>
     );
   }
@@ -4232,6 +4345,41 @@ function App() {
         {gameHistory.map((game) => (
           <li key={game.id}>{new Date(game.created_at).toLocaleDateString()} ({game.result}) — {game.accuracy.toFixed(1)}%, {game.opening}</li>
         ))}
+      </div>
+    );
+  }
+
+  if (screen === "beginner") {
+    return (
+      <div>
+        <button onClick={() => setScreen("title")}>← Back</button>
+        <div className="game-container">
+          <div className="board-layer">
+            <div className="boards">
+              <div id ="board2">
+              <Chessboard
+                options={beginBoardOptions}
+              />
+              </div>
+            </div>
+          </div>
+
+          <div
+            className={`overlay ${showEffex ? "overlay-front" : "overlay-back"}`}
+          >
+          <div className="effex-box">
+            <h3>{showEffex}</h3>
+          </div>
+          </div>
+
+          <div
+            className={`aoverlay ${showPopup ? "aoverlay-front" : "aoverlay-back"}`}
+          >
+          <div className="popup-box">
+            <h3>{showPopup}</h3>
+          </div>
+          </div>
+        </div>
       </div>
     );
   }
@@ -4337,6 +4485,15 @@ function App() {
         >
         <div className="effex-box">
           <h3>{showEffex}</h3>
+        </div>
+          {/* result UI */}
+        </div>
+
+        <div
+          className={`aoverlay ${showPopup ? "aoverlay-front" : "aoverlay-back"}`}
+        >
+        <div className="popup-box">
+          <h3>{showPopup}</h3>
         </div>
           {/* result UI */}
         </div>
