@@ -333,13 +333,14 @@ function App() {
   const [dif, setDif] = useState(0);
   const [chessPosition, setChessPosition] = useState("");
   const [bigChessPosition, setBigChessPosition] = useState("");
-  const [beginPosition, setBeginPosition] = useState("");
+  const [beginPosition, setBeginPosition] = useState("1rk5/8/8/8/4K3/8/8/8 w - - 0 1");
   const [moveFrom, setMoveFrom] = useState('');
   const [oldMove, setOldMove] = useState('');
   const [oldFen, setOldFen] = useState("");
   const tryFenRef = useRef<Chess | null>(null);
+  
   const [accuracy, setAccuracy] = useState(100);
-  const [screen, setScreen] = useState<"title" | "versus" | "classic" | "daily" | "settings" | "analytics" | "beginner">("title");
+  const [screen, setScreen] = useState<"title" | "versusHP" | "versusC" | "classic" | "daily" | "settings" | "analytics" | "beginner">("title");
   const [streak35Count, setStreak35Count] = useState(0);
 
   //supabase stuff
@@ -384,7 +385,17 @@ function App() {
   //newer stuff
   const [nonePV, setNonePV] = useState<string>("");
   const [stockEval, setStockEval] = useState<number>();
-  const [playersMove, setPlayersMove] = useState<string>("");
+  //const [playersMove, setPlayersMove] = useState<string>("");
+  const [showVersusSelect, setShowVersusSelect] = useState(false);
+
+  //beginner mode
+  const [phase, setPhase] = useState<number>(0);
+  const [checkCount, setCheckCount] = useState<number>(0);
+  const [errorPhase, setErrorPhase] = useState<number>(0);
+  const [isBeginFirstMove, setIsBeginFirstMove] = useState<boolean>(true);
+  const [beginText, setBeginText] = useState<string>("");
+  const beginPositionRef = useRef("");
+
 
   const nonePVRef = useRef(nonePV);
   useEffect(() => {
@@ -874,6 +885,7 @@ function App() {
   const [optionSquares, setOptionSquares] = useState<Record<string, React.CSSProperties>>({});
   const [dailySquares, setDailySquares] = useState<Record<string, React.CSSProperties>>({});
   const [smallSquares, setSmallSquares] = useState<Record<string, React.CSSProperties>>({});
+  const [beginSquares, setBeginSquares] = useState<Record<string, React.CSSProperties>>({});
   const [arrows, setArrows] = useState<Arrow[]>([]);
   const [arrows2, setArrows2] = useState<Arrow[]>([]);
   const [beginArrows, setBeginArrows] = useState<Arrow[]>([]);
@@ -957,6 +969,41 @@ function App() {
     }
   }, [bigChessPosition])
 
+  useEffect(() => {
+    beginPositionRef.current = beginPosition;
+    console.log("BEGINUPDATE");
+    setNonePV("");
+    setStockEval(undefined);
+    const startIt = async () => {
+      console.log("NONEPV STARTING");
+      try {
+        console.log("NONEPV 1 " + beginPosition);
+        const depth = 18;
+        const bestLine = await workerA.getBestLine(beginPosition, depth);
+        setNonePV(bestLine?.pv);
+        console.log("NONEPV 2 " + beginPosition);
+        const stockGame = new Chess(beginPosition);
+        try{
+          const stockMove = bestLine?.pv.split(" ")?.[0];
+          console.log("NONEPV 3 " + bestLine?.pv);
+          stockGame.move({ from: stockMove.charAt(0) + stockMove.charAt(1), to: stockMove.charAt(2) + stockMove.charAt(3) });
+          console.log("NONEPV 4 " + stockMove);
+        }catch (error){
+          console.log("EVALERROR" + error);
+        }
+        const stockfishEval = await workerB.getEval(stockGame.fen(), 20);
+        console.log("NONEPV " + bestLine?.pv);
+        setStockEval(stockfishEval);
+      } catch (error) {
+        console.log("EVALERROR");
+      }
+    }
+    if(phase > 0){
+      console.log("STARTING");
+      startIt().then(() => {console.log("EVALDONE")})
+    }
+  }, [beginPosition])
+
   function handleJumpToMove(index: number) {
     const smallGame = smallGameRef.current;
     if (!smallGame) return;
@@ -994,7 +1041,7 @@ function App() {
   async function triggerEnd(finalmessage: string, accuracy: number, result: string, opening: string){
     if(result === "Win" && opening === "English" && !userProgress.unlocked_achievements?.includes("C4!!!")){
       setShowPopup("Achievement unlocked! " + "C4!!!");
-      stopPopup("");
+      stopPopup();
       const { data, error } = await supabase
         .rpc('unlock_achievement', { 
           p_user_id: user!.id, 
@@ -1005,7 +1052,7 @@ function App() {
       }
     }else if(result === "Win" && rossolimo && opening === "Sicilian" && !userProgress.unlocked_achievements?.includes("Chess speaks for itself")){
       setShowPopup("Achievement unlocked! " + "Chess speaks for itself");
-      stopPopup("");
+      stopPopup();
       const { data, error } = await supabase
         .rpc('unlock_achievement', { 
           p_user_id: user!.id, 
@@ -1488,7 +1535,7 @@ function App() {
     setShowEffex("");
   }
 
-  async function stopPopup(damessage: string = "") {
+  async function stopPopup() {
     await new Promise(resolve => setTimeout(resolve, 5000));
     /*if(damessage !== ""){
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -1513,6 +1560,24 @@ function App() {
 
     const stmFen = [...fenParts]; stmFen[1] = sideToMove;
     const oppFen = [...fenParts]; oppFen[1] = opponent;
+
+    if (fenParts[3] !== "-") {
+      const epSquare = fenParts[3];
+      
+      if (sideToMove === "w" && !epSquare.endsWith("6")) {
+          stmFen[3] = "-";
+      }
+      if (sideToMove === "b" && !epSquare.endsWith("3")) {
+          stmFen[3] = "-";
+      }
+
+      if (opponent === "w" && !epSquare.endsWith("6")) {
+          oppFen[3] = "-";
+      }
+      if (opponent === "b" && !epSquare.endsWith("3")) {
+          oppFen[3] = "-";
+      }
+    }
     const stmGame = new Chess(stmFen.join(" "));
     const oppGame = new Chess(oppFen.join(" "));
 
@@ -1643,6 +1708,24 @@ function App() {
     const opponent = sideToMove === "w" ? "b" : "w";
     const stmFen = [...fenParts]; stmFen[1] = sideToMove;
     const oppFen = [...fenParts]; oppFen[1] = opponent;
+
+    if (fenParts[3] !== "-") {
+      const epSquare = fenParts[3];
+      
+      if (sideToMove === "w" && !epSquare.endsWith("6")) {
+          stmFen[3] = "-";
+      }
+      if (sideToMove === "b" && !epSquare.endsWith("3")) {
+          stmFen[3] = "-";
+      }
+
+      if (opponent === "w" && !epSquare.endsWith("6")) {
+          oppFen[3] = "-";
+      }
+      if (opponent === "b" && !epSquare.endsWith("3")) {
+          oppFen[3] = "-";
+      }
+    }
     const stmGame = new Chess(stmFen.join(" "));
     const oppGame = new Chess(oppFen.join(" "));
 
@@ -1957,9 +2040,13 @@ function App() {
     let daDailyFens = await extractFENsFromGames(pgnData,94, "None", 10);
     let chosenFens: string[] = [];
     let chosenMoves: string[] = [];
+    let chosenFens2: string[] = [];
+    let chosenMoves2: string[] = [];
+    let chosenScores2: number[] = [];
+    const chosenStats2: {fen: string, score: number, pieces: number, cpCount: number, clarity: number, onslaught: number, multiplier: number}[] = [];
     const chosenScores: number[] = [];
     const chosenStats: {fen: string, score: number, pieces: number, cpCount: number, clarity: number, onslaught: number, multiplier: number}[] = [];
-    for (let i = 0; i < 200; i++){
+    for (let i = 0; i < 100; i++){
       const newFen = daDailyFens[Math.floor(Math.random() * daDailyFens.length)];
       if ((!newFen) || (chosenFens.includes(newFen))){
         console.log("No fen/duplicate fen found, skipping iteration " + i);
@@ -1967,7 +2054,7 @@ function App() {
       }
 
       let [score, pieces, cpCount, clarity, onslaught, multiplier, bestMove] = await predictCPL(newFen, 8, true, -91, -41, 10, -80, -40);
-      if (score > 60 && score > Math.min(...chosenScores)){
+      /*if (score > 60 && score > Math.min(...chosenScores)){
         [score, pieces, cpCount, clarity, onslaught, multiplier] = await predictCPL(newFen, 18, true, -91, -41, 10, -80, -40);
       }
       if (score > 60 && score > Math.min(...chosenScores)){
@@ -1975,8 +2062,8 @@ function App() {
       }
       if (score > 60 && score > Math.min(...chosenScores)){
         [score, pieces, cpCount, clarity, onslaught, multiplier] = await predictCPL(newFen, 24, true, -91, -41, 10, -80, -40);
-      }
-      if (chosenFens.length < 5) {
+      }*/
+      if (chosenFens.length < 20) {
         if(!chosenFens.includes(newFen)){
           chosenFens.push(newFen);
           chosenScores.push(score);
@@ -2007,10 +2094,40 @@ function App() {
       console.log(score + " " + pieces + " " + cpCount + " " + clarity + " " + onslaught + " " + multiplier + " " + newFen);
       console.log(i);
     }
-    setDailyFens(chosenFens);
-    setFenScores(chosenScores);
-    setDailyBestMoves(chosenMoves);
-    return chosenFens;
+    for (let i = 0; i < 20; i++){
+      let newFen = chosenFens[i];
+      let [score, pieces, cpCount, clarity, onslaught, multiplier, bestMove] = await predictCPL(newFen, 16, true, -91, -41, 10, -80, -40);
+      if (chosenFens2.length < 5) {
+        if(!chosenFens2.includes(newFen)){
+          chosenFens2.push(newFen);
+          chosenScores2.push(score);
+          chosenMoves2.push(bestMove);
+          chosenStats2.push({fen: newFen, score, pieces, cpCount, clarity, onslaught, multiplier});
+          console.log ("Chosen fen " + newFen + " with score " + score);
+          const formatted = chosenFens2.map((_,index) => `: ${chosenScores2[index]} Calculation: ${chosenStats2[index].pieces}/25 Decision: ${chosenStats2[index].cpCount}/20 Clarity: ${chosenStats2[index].clarity}/25 Onslaught: ${chosenStats2[index].onslaught}/30 Mult: ${chosenStats2[index].multiplier}`)
+            .join("\n");
+          setPosList(formatted);
+        }
+      }else if (score > Math.min(...chosenScores2)) {
+        if(!chosenFens2.includes(newFen)){
+          const minIndex = chosenScores2.indexOf(Math.min(...chosenScores2));
+          chosenFens2[minIndex] = newFen;
+          console.log ("Replacing " + chosenScores2[minIndex] + " with score " + score);
+          chosenScores2[minIndex] = score;
+          chosenMoves2[minIndex] = bestMove;
+          chosenStats2[minIndex] = {fen: newFen, score, pieces, cpCount, clarity, onslaught, multiplier};
+          const formatted = chosenFens2.map((_, index) => `: ${chosenScores2[index]} Calculation: ${chosenStats2[index].pieces}/25 Decision: ${chosenStats2[index].cpCount}/20 Clarity: ${chosenStats2[index].clarity}/25 Onslaught: ${chosenStats2[index].onslaught}/30 Mult: ${chosenStats2[index].multiplier}`)
+            .join("\n");
+          setPosList(formatted);
+        }else {
+          console.log("duplicate fen: " + newFen + " " + chosenFens + " " + chosenFens2.includes(newFen));
+        }
+      }
+    }
+    setDailyFens(chosenFens2);
+    setFenScores(chosenScores2);
+    setDailyBestMoves(chosenMoves2);
+    return chosenFens2;
   }
 
   /*async function generateFENsFromOpening(mainline: string): Promise<string[]> {
@@ -2237,9 +2354,8 @@ function App() {
       workerC.getEval(chessGame.fen(), 20),
       workerD.getBestLine(fenBeforeMove, 20).then(r => { console.log("chooseFen workerB done", r); return r; }),
     ]);*/
-    let ourEval = await workerC.getEval(chessGame.fen(), 24);
+    let ourEval = -1 * await workerC.getEval(chessGame.fen(), 20);
     const stockfishSetup = dailyBestMoves[fenIndex];
-    ourEval = -1 * ourEval;
     let bestEval = ourEval;
 
     //const pvb = stockfishSetup.pv;
@@ -2249,7 +2365,7 @@ function App() {
     if(stockfishMove !== playerMove){
       tryFenGame.load(fenBeforeMove);
       tryFenGame.move({from: stockfishMove.substring(0, 2), to: stockfishMove.substring(2, 4), promotion: 'q'});
-      bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 24);
+      bestEval = -1 * await workerD.getEval(tryFenGame.fen(), 20);
       console.log(stockfishMove + " not equals " + playerMove);
     }else{
       console.log(stockfishMove + " equals " + playerMove);
@@ -2277,7 +2393,7 @@ function App() {
     }
     if(thisaccuracy >= 800 && fenScores[movesplayed] >= 80 && !userProgress.unlocked_achievements?.includes("The 80 80 Rule")){
       setShowPopup("Achievement unlocked! " + "The 80 80 Rule");
-      stopPopup("");
+      stopPopup();
       const { data, error } = await supabase
         .rpc('unlock_achievement', { 
           p_user_id: user!.id, 
@@ -2437,6 +2553,142 @@ function App() {
     
     return startValue;
   }
+  
+  async function validateBeginMove(playerMove: string){
+    while (nonePVRef.current === ""){
+      console.log("waiting for nonePV");
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    const stockMove = nonePV.split(" ")[0];
+    //const playerMoveSAN = ucitoSan(playerMove);
+    let thisaccuracy = 1000;
+    console.log("BEGIN STEP1 " + stockMove + playerMove);
+    if(stockMove !== playerMove){
+      let ourEval = -10000;
+      try{
+        const chessGame = new Chess(beginPosition);
+        chessGame.move({from: playerMove.substring(0, 2) as Square, to: playerMove.substring(2, 4) as Square});
+        ourEval = -1 * await workerD.getEval(chessGame.fen(), 18);
+      }catch{
+        console.log("ERROR!!");
+      }
+      while (stockEvalRef.current === undefined){
+        console.log("waiting for stockEval");
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      const bestEval = -1 * stockEvalRef.current;
+      thisaccuracy = Math.round((100 * Math.exp((ourEval - bestEval) / 200)) * 10);
+      console.log("BEGIN STEP3 " + ourEval + " " + bestEval + " " + thisaccuracy);
+    }
+    if(thisaccuracy > 850){
+      setCheckCount(checkCount + 1);
+      if(checkCount > 4){
+        if(phase === 2 || phase === 3){await mateRunThru(phase);}
+        setPhase(phase + 1);
+      }
+      setErrorPhase(0);
+    }else{
+      setShowEffex("Not Correct");
+      if(errorPhase === 0){//highlight square
+        setBeginSquares({
+          [stockMove.substring(0, 2) as Square]: {
+            backgroundColor: 'rgba(255,0,0,0.2)'
+          }
+        }); 
+      }else{//show move
+        const startSquare = stockMove.substring(0, 2) as Square;
+        const endSquare = stockMove.substring(2, 4) as Square;
+        setBeginSquares({
+          [startSquare]: {
+            backgroundColor: 'rgba(255,0,0,0.2)'
+          }
+        });
+        setBeginArrows(prev => [...prev, {
+          startSquare: startSquare, endSquare: endSquare, color: "#4caf50"
+        }]);
+      }
+      setErrorPhase(errorPhase + 1);
+    }
+  }
+
+  async function chooseBFen(beforeFen: string, playerMove: string){
+    console.log(phase + " P|C " + checkCount);
+    //chessGameRef.current = new Chess();
+    const chessGame = chessGameRef.current;
+    if(!chessGame){
+      console.log("NO CHESSGAME!!");
+      return;
+    }
+    if(isBeginFirstMove === true){
+      if(beforeFen !== ""){
+        setIsBeginFirstMove(false);
+        console.log("yurt");
+        return;
+      }
+    }else{
+      validateBeginMove(playerMove);
+      console.log("yort");
+    }
+    if(phase === 1 || phase === 0){
+      chessGame.load("1rk5/8/8/8/4K3/8/8/8 w - - 0 1");
+      chessGameRef.current = chessGame;
+      setBeginPosition(chessGame.fen());
+      setBeginSquares({
+        ["e4" as Square]: {
+          backgroundColor: 'rgba(255,0,0,0.2)'
+        }
+      });
+      setBeginText("Kings can move 1 square in any direction. Click on the king to move it.");
+      //while (chessGameRef.current.fen() === "1rk5/8/8/8/4K3/8/8/8 w - - 0 1"){
+      while (beginPositionRef.current === "1rk5/8/8/8/4K3/8/8/8 w - - 0 1"){
+        console.log("waiting " + chessGameRef.current.fen() + " " + chessGameRef.current);
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      setShowEffex("✅");
+      stopEffex();
+      setPhase(2);
+
+      chessGame.load("8/8/2k1q3/8/8/2K1Q3/8/8 w - - 0 1");
+      setBeginPosition(chessGame.fen());
+      setBeginSquares({
+        ["e3" as Square]: {
+          backgroundColor: 'rgba(255,0,0,0.2)'
+        }
+      });
+      setBeginText("Queens can move in any direction. Capture the enemy Queen.");
+      await new Promise(resolve => setTimeout(resolve, 50));
+      while (beginPositionRef.current !== "8/8/2k1Q3/8/8/2K5/8/8 b - - 0 1"){
+        if(beginPositionRef.current !== "8/8/2k1q3/8/8/2K1Q3/8/8 w - - 0 1"){
+          setBeginPosition("8/8/2k1q3/8/8/2K1Q3/8/8 w - - 0 1");
+          chessGameRef.current = new Chess("8/8/2k1q3/8/8/2K1Q3/8/8 w - - 0 1");
+          setShowEffex("Not Correct");
+          stopEffex();
+        }
+        await new Promise(resolve => setTimeout(resolve, 100));
+      }
+      setShowEffex("✅");
+      stopEffex();
+      console.log("KINGQUEEN");
+    }
+    setBeginArrows([]);
+    console.log("phase now" + phase);
+    if(phase === 2){
+      //if() return;
+      
+    }else if(phase === 3){
+      console.log("ROOKKING");
+    }
+
+    
+  }
+
+  async function mateRunThru(phase: number){
+    if(phase === 2){
+
+    }else{
+
+    }
+  }
 
   async function chooseFen(fenBeforeMove: string, playerzMove: string) {
     /*setShowPopup("Achievement unlocked! " + "The 80 80 Rule");
@@ -2479,10 +2731,7 @@ function App() {
       }
       
       console.log("Evaluating challenge move: " + isChallenge);
-      while (nonePVRef.current === ""){
-        console.log("waiting for nonePV");
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
+      
       const stockfishSetup = nonePVRef.current;
       //const stockfishSetup = await workerD.getBestLine(fenBeforeMove, 20).then(r => { console.log("chooseFen workerB done", r); return r; });
       //const ourEval = -1 * await workerC.getEval(chessGame.fen(), 20);
@@ -2915,7 +3164,9 @@ function App() {
             await new Promise(resolve => setTimeout(resolve, 1000));
           }
         }
-        if (evalA > 0){
+        const dec = Math.round((ourEval * 10) % 10);
+        console.log("DEC " + dec);
+        if (ourEval > 0 && dec !== 8){
           triggerEnd("You win! Final result: " + (mate > 0 ? "You mate in " + mate : "You mate in " + (-mate)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter) + ", Starting Eval: " + startingEval, displayAccuracy/10, "Win", gameOpening);
         }else{
           triggerEnd("Game over! Final result: " + (mate > 0 ? "You are mated in " + mate : "You are mated in " + (-mate)) + " Final stats: " + "Accuracy: " + displayAccuracy/10 + ", Moves played: " + (movesplayed + 1) + ", Highest Streak: " + (highestStreak) + ", Brilliant Moves Played: " + (disbrilcounter) + ", Best Moves Played: " + (disbmcounter)  + ", Starting Eval: " + startingEval, displayAccuracy/10, "Loss", gameOpening);
@@ -3144,15 +3395,15 @@ function App() {
       const MAX_ATTEMPTS = 400;
       while (attempts < MAX_ATTEMPTS) {
         let newFens = fens[Math.floor(Math.random() * fens.length)];
-        let score = 0, pieces, cpCount, clarity, onslaught, multiplier, bestMove;
+        let score = 0;
         if(stake >= 3) {
-          [score, pieces, cpCount, clarity, onslaught, multiplier, bestMove] = await predictCPL(newFens, 8, true, -91, -41, 10, -80, -40);
+          [score] = await predictCPL(newFens, 8, true, -91, -41, 10, -80, -40);
           console.log("SCORE: " + score);
         }
         while(stake >= 3 && score < 20){
           console.log(stake + " STAKE");
           newFens = fens[Math.floor(Math.random() * fens.length)];
-          [score, pieces, cpCount, clarity, onslaught, multiplier, bestMove] = await predictCPL(newFens, 8, true, -91, -41, 10, -80, -40);
+          [score] = await predictCPL(newFens, 8, true, -91, -41, 10, -80, -40);
           console.log("SCORE: " + score);
         }
         while(bPosHistory.includes(newFens) === true || bigChessPosition === newFens){
@@ -3398,6 +3649,8 @@ function App() {
     if (moves.length === 0) {
       if (screen === "daily") {
         setDailySquares({});
+      } else if (screen === "beginner"){
+        setBeginSquares({});
       } else {
         setOptionSquares({});
       }
@@ -3417,6 +3670,8 @@ function App() {
     };
     if (screen === "daily"){
       setDailySquares(newSquares);
+    }else if (screen === "beginner"){
+      setBeginSquares(newSquares);
     }else{
       setOptionSquares(newSquares);
     }
@@ -3859,15 +4114,19 @@ function App() {
     square,
     piece
   }: SquareHandlerArgs){
+    console.log("TRYING");
     const chessGame = chessGameRef.current;
-    if (!chessGame) return;
+    if (!chessGame) {console.log("NO CHESSGAME"); 
+      return;}
     if (!moveFrom && piece){
       const hasMoveOptions = getMoveOptions(square as Square);
       if (hasMoveOptions){
         setMoveFrom(square);
       }
+      console.log("not movefrom?");
       return;
     }
+    //chessGame.load(beginPosition);
     const moves = chessGame.moves({
       square: moveFrom as Square,
       verbose: true
@@ -3876,6 +4135,7 @@ function App() {
     if (!foundMove) {
       const hasMoveOptions = getMoveOptions(square as Square);
       setMoveFrom(hasMoveOptions ? square: '');
+      console.log("NOT FOUNDMOVE " + chessGame.fen() + " " + moveFrom + " " + square);
       return;
     }
     try {
@@ -3888,7 +4148,7 @@ function App() {
       });
       setOldMove(moveFrom + square);
       if (screen !== "daily"){
-        setChessPosition(chessGame.fen());
+        setBeginPosition(chessGame.fen());
         setPosHistory([chessPosition]);
         if(chessGame.isCheckmate() && screen === "classic"){
           console.log("Successful mate in 1 detected");
@@ -3904,12 +4164,12 @@ function App() {
       if (hasMoveOptions){
         setMoveFrom(square);
       }
+      console.log("BSC FAIL");
       return;
     }
 
     setMoveFrom('');
-    setOptionSquares({});
-    setDailySquares({});
+    setBeginSquares({});
   }
 
   function smallOnSquareClick({
@@ -4011,8 +4271,8 @@ function App() {
     onPieceDrop: onPieceDrop,
     onSquareClick: beginOnSquareClick,
     position: beginPosition,
-    squareStyles: optionSquares,
-    id: 'board2',
+    squareStyles: beginSquares,
+    id: 'board4',
     darkSquareStyle: isPinkMode? { backgroundColor: '#ff66b3'} : { backgroundColor: '#b58863'},
   };
 
@@ -4066,9 +4326,35 @@ function App() {
           )}
         </div>
         <h1>Boggart Chess v0.0.0</h1>
-        <button onClick={() => {
-          setScreen("versus");
-        }}>Versus</button>
+        <div style={{ position: "relative", display: "inline-block" }}>
+          <button onClick={() => {
+            setShowVersusSelect(prev => !prev);
+            //setScreen("versus");
+          }}>Versus ▾</button>
+          {showVersusSelect && (
+            <div style={{
+              position: "absolute",
+              top: "100%",
+              left: 0,
+              background: "#000000",
+              border: "1px solid #000000",
+              borderRadius: 8,
+              zIndex: 100,
+              minWidth: 200,
+              padding: "8px 0"
+            }}>
+              <div onClick={() => {
+                setShowVersusSelect(prev => !prev);
+                setScreen("versusHP");
+              }}>Versus HP</div>
+              <div onClick={() => {
+                setShowVersusSelect(prev => !prev);
+                setScreen("versusC");
+              }}>Versus Classic</div>
+            </div>
+          )}
+        </div>
+
         <div style={{ position: "relative", display: "inline-block" }}>
           <button onClick={() => {
             setShowOpeningSelect(prev => !prev);
@@ -4321,7 +4607,13 @@ function App() {
           opacity: userProgress?.small_level > 1 ? 0 : 100,
           cursor: userProgress?.small_level > 1 ? "default" : "pointer",
         }}onClick={() => {
-          if(!(userProgress?.small_level > 1)) setScreen("beginner");
+          if(!(userProgress?.small_level > 1)) {
+            chessGameRef.current = new Chess();
+            setScreen("beginner");
+            setPhase(1);
+            setBeginPosition("1rk5/8/8/8/4K3/8/8/8 w - - 0 1");
+            chooseBFen("", "");
+          }
         }}>Play Beginner Mode</button>
       </div>
     );
@@ -4355,8 +4647,8 @@ function App() {
         <button onClick={() => setScreen("title")}>← Back</button>
         <div className="game-container">
           <div className="board-layer">
-            <div className="boards">
-              <div id ="board2">
+            <div className="beginboard">
+              <div id ="board4">
               <Chessboard
                 options={beginBoardOptions}
               />
@@ -4367,24 +4659,41 @@ function App() {
           <div
             className={`overlay ${showEffex ? "overlay-front" : "overlay-back"}`}
           >
-          <div className="effex-box">
-            <h3>{showEffex}</h3>
-          </div>
+            <div className="effex-box">
+              <h3>{showEffex}</h3>
+            </div>
           </div>
 
           <div
             className={`aoverlay ${showPopup ? "aoverlay-front" : "aoverlay-back"}`}
           >
-          <div className="popup-box">
-            <h3>{showPopup}</h3>
+            <div className="popup-box">
+              <h3>{showPopup}</h3>
+            </div>
           </div>
+
+          <div
+            className={`boverlay ${(beginText != "") ? "boverlay-front" : "boverlay-back"}`}
+          >
+            <div className="begin-box">
+              <h3>{beginText}</h3>
+            </div>
           </div>
         </div>
       </div>
     );
   }
 
-  if (screen === "versus") {
+  if (screen === "versusHP") {
+    return (
+      <div>
+        <button onClick={() => setScreen("title")}>← Back</button>
+        {/* mode 2 UI */}
+      </div>
+    );
+  }
+
+  if (screen === "versusC") {
     return (
       <div>
         <button onClick={() => setScreen("title")}>← Back</button>
