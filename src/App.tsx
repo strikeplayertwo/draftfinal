@@ -70,6 +70,30 @@ type MoveInfo = {
   main: boolean;
 };
 
+type ClassicGameRoom = {
+  id: string;
+  code: string;
+  host_id: string;
+  guest_id: string | null;
+  status: string;
+  current_fen: string;
+  current_eval: number;
+  suddenDeathPhase: number; //0 = no 1 = first 2 = second
+  strikes: number;
+};
+
+type HPGameRoom = {
+  id: string;
+  code: string;
+  host_id: string;
+  guest_id: string | null;
+  status: string;
+  current_fen: string;
+  hostHealth: number;
+  guestHealth: number;
+  hostMult: number;
+  guestMult: number;
+};
 
 
 const levelUnlocks: Record<number, string[]> = {
@@ -396,6 +420,11 @@ function App() {
   const [beginText, setBeginText] = useState<string>("");
   const beginPositionRef = useRef("");
 
+  //versus
+  const [gameRoom, setGameRoom] = useState<GameRoom | null>(null);
+  const [isHost, setIsHost] = useState(false);
+  const [joinCode, setJoinCode] = useState("");
+  const [multiplayerError, setMultiplayerError] = useState("");
 
   const nonePVRef = useRef(nonePV);
   useEffect(() => {
@@ -669,6 +698,213 @@ function App() {
 
   async function signOut() {
     await supabase.auth.signOut();
+  }
+
+  function generateCode(): string {
+    return Math.random().toString(36).substring(2, 8).toUpperCase();
+  }
+
+  async function createRoom() {
+    if (!user) return;
+    const code = generateCode();
+    const { data, error } = await supabase
+      .from("game_rooms")
+      .insert({
+        code,
+        host_id: user.id,
+        status: "waiting",
+      })
+      .select()
+      .single();
+
+    if (error) { console.error(error); return; }
+    setGameRoom(data);
+    setIsHost(true);
+    setScreen("versusHP");
+    subscribeToRoom(data.id);
+  }
+
+  /*async function joinRoom(code: string) {
+    if (!user) return;
+    const { data: room, error } = await supabase
+      .from("game_rooms")
+      .select()
+      .eq("code", code.toUpperCase())
+      .eq("status", "waiting")
+      .single();
+
+    if (error || !room) {
+      setMultiplayerError("Room not found or already started.");
+      return;
+    }
+
+    const { data, error: updateError } = await supabase
+      .from("game_rooms")
+      .update({ guest_id: user.id, status: "active" })
+      .eq("id", room.id)
+      .select()
+      .single();
+
+    if (updateError) { console.error(updateError); return; }
+    setGameRoom(data);
+    setIsHost(false);
+    setScreen("versusHP");
+    subscribeToRoom(data.id);
+  }*/
+
+  async function joinRoom(code: string) {
+    if (!user) return;
+
+    const { data: room, error } = await supabase
+      .from("game_rooms")
+      .select()
+      .eq("code", code.toUpperCase())
+      .eq("status", "waiting")
+      .limit(1);
+
+    if (error || !room || room.length === 0) {
+      setMultiplayerError("Room not found or already started.");
+      console.error("join error:", error);
+      return;
+    }
+
+    const foundRoom = room[0];
+
+    const { error: updateError } = await supabase
+      .from("game_rooms")
+      .update({ guest_id: user.id, status: "active" })
+      .eq("id", foundRoom.id);
+
+    if (updateError) {
+      console.error("update error:", updateError);
+      setMultiplayerError("Failed to join room.");
+      return;
+    }
+
+    // Fetch the updated room separately
+    const { data: updatedRoom, error: fetchError } = await supabase
+      .from("game_rooms")
+      .select()
+      .eq("id", foundRoom.id)
+      .limit(1);
+
+    if (fetchError || !updatedRoom || updatedRoom.length === 0) {
+      console.error("fetch error:", fetchError);
+      return;
+    }
+
+    setGameRoom(updatedRoom[0]);
+    setIsHost(false);
+    setScreen("multiplayer");
+    subscribeToRoom(updatedRoom[0].id);
+  }
+
+  const roomChannelRef = useRef<any>(null);
+
+  function subscribeToRoom(roomId: string) {
+    if (roomChannelRef.current) {
+      supabase.removeChannel(roomChannelRef.current);
+    }
+
+    const channel = supabase
+      .channel(`room:${roomId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "game_rooms",
+          filter: `id=eq.${roomId}`, // ← this is correct syntax
+        },
+        (payload) => {
+          console.log("Room updated:", payload.new); // ← add this to verify it fires
+          const updated = payload.new as GameRoom;
+          setGameRoom(updated);
+        }
+        
+      )
+      .subscribe((status) => {
+        console.log("Subscription status:", status); // ← add this
+      });
+
+    roomChannelRef.current = channel;
+  }
+
+  // Clean up on unmount
+  useEffect(() => {
+    return () => {
+      if (roomChannelRef.current) {
+        supabase.removeChannel(roomChannelRef.current);
+      }
+    };
+  }, []);
+
+  async function submitMultiplayerScore(score: number) {
+    if (!gameRoom || !user) return;
+    const field = isHost ? "host_score" : "guest_score";
+
+    const { error } = await supabase
+      .from("game_rooms")
+      .update({ [field]: score })
+      .eq("id", gameRoom.id);
+
+    if (error) console.error(error);
+
+    // Check if both players have submitted
+    const bothDone = isHost
+      ? gameRoom.guest_score > 0
+      : gameRoom.host_score > 0;
+
+    if (bothDone) {
+      await supabase
+        .from("game_rooms")
+        .update({ status: "finished" })
+        .eq("id", gameRoom.id);
+    }
+  }
+
+  /*async function findOrCreateRoom() {
+    if (!user) return;
+
+    // Look for an existing waiting room not created by this user
+    const { data: existing } = await supabase
+      .from("game_rooms")
+      .select()
+      .eq("status", "waiting")
+      .neq("host_id", user.id)
+      .order("created_at", { ascending: true })
+      .limit(1)
+      .single();
+
+    if (existing) {
+      // Join the existing room
+      console.log("JOINING EXISTING");
+      await joinRoom(existing.code);
+    } else {
+      // No room available — create one and wait
+      console.log("NO ROOMS");
+      await createRoom();
+    }
+  }*/
+
+  async function findOrCreateRoom() {
+    if (!user) return;
+
+    const { data: rooms, error } = await supabase
+      .from("game_rooms")
+      .select()
+      .eq("status", "waiting")
+      .neq("host_id", user.id)
+      .order("created_at", { ascending: true })
+      .limit(1);
+
+    console.log("found rooms:", rooms, "error:", error);
+
+    if (rooms && rooms.length > 0) {
+      await joinRoom(rooms[0].code);
+    } else {
+      await createRoom();
+    }
   }
 
   async function levelUp() {
@@ -4688,7 +4924,60 @@ function App() {
     return (
       <div>
         <button onClick={() => setScreen("title")}>← Back</button>
+        <button onClick={findOrCreateRoom}>Quick Match</button>
         {/* mode 2 UI */}
+        <div style={{ padding: "2rem", color: "#e6edf3" }}>
+          <h3>VersusHP</h3>
+
+          {!gameRoom ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 300 }}>
+              <button onClick={createRoom}>Create Room</button>
+              <div>
+                <input
+                  placeholder="Enter invite code"
+                  value={joinCode}
+                  onChange={e => setJoinCode(e.target.value)}
+                  style={{ marginRight: 8 }}
+                />
+                <button onClick={() => joinRoom(joinCode)}>Join Room</button>
+              </div>
+              {multiplayerError && <p style={{ color: "red" }}>{multiplayerError}</p>}
+            </div>
+          ) : gameRoom.status === "waiting" ? (
+            <div>
+              <p>Waiting for opponent...</p>
+              <p>Invite code: <strong style={{ fontSize: 24 }}>{gameRoom.code}</strong></p>
+              <button onClick={() => navigator.clipboard.writeText(gameRoom.code)}>
+                Copy Code
+              </button>
+            </div>
+          ) : gameRoom.status === "active" ? (
+            <div>
+              <p>Game in progress!</p>
+              <p>Your score: {isHost ? gameRoom.host_score : gameRoom.guest_score}</p>
+              <p>Opponent score: {isHost ? gameRoom.guest_score : gameRoom.host_score}</p>
+              <button onClick={() => //submitMultiplayerScore() //fix 
+                console.log("IDK")
+              }>
+                Submit Score
+              </button>
+            </div>
+          ) : (
+            <div>
+              <h3>Game Over!</h3>
+              <p>Your score: {isHost ? gameRoom.host_score : gameRoom.guest_score}</p>
+              <p>Opponent score: {isHost ? gameRoom.guest_score : gameRoom.host_score}</p>
+              <p>{
+                (isHost ? gameRoom.host_score : gameRoom.guest_score) >
+                (isHost ? gameRoom.guest_score : gameRoom.host_score)
+                  ? "You win! 🎉" : "Opponent wins!"
+              }</p>
+              <button onClick={() => { setGameRoom(null); setScreen("title"); }}>
+                Back to Menu
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
