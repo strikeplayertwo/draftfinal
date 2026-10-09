@@ -78,7 +78,7 @@ type ClassicGameRoom = {
   status: string;
   current_fen: string;
   current_eval: number;
-  suddenDeathPhase: number; //0 = no 1 = first 2 = second
+  phase: number; //0 = no 1 = first 2 = second
   strikes: number;
 };
 
@@ -89,10 +89,10 @@ type HPGameRoom = {
   guest_id: string | null;
   status: string;
   current_fen: string;
-  hostHealth: number;
-  guestHealth: number;
-  hostMult: number;
-  guestMult: number;
+  host_health: number;
+  guest_health: number;
+  host_mult: number;
+  guest_mult: number;
 };
 
 
@@ -421,7 +421,7 @@ function App() {
   const beginPositionRef = useRef("");
 
   //versus
-  const [gameRoom, setGameRoom] = useState<GameRoom | null>(null);
+  const [HPGameRoom, setHPGameRoom] = useState<HPGameRoom | null>(null);
   const [isHost, setIsHost] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [multiplayerError, setMultiplayerError] = useState("");
@@ -704,11 +704,11 @@ function App() {
     return Math.random().toString(36).substring(2, 8).toUpperCase();
   }
 
-  async function createRoom() {
+  async function createHPRoom() {
     if (!user) return;
     const code = generateCode();
     const { data, error } = await supabase
-      .from("game_rooms")
+      .from("hp_game_rooms")
       .insert({
         code,
         host_id: user.id,
@@ -718,10 +718,10 @@ function App() {
       .single();
 
     if (error) { console.error(error); return; }
-    setGameRoom(data);
+    setHPGameRoom(data);
     setIsHost(true);
     setScreen("versusHP");
-    subscribeToRoom(data.id);
+    subscribeToHPRoom(data.id);
   }
 
   /*async function joinRoom(code: string) {
@@ -752,11 +752,11 @@ function App() {
     subscribeToRoom(data.id);
   }*/
 
-  async function joinRoom(code: string) {
+  async function joinHPRoom(code: string) {
     if (!user) return;
 
     const { data: room, error } = await supabase
-      .from("game_rooms")
+      .from("hp_game_rooms")
       .select()
       .eq("code", code.toUpperCase())
       .eq("status", "waiting")
@@ -771,7 +771,7 @@ function App() {
     const foundRoom = room[0];
 
     const { error: updateError } = await supabase
-      .from("game_rooms")
+      .from("hp_game_rooms")
       .update({ guest_id: user.id, status: "active" })
       .eq("id", foundRoom.id);
 
@@ -783,7 +783,7 @@ function App() {
 
     // Fetch the updated room separately
     const { data: updatedRoom, error: fetchError } = await supabase
-      .from("game_rooms")
+      .from("hp_game_rooms")
       .select()
       .eq("id", foundRoom.id)
       .limit(1);
@@ -793,15 +793,15 @@ function App() {
       return;
     }
 
-    setGameRoom(updatedRoom[0]);
+    setHPGameRoom(updatedRoom[0]);
     setIsHost(false);
-    setScreen("multiplayer");
-    subscribeToRoom(updatedRoom[0].id);
+    setScreen("versusHP");
+    subscribeToHPRoom(updatedRoom[0].id);
   }
 
   const roomChannelRef = useRef<any>(null);
 
-  function subscribeToRoom(roomId: string) {
+  function subscribeToHPRoom(roomId: string) {
     if (roomChannelRef.current) {
       supabase.removeChannel(roomChannelRef.current);
     }
@@ -813,13 +813,13 @@ function App() {
         {
           event: "UPDATE",
           schema: "public",
-          table: "game_rooms",
+          table: "hp_game_rooms",
           filter: `id=eq.${roomId}`, // ← this is correct syntax
         },
         (payload) => {
           console.log("Room updated:", payload.new); // ← add this to verify it fires
-          const updated = payload.new as GameRoom;
-          setGameRoom(updated);
+          const updated = payload.new as HPGameRoom;
+          setHPGameRoom(updated);
         }
         
       )
@@ -839,28 +839,29 @@ function App() {
     };
   }, []);
 
-  async function submitMultiplayerScore(score: number) {
-    if (!gameRoom || !user) return;
+  async function submitHPScore(score: number) {
+    if (!HPGameRoom || !user) return;
     const field = isHost ? "host_score" : "guest_score";
 
     const { error } = await supabase
-      .from("game_rooms")
+      .from("hp_game_rooms")
       .update({ [field]: score })
-      .eq("id", gameRoom.id);
+      .eq("id", HPGameRoom.id);
 
     if (error) console.error(error);
-
+    /*
     // Check if both players have submitted
     const bothDone = isHost
-      ? gameRoom.guest_score > 0
-      : gameRoom.host_score > 0;
+      ? HPGameRoom.guest_score > 0
+      : HPGameRoom.host_score > 0;
 
     if (bothDone) {
       await supabase
-        .from("game_rooms")
+        .from("hp_game_rooms")
         .update({ status: "finished" })
         .eq("id", gameRoom.id);
     }
+    */
   }
 
   /*async function findOrCreateRoom() {
@@ -887,11 +888,11 @@ function App() {
     }
   }*/
 
-  async function findOrCreateRoom() {
+  async function findOrCreateHPRoom() {
     if (!user) return;
 
     const { data: rooms, error } = await supabase
-      .from("game_rooms")
+      .from("hp_game_rooms")
       .select()
       .eq("status", "waiting")
       .neq("host_id", user.id)
@@ -901,9 +902,9 @@ function App() {
     console.log("found rooms:", rooms, "error:", error);
 
     if (rooms && rooms.length > 0) {
-      await joinRoom(rooms[0].code);
+      await joinHPRoom(rooms[0].code);
     } else {
-      await createRoom();
+      await createHPRoom();
     }
   }
 
@@ -4924,14 +4925,14 @@ function App() {
     return (
       <div>
         <button onClick={() => setScreen("title")}>← Back</button>
-        <button onClick={findOrCreateRoom}>Quick Match</button>
+        <button onClick={findOrCreateHPRoom}>Quick Match</button>
         {/* mode 2 UI */}
         <div style={{ padding: "2rem", color: "#e6edf3" }}>
           <h3>VersusHP</h3>
 
-          {!gameRoom ? (
+          {!HPGameRoom ? (
             <div style={{ display: "flex", flexDirection: "column", gap: 16, maxWidth: 300 }}>
-              <button onClick={createRoom}>Create Room</button>
+              <button onClick={createHPRoom}>Create Room</button>
               <div>
                 <input
                   placeholder="Enter invite code"
@@ -4939,23 +4940,23 @@ function App() {
                   onChange={e => setJoinCode(e.target.value)}
                   style={{ marginRight: 8 }}
                 />
-                <button onClick={() => joinRoom(joinCode)}>Join Room</button>
+                <button onClick={() => joinHPRoom(joinCode)}>Join Room</button>
               </div>
               {multiplayerError && <p style={{ color: "red" }}>{multiplayerError}</p>}
             </div>
-          ) : gameRoom.status === "waiting" ? (
+          ) : HPGameRoom.status === "waiting" ? (
             <div>
               <p>Waiting for opponent...</p>
-              <p>Invite code: <strong style={{ fontSize: 24 }}>{gameRoom.code}</strong></p>
-              <button onClick={() => navigator.clipboard.writeText(gameRoom.code)}>
+              <p>Invite code: <strong style={{ fontSize: 24 }}>{HPGameRoom.code}</strong></p>
+              <button onClick={() => navigator.clipboard.writeText(HPGameRoom.code)}>
                 Copy Code
               </button>
             </div>
-          ) : gameRoom.status === "active" ? (
+          ) : HPGameRoom.status === "active" ? (
             <div>
               <p>Game in progress!</p>
-              <p>Your score: {isHost ? gameRoom.host_score : gameRoom.guest_score}</p>
-              <p>Opponent score: {isHost ? gameRoom.guest_score : gameRoom.host_score}</p>
+              <p>Your score: {/*isHost ? HPGameRoom.host_score : HPGameRoom.guest_score*/}</p>
+              <p>Opponent score: {/*isHost ? HPGameRoom.guest_score : HPGameRoom.host_score*/}</p>
               <button onClick={() => //submitMultiplayerScore() //fix 
                 console.log("IDK")
               }>
@@ -4965,14 +4966,14 @@ function App() {
           ) : (
             <div>
               <h3>Game Over!</h3>
-              <p>Your score: {isHost ? gameRoom.host_score : gameRoom.guest_score}</p>
-              <p>Opponent score: {isHost ? gameRoom.guest_score : gameRoom.host_score}</p>
-              <p>{
-                (isHost ? gameRoom.host_score : gameRoom.guest_score) >
-                (isHost ? gameRoom.guest_score : gameRoom.host_score)
-                  ? "You win! 🎉" : "Opponent wins!"
+              <p>Your score: {/*isHost ? HPGameRoom.host_score : HPGameRoom.guest_score*/}</p>
+              <p>Opponent score: {/*isHost ? HPGameRoom.guest_score : HPGameRoom.host_score*/}</p>
+              <p>{/*
+                (isHost ? HPGameRoom.host_score : HPGameRoom.guest_score) >
+                (isHost ? HPGameRoom.guest_score : HPGameRoom.host_score)
+                  ? "You win! 🎉" : "Opponent wins!"*/
               }</p>
-              <button onClick={() => { setGameRoom(null); setScreen("title"); }}>
+              <button onClick={() => { setHPGameRoom(null); setScreen("title"); }}>
                 Back to Menu
               </button>
             </div>
