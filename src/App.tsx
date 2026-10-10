@@ -5258,17 +5258,23 @@ function App() {
           {
             HPGameRoom?.status === "active" ? (
             <div>
-              <div className="me">{isHost ? HPGameRoom.host_username : HPGameRoom.guest_username}</div>
-              <div className="healthBar">{isHost ? HPGameRoom.host_health : HPGameRoom.guest_health}/1000</div>
-              <div className="multBar">{myMult}</div>
-              <div className="opp">{isHost ? HPGameRoom.guest_username : HPGameRoom.host_username}</div>
-              <div className="oppHealthBar">{isHost ? HPGameRoom.guest_health : HPGameRoom.host_health}/1000</div>
-              <div className="oppMBar">{oppMult}</div>
-              <div className="hpboard">
-                <div id ="board4">
-                <Chessboard
-                  options={HPBoardOptions}
-                />
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "1rem" }}>
+                <div className="me">{isHost ? HPGameRoom.host_username : HPGameRoom.guest_username}
+                  <div className="healthBar">{isHost ? HPGameRoom.host_health : HPGameRoom.guest_health}/1000</div>
+                  <div className="multBar">{myMult}x</div>
+                </div>
+                <div className="opp">{isHost ? HPGameRoom.guest_username : HPGameRoom.host_username}  
+                  <div className="oppHealthBar">{isHost ? HPGameRoom.guest_health : HPGameRoom.host_health}/1000</div>
+                  <div className="oppMBar">{oppMult}x</div>
+                </div>
+              </div>
+              <div className="board-layer">    
+                <div className="hpboard">
+                  <div id ="board4">
+                    <Chessboard
+                      options={HPBoardOptions}
+                    />
+                  </div>
                 </div>
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", padding: "1rem" }}>
