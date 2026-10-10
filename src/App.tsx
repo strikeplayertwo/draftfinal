@@ -93,6 +93,11 @@ type HPGameRoom = {
   guest_health: number;
   host_mult: number;
   guest_mult: number;
+  round_status: string;
+  host_move: string;
+  guest_move: string;
+  host_eval: number;
+  guest_eval: number;
 };
 
 
@@ -781,8 +786,13 @@ function App() {
 
   const gameRoomRef = useRef<HPGameRoom | null>(null);
   const myMoveSubmittedRef = useRef(false);
-  const hostSubmittedRef = useRef(false);
-  const guestSubmittedRef = useRef(false);
+  //const hostSubmittedRef = useRef(false);
+  //const guestSubmittedRef = useRef(false);
+  const myMoveRef = useRef<string>("");
+  const opponentMoveRef = useRef<string>("");
+  const myEvalSubmittedRef = useRef(false);
+  const myEvalRef = useRef<number>(10000);
+  const opponentEvalRef = useRef<number>(10000);
 
   // Keep gameRoomRef in sync with gameRoom state
   useEffect(() => {
@@ -800,36 +810,62 @@ function App() {
     });
   }
   async function startGameLoop() {
+    let daFens = [""];
+    if (isHost) {
+      daFens = await getFENsForOpening("None");
+      setFens(daFens);
+    }
     if (gameLoopRef.current) return;
     gameLoopRef.current = true;
 
     while (gameLoopRef.current) {
       if (!HPGameRoom) break;
+      const currentRoom = gameRoomRef.current ?? HPGameRoom;
+      if (!currentRoom) break;
+      if (currentRoom.host_health <= 0 || currentRoom.guest_health <= 0) break;
 
       // Reset round submission tracking
-      hostSubmittedRef.current = false;
-      guestSubmittedRef.current = false;
+      myMoveSubmittedRef.current = false;
+      myMoveRef.current = "";
+      opponentMoveRef.current = "";
+      myEvalSubmittedRef.current = false;
+      myEvalRef.current = 10000;
+      opponentEvalRef.current = 10000;
 
       if (isHost) {
         // Host picks position and syncs to Supabase
-        const daFens = await getFENsForOpening("None");
-        setFens(daFens);
-        const fen = daFens[Math.floor(Math.random() * daFens.length)];
+        console.log(fens.length + " " + daFens.length);
+        let fen = fens[Math.floor(Math.random() * fens.length)];
+        if(fens.length === 0) fen = daFens[Math.floor(Math.random() * daFens.length)];
         await supabase
           .from("hp_game_rooms")
-          .update({ current_fen: fen, round_status: "playing" })
+          .update({ current_fen: fen, round_status: "playing", host_move: "", guest_move: "" })
           .eq("id", gameRoomRef.current!.id)
       }
       console.log("done");
 
-      // Wait for current_fen to be set (guest needs to wait for host to sync it)
-      await waitUntil(() => !!gameRoomRef.current?.current_fen);
-
-      // Load the position
+      // Wait for fen to be synced
+      await waitUntil(() => !!gameRoomRef.current?.current_fen && gameRoomRef.current?.round_status === "playing");
       const fen = gameRoomRef.current!.current_fen;
+
       const newGame = new Chess(fen);
+      if (fen.includes('w')) {
+        const square = newGame.findPiece({ type: 'k', color: 'w' });
+        setHPSquares({
+          [square[0]]: {
+            backgroundColor: 'rgba(255,0,0,0.2)'
+          }
+        });
+      }else{
+        const square =newGame.findPiece({ type: 'k', color: 'b' });
+        setHPSquares({
+          [square[0]]: {
+            backgroundColor: 'rgba(255,0,0,0.2)'
+          }
+        });
+      }
       chessGameRef.current = newGame;
-      setBigChessPosition(newGame.fen());
+      setHPPosition(newGame.fen());
       setOldFen(newGame.fen());
 
       // Wait 5 seconds before starting clock
@@ -840,50 +876,94 @@ function App() {
       await waitUntil(() => myMoveSubmittedRef.current);
       stopMyClock();
 
-      // Mark yourself as submitted via presence
-      await presenceChannelRef.current?.track({
-        clock: clockRef.current,
-        submitted: true
-      });
+      // Sync my move to Supabase
+      const myMoveField = isHost ? "host_move" : "guest_move";
+      await supabase
+        .from("hp_game_rooms")
+        .update({ [myMoveField]: myMoveRef.current })
+        .eq("id", currentRoom.id);
 
-      // Wait until opponent has also submitted
+
+      await waitUntil(() => myEvalSubmittedRef.current);
+      const myEvalField = isHost ? "host_eval" : "guest_eval";
+      await supabase
+        .from("hp_game_rooms")
+        .update({ [myEvalField]: myEvalRef.current })
+        .eq("id", currentRoom.id);
+
+      // Wait for opponent's move to appear in Supabase
       await waitUntil(() => {
-        const state = presenceChannelRef.current?.presenceState() ?? {};
-        const opponentId = isHost ? gameRoomRef.current?.guest_id : gameRoomRef.current?.host_id;
-        if (!opponentId || !state[opponentId]) return false;
-        return (state[opponentId][0] as any)?.submitted === true;
+        const r = gameRoomRef.current;
+        if (!r) return false;
+        const opponentMove = isHost ? r.guest_move : r.host_move;
+        return !!opponentMove && opponentMove !== "";
       });
 
-      // Reset for next round
-      myMoveSubmittedRef.current = false;
-      await presenceChannelRef.current?.track({
-        clock: clockRef.current,
-        submitted: false
+      // Wait for opponent's eval to appear in Supabase
+      await waitUntil(() => {
+        const r = gameRoomRef.current;
+        if (!r) return false;
+        const oppEval = isHost ? r.guest_eval : r.host_eval;
+        return !!oppEval && oppEval !== 10000;
       });
 
-      // Check health — stop if game over
-      const latest = gameRoomRef.current;
-      if (!latest) break;
-      if ((latest.host_health ?? 100) <= 0 || (latest.guest_health ?? 100) <= 0) {
+      console.log("EVALS DONE");
+
+      const oppEval = isHost
+        ? gameRoomRef.current!.guest_eval
+        : gameRoomRef.current!.host_eval;
+
+      const myEval = myEvalRef.current;
+      console.log("my eval:", myEval, "opponent eval:", oppEval);
+
+      // Calculate damage — loser takes damage proportional to eval difference
+      const dmg = myEval - oppEval;
+
+      const winner = dmg > 0 ? "me" : dmg < 0 ? "opp" : "none";
+      const hostDamage = isHost ? (winner === "me" ? 0 : dmg) : (winner === "me" ? dmg : 0);
+      const guestDamage = isHost ? (winner === "me" ? dmg : 0) : (winner === "me" ? 0 : dmg);
+
+      // Only host updates health to avoid race condition
+      if (isHost) {
+        const newHostHealth = Math.max(0, (gameRoomRef.current?.host_health ?? 1000) - Math.abs(hostDamage));
+        const newGuestHealth = Math.max(0, (gameRoomRef.current?.guest_health ?? 1000) - Math.abs(guestDamage));
         await supabase
-          .from("game_rooms")
-          .update({ status: "finished" })
-          .eq("id", gameRoomRef.current!.id)
-        break;
+          .from("hp_game_rooms")
+          .update({
+            host_health: newHostHealth,
+            guest_health: newGuestHealth,
+            round_status: "results",
+          })
+          .eq("id", currentRoom.id);
       }
 
-      // Brief pause before next round
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // Both players wait for health update
+      await waitUntil(() => gameRoomRef.current?.round_status === "results");
+
+      setShowEffex(winner === "me" ? `✅ +${dmg} damage!` : `❌ -${dmg} HP`);
+      stopEffex();
+
+      await new Promise(resolve => setTimeout(resolve, 3000));
+
+      // Check if game over
+      const latest = gameRoomRef.current;
+      if ((latest?.host_health ?? 1000) <= 0 || (latest?.guest_health ?? 1000) <= 0) {
+        if (isHost) {
+          await supabase
+            .from("hp_game_rooms")
+            .update({ status: "finished" })
+            .eq("id", currentRoom.id);
+        }
+        break;
+      }
     }
 
     gameLoopRef.current = false;
   }
-
+      
   useEffect(() => {
     console.log(screen)
   }, [screen]);
-
-  
 
   const [roomStatus, setRoomStatus] = useState<string>("waiting");
 
@@ -4394,7 +4474,66 @@ function App() {
     square,
     piece
   }: SquareHandlerArgs){
+    console.log("TRYING");
+    const chessGame = chessGameRef.current;
+    if (!chessGame) {console.log("NO CHESSGAME"); 
+      return;}
+    if (!moveFrom && piece){
+      const hasMoveOptions = getMoveOptions(square as Square);
+      if (hasMoveOptions){
+        setMoveFrom(square);
+      }
+      console.log("not movefrom?");
+      return;
+    }
+    const moves = chessGame.moves({
+      square: moveFrom as Square,
+      verbose: true
+    });
+    const foundMove = moves.find(m => m.from === moveFrom && m.to === square);
+    if (!foundMove) {
+      const hasMoveOptions = getMoveOptions(square as Square);
+      setMoveFrom(hasMoveOptions ? square: '');
+      console.log("NOT FOUNDMOVE " + chessGame.fen() + " " + moveFrom + " " + square);
+      return;
+    }
+    try {
+      const sendthatfen = chessGame.fen();
+      setOldFen(chessGame.fen());
+      chessGame.move({
+        from: moveFrom,
+        to: square,
+        promotion: 'q'
+      });
+      setOldMove(moveFrom + square);
+      //setHPPosition(chessGame.fen());
+      setPosHistory([chessPosition]);
+      //chooseBFen(sendthatfen, moveFrom + square);
+      setFens(fens.filter(f => f !== sendthatfen));
+      console.log("removed fen: " + sendthatfen);
+    }catch {
+      const hasMoveOptions = getMoveOptions(square as Square);
+      if (hasMoveOptions){
+        setMoveFrom(square);
+      }
+      console.log("BSC FAIL");
+      return;
+    }
+
+    setMoveFrom('');
+    setBeginSquares({});
+    myMoveRef.current = moveFrom + square;
     myMoveSubmittedRef.current = true;
+    console.log("GETTING EVAL" + chessGame.fen());
+    let myEval = 10000;
+    try {
+      myEval = await workerD.getEval(chessGame.fen(), 20);
+    } catch (e) {
+      console.log(e);
+    }
+    console.log("SUBMITTING EVAL" + myEval);
+    myEvalRef.current = myEval;
+    myEvalSubmittedRef.current = true;
   }
 
   async function beginOnSquareClick({
