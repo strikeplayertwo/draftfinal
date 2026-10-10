@@ -87,6 +87,8 @@ type HPGameRoom = {
   code: string;
   host_id: string;
   guest_id: string | null;
+  host_username: string | null;
+  guest_username: string | null;
   status: string;
   current_fen: string;
   host_health: number;
@@ -377,6 +379,7 @@ function App() {
   const [user, setUser] = useState<User | null>(null);
   const [gameHistory, setGameHistory] = useState<ClassicGameResult[]>([]);
   const [dailyGameHistory, setDailyGameHistory] = useState<DailyGameResult[]>([]);
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [rankInfo, setRankInfo] = useState<RankInfo>(null);
@@ -431,6 +434,9 @@ function App() {
   const [isHost, setIsHost] = useState(false);
   const [joinCode, setJoinCode] = useState("");
   const [multiplayerError, setMultiplayerError] = useState("");
+  const [myMult, setMyMult] = useState<number>(1.0);
+  const [oppMult, setOppMult] = useState<number>(1.0);
+  const [myName, setMyName] = useState<string>("");
 
   const nonePVRef = useRef(nonePV);
   useEffect(() => {
@@ -679,28 +685,74 @@ function App() {
   }, [user]);
 
   useEffect(() => {
-    // Get current session on load
+    // 1. Get initial session on mount/relog
     supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
+      
+      if (currentUser?.user_metadata?.display_name) {
+        console.log("Welcome back:", currentUser.user_metadata.display_name);
+        setMyName(currentUser.user_metadata.display_name);
+      }
     });
 
-    // Listen for login/logout
+    // 2. Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
+      const currentUser = session?.user ?? null;
+      setUser(currentUser);
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
+
   async function signInWithEmail(email: string, password: string) {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) console.error("Sign in error:", error.message);
+    const { data, error } = await supabase.auth.signInWithPassword({ 
+      email, 
+      password 
+    });
+
+    if (error) {
+      console.error("Sign in error:", error.message);
+      return;
+    }
+
+    // Successfully signed in
+    console.log("Logged in user:", data.user);
+    
+    const displayName = data.user?.user_metadata?.display_name;
+    if (displayName) {
+      console.log(`Welcome back, ${displayName}!`);
+      setMyName(displayName);
+    }else{
+      console.log("no username");
+    }
   }
 
-  async function signUpWithEmail(email: string, password: string) {
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) console.error("Sign up error:", error.message);
+
+  async function signUpWithEmail(email: string, password: string, displayName: string) {
+    if (!displayName || displayName.trim() === "") {
+      console.error("Display name is required.");
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          display_name: displayName.trim(),
+        },
+      },
+    });
+
+    if (error) {
+      console.error("Sign up error:", error.message);
+    } else {
+      console.log("User created:", data.user);
+    }
   }
+
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -718,6 +770,7 @@ function App() {
       .insert({
         code,
         host_id: user.id,
+        host_username: myName,
         status: "waiting",
       })
       .select()
@@ -917,9 +970,41 @@ function App() {
       console.log("my eval:", myEval, "opponent eval:", oppEval);
 
       // Calculate damage — loser takes damage proportional to eval difference
-      const dmg = myEval - oppEval;
-
+      let dmg = myEval - oppEval;
       const winner = dmg > 0 ? "me" : dmg < 0 ? "opp" : "none";
+      console.log("dmg before mult: " + dmg);
+      if (isHost) {
+        if (winner === "me"){
+          dmg = dmg * gameRoomRef.current!.host_mult;
+          await supabase
+            .from("hp_game_rooms")
+            .update({ host_mult: gameRoomRef.current!.host_mult + 0.5 })
+            .eq("id", currentRoom.id);
+        }else if (winner === "opp"){
+          dmg = dmg * gameRoomRef.current!.guest_mult;
+          await supabase
+            .from("hp_game_rooms")
+            .update({ guest_mult: gameRoomRef.current!.guest_mult + 0.5 })
+            .eq("id", currentRoom.id);
+        }else{
+          await supabase
+            .from("hp_game_rooms")
+            .update({ 
+              host_mult: gameRoomRef.current!.host_mult + 0.25,
+              guest_mult: gameRoomRef.current!.guest_mult + 0.25,
+             })
+            .eq("id", currentRoom.id);
+        }
+      } else {
+        if (winner === "me"){
+          dmg = dmg * gameRoomRef.current!.guest_mult;  
+        }else if (winner === "opp"){
+          dmg = dmg * gameRoomRef.current!.host_mult;
+        }else{
+        }
+      }
+      console.log("dmg after mult: " + dmg);
+
       const hostDamage = isHost ? (winner === "me" ? 0 : dmg) : (winner === "me" ? dmg : 0);
       const guestDamage = isHost ? (winner === "me" ? dmg : 0) : (winner === "me" ? 0 : dmg);
 
@@ -939,6 +1024,8 @@ function App() {
 
       // Both players wait for health update
       await waitUntil(() => gameRoomRef.current?.round_status === "results");
+      setMyMult(isHost ? gameRoomRef.current!.host_mult : gameRoomRef.current!.guest_mult);
+      setOppMult(isHost ? gameRoomRef.current!.guest_mult : gameRoomRef.current!.host_mult);
 
       setShowEffex(winner === "me" ? `✅ +${dmg} damage!` : `❌ -${dmg} HP`);
       stopEffex();
@@ -1002,7 +1089,7 @@ function App() {
 
     const { error: updateError } = await supabase
       .from("hp_game_rooms")
-      .update({ guest_id: user.id, status: "active" })
+      .update({ guest_id: user.id, status: "active", guest_username: myName })
       .eq("id", foundRoom.id);
 
     if (updateError) {
@@ -4527,7 +4614,7 @@ function App() {
     console.log("GETTING EVAL" + chessGame.fen());
     let myEval = 10000;
     try {
-      myEval = await workerD.getEval(chessGame.fen(), 20);
+      myEval = -1 * await workerD.getEval(chessGame.fen(), 20);
     } catch (e) {
       console.log(e);
     }
@@ -4745,6 +4832,12 @@ function App() {
           ) : (
             <div>
               <input
+                type="text"
+                placeholder="Username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+              />
+              <input
                 type="email"
                 placeholder="Email"
                 value={email}
@@ -4757,7 +4850,7 @@ function App() {
                 onChange={(e) => setPassword(e.target.value)}
               />
               <button onClick={() => signInWithEmail(email, password)}>Sign in</button>
-              <button onClick={() => signUpWithEmail(email, password)}>Sign up</button>
+              <button onClick={() => signUpWithEmail(email, password, username)}>Sign up</button>
             </div>
           )}
         </div>
@@ -5162,13 +5255,15 @@ function App() {
       <div>
         <div style={{ padding: "2rem", color: "#e6edf3" }}>
           <h3>VersusHP</h3>
-
           {
             HPGameRoom?.status === "active" ? (
             <div>
-              <p>Game in progress!</p>
-              <p>Your score: {/*isHost ? HPGameRoom.host_score : HPGameRoom.guest_score*/}</p>
-              <p>Opponent score: {/*isHost ? HPGameRoom.guest_score : HPGameRoom.host_score*/}</p>
+              <div className="me">{isHost ? HPGameRoom.host_username : HPGameRoom.guest_username}</div>
+              <div className="healthBar">{isHost ? HPGameRoom.host_health : HPGameRoom.guest_health}/1000</div>
+              <div className="multBar">{myMult}</div>
+              <div className="opp">{isHost ? HPGameRoom.guest_username : HPGameRoom.host_username}</div>
+              <div className="oppHealthBar">{isHost ? HPGameRoom.guest_health : HPGameRoom.host_health}/1000</div>
+              <div className="oppMBar">{oppMult}</div>
               <div className="hpboard">
                 <div id ="board4">
                 <Chessboard
