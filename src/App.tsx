@@ -724,119 +724,33 @@ function App() {
     subscribeToHPRoom(data.id);
   }
 
-  useEffect(() => {
-    if (roomStatus !== "active" || !HPGameRoom) return;
-    
-    // Only host generates and syncs the position
-    if (isHost) {
-      startHPGameLoop();
-    }
-  }, [roomStatus]);
-
-  const gameLoopRef = useRef<boolean>(false);
-
-  // Local clock state
-  const [myClock, setMyClock] = useState(60); // seconds
-  const [opponentClock, setOpponentClock] = useState(60);
-  const clockRef = useRef(60);
-  const clockIntervalRef = useRef<NodeJS.Timeout | null>(null);
-
-  function stopMyClock() {
-    if (clockIntervalRef.current) {
-      clearInterval(clockIntervalRef.current);
-    }
-  }
-
-  const presenceChannelRef = useRef<any>(null);
-
-  function setupPresence(roomId: string) {
-    const channel = supabase.channel(`presence:${roomId}`, {
-      config: { presence: { key: user!.id } }
-    });
-
-    channel
-      .on("presence", { event: "sync" }, () => {
-        const state = channel.presenceState();
-        // Find opponent's clock
-        const opponentId = isHost ? HPGameRoom?.guest_id : HPGameRoom?.host_id;
-        if (opponentId && state[opponentId]) {
-          const opponentState = state[opponentId][0] as any;
-          setOpponentClock(opponentState.clock);
-        }
-      })
-      .subscribe(async (status) => {
-        if (status === "SUBSCRIBED") {
-          // Start broadcasting your clock
-          await channel.track({ clock: clockRef.current });
-        }
-      });
-
-    presenceChannelRef.current = channel;
-  }
-
-  // Broadcast your clock every second alongside the interval
-  function startMyClock() {
-    clockIntervalRef.current = setInterval(async () => {
-      clockRef.current -= 1;
-      setMyClock(clockRef.current);
-
-      // Broadcast to opponent via presence
-      if (presenceChannelRef.current) {
-        await presenceChannelRef.current.track({ clock: clockRef.current });
-      }
-
-      if (clockRef.current <= 0) {
-        stopMyClock();
-        handleTimeOut();
-      }
-    }, 1000);
-  }
-
-  async function startHPGameLoop() {
-    gameLoopRef.current = true;
-
-    for (let round = 0; round < 5; round++) {
-      if (!gameLoopRef.current) break;
-
-      // Reset submission state for this round
-      await presenceChannelRef.current?.track({ 
-        clock: clockRef.current,
-        roundSubmitted: false  // ← reset
-      });
-
-      const fen = await chooseFirstFen(HPGameRoom!.opening, 6);
-      await supabase
-        .from("game_rooms")
-        .update({ current_fen: fen })
-        .eq("id", HPGameRoom!.id);
-
-      await waitForRoundEnd();
-      await new Promise(resolve => setTimeout(resolve, 3000));
-    }
-
-    await supabase
+  /*async function joinRoom(code: string) {
+    if (!user) return;
+    const { data: room, error } = await supabase
       .from("game_rooms")
-      .update({ status: "finished" })
-      .eq("id", HPGameRoom!.id);
+      .select()
+      .eq("code", code.toUpperCase())
+      .eq("status", "waiting")
+      .single();
 
-    gameLoopRef.current = false;
-  }
+    if (error || !room) {
+      setMultiplayerError("Room not found or already started.");
+      return;
+    }
 
-  async function waitForRoundEnd(): Promise<void> {
-    return new Promise(resolve => {
-      const check = setInterval(() => {
-        // Both players submitted if both scores changed
-        // Use presence to track submissions
-        const state = presenceChannelRef.current?.presenceState() ?? {};
-        const players = Object.values(state).flat() as any[];
-        const bothSubmitted = players.filter(p => p.roundSubmitted === true).length >= 2;
-        if (bothSubmitted) {
-          clearInterval(check);
-          resolve();
-        }
-      }, 500);
-    });
-  }
+    const { data, error: updateError } = await supabase
+      .from("game_rooms")
+      .update({ guest_id: user.id, status: "active" })
+      .eq("id", room.id)
+      .select()
+      .single();
+
+    if (updateError) { console.error(updateError); return; }
+    setGameRoom(data);
+    setIsHost(false);
+    setScreen("versusHP");
+    subscribeToRoom(data.id);
+  }*/
 
   async function joinHPRoom(code: string) {
     if (!user) return;
@@ -881,7 +795,7 @@ function App() {
 
     setHPGameRoom(updatedRoom[0]);
     setIsHost(false);
-    //setScreen("versusHP");
+    setScreen("versusHP");
     subscribeToHPRoom(updatedRoom[0].id);
   }
 
@@ -902,17 +816,10 @@ function App() {
           table: "hp_game_rooms",
           filter: `id=eq.${roomId}`, // ← this is correct syntax
         },
-
         (payload) => {
-          console.log("Room updated:", payload.new);
+          console.log("Room updated:", payload.new); // ← add this to verify it fires
           const updated = payload.new as HPGameRoom;
           setHPGameRoom(updated);
-          setRoomStatus(updated.status);
-
-          // ← New: load position when host syncs a new one
-          if (updated.current_fen && updated.current_fen !== HPGameRoom?.current_fen) {
-            loadHPPosition(updated.current_fen);
-          }
         }
         
       )
@@ -923,34 +830,6 @@ function App() {
     roomChannelRef.current = channel;
   }
 
-  async function loadHPPosition(fen: string) {
-    const newGame = new Chess(fen);
-    chessGameRef.current = newGame;
-    smallGameRef.current = new Chess(fen);
-    setChessPosition(newGame.fen());
-    setBigChessPosition(newGame.fen());
-    setOldFen(newGame.fen());
-    //setScreen("multiplayerGame")
-    startMyClock(); // start the clock for this round
-  }
-
-  async function submitHPRoundScore(score: number) {
-    stopMyClock();
-    const field = isHost ? "host_score" : "guest_score";
-
-    // Add to cumulative score
-    await supabase
-      .from("game_rooms")
-      .update({ [field]: (gameRoom?.[field as keyof GameRoom] as number ?? 0) + score })
-      .eq("id", gameRoom!.id);
-
-    // Tell opponent you're done via presence
-    await presenceChannelRef.current?.track({ 
-      clock: clockRef.current,
-      roundSubmitted: true 
-    });
-  }
-
   // Clean up on unmount
   useEffect(() => {
     return () => {
@@ -959,20 +838,10 @@ function App() {
       }
     };
   }, []);
-  //fix - are both needed?
-  useEffect(() => {
-    return () => {
-      gameLoopRef.current = false;
-      stopMyClock();
-      if (presenceChannelRef.current) {
-        supabase.removeChannel(presenceChannelRef.current);
-      }
-    };
-  }, []);
 
-  async function submitHPMult(score: number) {
+  async function submitHPScore(score: number) {
     if (!HPGameRoom || !user) return;
-    const field = isHost ? "host_mult" : "guest_mult";
+    const field = isHost ? "host_score" : "guest_score";
 
     const { error } = await supabase
       .from("hp_game_rooms")
@@ -993,18 +862,6 @@ function App() {
         .eq("id", gameRoom.id);
     }
     */
-  }
-
-  async function submitHPHealth(score: number) {
-    if (!HPGameRoom || !user) return;
-    const field = isHost ? "host_health" : "guest_health";
-
-    const { error } = await supabase
-      .from("hp_game_rooms")
-      .update({ [field]: score })
-      .eq("id", HPGameRoom.id);
-
-    if (error) console.error(error);
   }
 
   /*async function findOrCreateRoom() {
