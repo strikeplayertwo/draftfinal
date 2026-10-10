@@ -358,13 +358,14 @@ function App() {
   const [chessPosition, setChessPosition] = useState("");
   const [bigChessPosition, setBigChessPosition] = useState("");
   const [beginPosition, setBeginPosition] = useState("1rk5/8/8/8/4K3/8/8/8 w - - 0 1");
+  const [HPPosition, setHPPosition] = useState("rnbkqbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBKQBNR w - - 0 1");
   const [moveFrom, setMoveFrom] = useState('');
   const [oldMove, setOldMove] = useState('');
   const [oldFen, setOldFen] = useState("");
   const tryFenRef = useRef<Chess | null>(null);
   
   const [accuracy, setAccuracy] = useState(100);
-  const [screen, setScreen] = useState<"title" | "versusHP" | "versusC" | "classic" | "daily" | "settings" | "analytics" | "beginner">("title");
+  const [screen, setScreen] = useState<"title" | "versusHP" | "versusHPMenu" | "versusCMenu" | "versusC" | "classic" | "daily" | "settings" | "analytics" | "beginner">("title");
   const [streak35Count, setStreak35Count] = useState(0);
 
   //supabase stuff
@@ -720,37 +721,186 @@ function App() {
     if (error) { console.error(error); return; }
     setHPGameRoom(data);
     setIsHost(true);
-    setScreen("versusHP");
+    setScreen("versusHPMenu");
     subscribeToHPRoom(data.id);
   }
 
-  /*async function joinRoom(code: string) {
-    if (!user) return;
-    const { data: room, error } = await supabase
-      .from("game_rooms")
-      .select()
-      .eq("code", code.toUpperCase())
-      .eq("status", "waiting")
-      .single();
+  // Clock state
+  const [myClock, setMyClock] = useState(60);
+  const [opponentClock, setOpponentClock] = useState(60);
+  const clockRef = useRef(60);
+  const clockIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-    if (error || !room) {
-      setMultiplayerError("Room not found or already started.");
-      return;
+  // Game loop control
+  const gameLoopRef = useRef(false);
+
+  // Presence channel for syncing clocks
+  const presenceChannelRef = useRef<any>(null);
+
+  function stopMyClock() {
+    if (clockIntervalRef.current) clearInterval(clockIntervalRef.current);
+  }
+
+  function startMyClock() {
+    clockRef.current = 60;
+    setMyClock(60);
+    stopMyClock();
+
+    clockIntervalRef.current = setInterval(async () => {
+      clockRef.current -= 1;
+      setMyClock(clockRef.current);
+
+      // Broadcast clock to opponent
+      presenceChannelRef.current?.track({ clock: clockRef.current });
+
+      if (clockRef.current <= 0) {
+        stopMyClock();
+        // Handle time out here
+      }
+    }, 1000);
+  }
+
+  function setupPresence(roomId: string) {
+    const channel = supabase.channel(`presence:${roomId}`, {
+      config: { presence: { key: user!.id } }
+    });
+
+    channel
+      .on("presence", { event: "sync" }, () => {
+        const state = channel.presenceState();
+        const opponentId = isHost ? HPGameRoom?.guest_id : HPGameRoom?.host_id;
+        if (opponentId && state[opponentId]) {
+          const opponentState = state[opponentId][0] as any;
+          setOpponentClock(opponentState.clock ?? 60);
+        }
+      })
+      .subscribe();
+
+    presenceChannelRef.current = channel;
+  }
+
+  const gameRoomRef = useRef<HPGameRoom | null>(null);
+  const myMoveSubmittedRef = useRef(false);
+  const hostSubmittedRef = useRef(false);
+  const guestSubmittedRef = useRef(false);
+
+  // Keep gameRoomRef in sync with gameRoom state
+  useEffect(() => {
+    gameRoomRef.current = HPGameRoom;
+  }, [HPGameRoom]);
+
+  function waitUntil(condition: () => boolean, interval = 50): Promise<void> {
+    return new Promise(resolve => {
+      const check = setInterval(() => {
+        if (condition()) {
+          clearInterval(check);
+          resolve();
+        }
+      }, interval);
+    });
+  }
+  async function startGameLoop() {
+    if (gameLoopRef.current) return;
+    gameLoopRef.current = true;
+
+    while (gameLoopRef.current) {
+      if (!HPGameRoom) break;
+
+      // Reset round submission tracking
+      hostSubmittedRef.current = false;
+      guestSubmittedRef.current = false;
+
+      if (isHost) {
+        // Host picks position and syncs to Supabase
+        const daFens = await getFENsForOpening("None");
+        setFens(daFens);
+        const fen = daFens[Math.floor(Math.random() * daFens.length)];
+        await supabase
+          .from("hp_game_rooms")
+          .update({ current_fen: fen, round_status: "playing" })
+          .eq("id", gameRoomRef.current!.id)
+      }
+      console.log("done");
+
+      // Wait for current_fen to be set (guest needs to wait for host to sync it)
+      await waitUntil(() => !!gameRoomRef.current?.current_fen);
+
+      // Load the position
+      const fen = gameRoomRef.current!.current_fen;
+      const newGame = new Chess(fen);
+      chessGameRef.current = newGame;
+      setBigChessPosition(newGame.fen());
+      setOldFen(newGame.fen());
+
+      // Wait 5 seconds before starting clock
+      await new Promise(resolve => setTimeout(resolve, 5000));
+      startMyClock();
+
+      // Wait until this player has made their move
+      await waitUntil(() => myMoveSubmittedRef.current);
+      stopMyClock();
+
+      // Mark yourself as submitted via presence
+      await presenceChannelRef.current?.track({
+        clock: clockRef.current,
+        submitted: true
+      });
+
+      // Wait until opponent has also submitted
+      await waitUntil(() => {
+        const state = presenceChannelRef.current?.presenceState() ?? {};
+        const opponentId = isHost ? gameRoomRef.current?.guest_id : gameRoomRef.current?.host_id;
+        if (!opponentId || !state[opponentId]) return false;
+        return (state[opponentId][0] as any)?.submitted === true;
+      });
+
+      // Reset for next round
+      myMoveSubmittedRef.current = false;
+      await presenceChannelRef.current?.track({
+        clock: clockRef.current,
+        submitted: false
+      });
+
+      // Check health — stop if game over
+      const latest = gameRoomRef.current;
+      if (!latest) break;
+      if ((latest.host_health ?? 100) <= 0 || (latest.guest_health ?? 100) <= 0) {
+        await supabase
+          .from("game_rooms")
+          .update({ status: "finished" })
+          .eq("id", gameRoomRef.current!.id)
+        break;
+      }
+
+      // Brief pause before next round
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
 
-    const { data, error: updateError } = await supabase
-      .from("game_rooms")
-      .update({ guest_id: user.id, status: "active" })
-      .eq("id", room.id)
-      .select()
-      .single();
+    gameLoopRef.current = false;
+  }
 
-    if (updateError) { console.error(updateError); return; }
-    setGameRoom(data);
-    setIsHost(false);
-    setScreen("versusHP");
-    subscribeToRoom(data.id);
-  }*/
+  useEffect(() => {
+    console.log(screen)
+  }, [screen]);
+
+  
+
+  const [roomStatus, setRoomStatus] = useState<string>("waiting");
+
+  // Start game loop and presence when room becomes active
+  useEffect(() => {
+    if (roomStatus !== "active" || !HPGameRoom) return;
+    setupPresence(HPGameRoom.id);
+    startGameLoop();
+
+    return () => {
+      stopMyClock();
+      gameLoopRef.current = false;
+      if (presenceChannelRef.current) {
+        supabase.removeChannel(presenceChannelRef.current);
+      }
+    };
+  }, [roomStatus]);
 
   async function joinHPRoom(code: string) {
     if (!user) return;
@@ -820,6 +970,14 @@ function App() {
           console.log("Room updated:", payload.new); // ← add this to verify it fires
           const updated = payload.new as HPGameRoom;
           setHPGameRoom(updated);
+          setRoomStatus(updated.status);
+          if(updated.status === "active"){
+            console.log("ACTIVE");
+            setScreen("versusHP");
+          }else{
+            console.log("INACTIVE") + updated.status;
+          }
+          if(updated.current_fen !== null) setHPPosition(updated.current_fen);
         }
         
       )
@@ -839,7 +997,7 @@ function App() {
     };
   }, []);
 
-  async function submitHPScore(score: number) {
+  /*async function submitHPScore(score: number) {
     if (!HPGameRoom || !user) return;
     const field = isHost ? "host_score" : "guest_score";
 
@@ -849,7 +1007,7 @@ function App() {
       .eq("id", HPGameRoom.id);
 
     if (error) console.error(error);
-    /*
+    
     // Check if both players have submitted
     const bothDone = isHost
       ? HPGameRoom.guest_score > 0
@@ -860,31 +1018,6 @@ function App() {
         .from("hp_game_rooms")
         .update({ status: "finished" })
         .eq("id", gameRoom.id);
-    }
-    */
-  }
-
-  /*async function findOrCreateRoom() {
-    if (!user) return;
-
-    // Look for an existing waiting room not created by this user
-    const { data: existing } = await supabase
-      .from("game_rooms")
-      .select()
-      .eq("status", "waiting")
-      .neq("host_id", user.id)
-      .order("created_at", { ascending: true })
-      .limit(1)
-      .single();
-
-    if (existing) {
-      // Join the existing room
-      console.log("JOINING EXISTING");
-      await joinRoom(existing.code);
-    } else {
-      // No room available — create one and wait
-      console.log("NO ROOMS");
-      await createRoom();
     }
   }*/
 
@@ -1129,6 +1262,11 @@ function App() {
   const [oldEval, setOldEval] = useState(-10000);
   const isAnalyzing = useRef(false);
   const [moveInfos, setMoveInfos] = useState<MoveInfo[]>([]);
+
+  const [HPArrows, setHPArrows] = useState<Arrow[]>([]);
+  const [HPSquares, setHPSquares] = useState<Record<string, React.CSSProperties>>({});
+
+
 
   useEffect(() => {
     //console.log("UPDATE");
@@ -2366,102 +2504,6 @@ function App() {
     setDailyBestMoves(chosenMoves2);
     return chosenFens2;
   }
-
-  /*async function generateFENsFromOpening(mainline: string): Promise<string[]> {
-    const fens: string[] = [];
-    let mainMoves = mainline.split(" ");
-    let genGame = new Chess();
-    for (let i = 1; i < 4; i++){
-      genGame.reset();
-        for (let j = 0; j < mainMoves.length; j++){
-          try{
-            genGame.move({from: mainMoves[j].substring(0, 2), to: mainMoves[j].substring(2, 4), promotion: 'q'});
-          }catch{
-
-          }
-        }
-        setBigChessPosition(genGame.fen());
-        while (fens.length < i * 20){
-            const lines = await workerA.getTop6Lines(genGame.fen(), 16);
-            if(!lines[1].cp){
-              lines[1] = lines[0];
-            }
-            if(!lines[2].cp){
-              lines[2] = lines[1];
-            }
-            let sidetomove = genGame.fen().split(" ")[1];
-            if (sidetomove === "b") {
-              //swap line 0 and 2
-              const temp = lines[0];
-              lines[0] = lines[2];
-              lines[2] = temp;
-            }
-            let secondaccuracy = 0;
-            let thirdaccuracy = 0;
-            if (sidetomove === "b"){
-              secondaccuracy = Math.round((100 * Math.exp((-(lines[1].cp - lines[0].cp)) / 200)));
-              thirdaccuracy = Math.round((100 * Math.exp((-(lines[2].cp - lines[0].cp)) / 200)));
-            }else{
-              secondaccuracy = Math.round((100 * Math.exp((lines[1].cp - lines[0].cp) / 200)));
-              thirdaccuracy = Math.round((100 * Math.exp((lines[2].cp - lines[0].cp) / 200)));
-            }
-            let thirdprobability = 0;
-            let probability = 50 + (100 - secondaccuracy);
-            if (probability > 100) probability = 100;
-            thirdprobability = 50 + (secondaccuracy - thirdaccuracy);
-            if (thirdprobability > 100) thirdprobability = 100;
-            if (Math.random() * 100 < probability){
-                genGame.move(lines[0].pv.split(" ")[0]);
-                fens.push(genGame.fen());
-                setBigChessPosition(genGame.fen());
-            } else {
-                //thirdaccuracy = Math.round((100 * Math.exp((lines[2].cp - lines[0].cp) / 200)) * 10);
-                if (Math.random() * 100 < thirdprobability){
-                    genGame.move(lines[1].pv.split(" ")[0]);
-                    fens.push(genGame.fen());
-                    setBigChessPosition(genGame.fen());
-                } else {
-                    genGame.move(lines[2].pv.split(" ")[0]);
-                    fens.push(genGame.fen());
-                    setBigChessPosition(genGame.fen());
-                }
-            }
-            console.log(fens.length);
-            console.log("Move " + lines[0].pv.split(" ")[0] + ": " + lines[0].cp + " Probability: " + probability);
-            console.log("Move " + lines[1].pv.split(" ")[0] + ": " + lines[1].cp + " Accuracy: " + secondaccuracy + " Probability: " + ((100 - probability) * (thirdprobability / 100)));
-            console.log("Move " + lines[2].pv.split(" ")[0] + ": " + lines[2].cp + " Accuracy: " + thirdaccuracy + " Probability: " + ((100 - probability - ((100 - probability) * (thirdprobability / 100)))));
-            console.log("Chosen move: " + genGame.history({ verbose: true }).slice(-1)[0].san);
-        }
-    }
-    return fens;
-  }*/
-
-  /*async function chooseFirstFen(opening: string = "None", plyLength: number = 10): Promise<string> {
-    if(Object.keys(openingFensData).length === 0){
-      console.warn("Opening fens not loaded yet");
-      return "";
-    }
-    const daFens = getFENsForOpening(opening);
-    //const daFens = await extractFENsFromGames(pgnData,94, opening, plyLength);
-    while(daFens.length < 94){
-      //const makeupFens = await extractFENsFromGames(pgnData, 94 - daFens.length, "None", plyLength);
-      const randoN = Math.floor(Math.random() * 468);
-      const makeupFens = getFENsForOpening("None", 94);
-      //const makeupFens = await extractFENsFromGames(pgnData, randoN + 1, "None", plyLength, randoN);
-      daFens.push(...makeupFens);
-    }
-    
-    setFens(daFens);
-
-    while (true) {
-      const newFen = daFens[Math.floor(Math.random() * daFens.length)];
-      const evalB = await workerA.getEval(newFen, 10);
-      console.log(evalB);
-      if (Math.abs(evalB) < 30) {
-        return newFen;
-      }
-    }
-  }*/
 
   async function chooseFirstFen(opening: string = "None"): Promise<string> {
     const daFens = await getFENsForOpening(opening);
@@ -3962,7 +4004,8 @@ function App() {
       //openingFensCache.current["None"] = fens;
       const sendFens: string[] = [];
       while (sendFens.length < limit){
-        const randOpening = openings[Math.trunc(2 + (Math.random() * (openings.length - 2)))];
+        let randOpening = openings[Math.trunc(2 + (Math.random() * (openings.length - 2)))];
+        if(randOpening === "Scotch") randOpening = openings[Math.trunc(2 + (Math.random() * (openings.length - 2)))];
         const filename = randOpening.toLowerCase().replace(/[^a-z0-9]/g, "_");
         console.log(randOpening);
         const res = await fetch(`${base}opening-fens/${filename}.json`);
@@ -4347,6 +4390,13 @@ function App() {
       }
     }
 
+  async function HPOnSquareClick({
+    square,
+    piece
+  }: SquareHandlerArgs){
+    myMoveSubmittedRef.current = true;
+  }
+
   async function beginOnSquareClick({
     square,
     piece
@@ -4513,6 +4563,16 @@ function App() {
     darkSquareStyle: isPinkMode? { backgroundColor: '#ff66b3'} : { backgroundColor: '#b58863'},
   };
 
+  const HPBoardOptions = {
+    arrows: HPArrows,
+    onPieceDrop: onPieceDrop,
+    onSquareClick: HPOnSquareClick,
+    position: HPPosition,
+    squareStyles: HPSquares,
+    id: 'board4',
+    darkSquareStyle: isPinkMode? { backgroundColor: '#ff66b3'} : { backgroundColor: '#b58863'},
+  };
+
   const dailyBoardOptions = {
     arrows,
     onPieceDrop,
@@ -4582,7 +4642,7 @@ function App() {
             }}>
               <div onClick={() => {
                 setShowVersusSelect(prev => !prev);
-                setScreen("versusHP");
+                setScreen("versusHPMenu");
               }}>Versus HP</div>
               <div onClick={() => {
                 setShowVersusSelect(prev => !prev);
@@ -4921,7 +4981,7 @@ function App() {
     );
   }
 
-  if (screen === "versusHP") {
+  if (screen === "versusHPMenu") {
     return (
       <div>
         <button onClick={() => setScreen("title")}>← Back</button>
@@ -4944,7 +5004,7 @@ function App() {
               </div>
               {multiplayerError && <p style={{ color: "red" }}>{multiplayerError}</p>}
             </div>
-          ) : HPGameRoom.status === "waiting" ? (
+          ) : (
             <div>
               <p>Waiting for opponent...</p>
               <p>Invite code: <strong style={{ fontSize: 24 }}>{HPGameRoom.code}</strong></p>
@@ -4952,16 +5012,39 @@ function App() {
                 Copy Code
               </button>
             </div>
-          ) : HPGameRoom.status === "active" ? (
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (screen === "versusHP") {
+    return (
+      <div>
+        <div style={{ padding: "2rem", color: "#e6edf3" }}>
+          <h3>VersusHP</h3>
+
+          {
+            HPGameRoom?.status === "active" ? (
             <div>
               <p>Game in progress!</p>
               <p>Your score: {/*isHost ? HPGameRoom.host_score : HPGameRoom.guest_score*/}</p>
               <p>Opponent score: {/*isHost ? HPGameRoom.guest_score : HPGameRoom.host_score*/}</p>
-              <button onClick={() => //submitMultiplayerScore() //fix 
-                console.log("IDK")
-              }>
-                Submit Score
-              </button>
+              <div className="hpboard">
+                <div id ="board4">
+                <Chessboard
+                  options={HPBoardOptions}
+                />
+                </div>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", padding: "1rem" }}>
+                <div>
+                  <p>Your time: {myClock}s</p>
+                </div>
+                <div>
+                  <p>Opponent time: {opponentClock}s</p>
+                </div>
+              </div>
             </div>
           ) : (
             <div>
