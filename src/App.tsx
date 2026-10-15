@@ -437,7 +437,8 @@ function App() {
   const [myMult, setMyMult] = useState<number>(1.0);
   const [oppMult, setOppMult] = useState<number>(1.0);
   const [myName, setMyName] = useState<string>("");
-
+  const [multiPV, setMultiPV] = useState<string>("");
+  
   const nonePVRef = useRef(nonePV);
   useEffect(() => {
     nonePVRef.current = nonePV;
@@ -937,6 +938,7 @@ function App() {
           }
         });
       }
+      setHPArrows([]);
       chessGameRef.current = newGame;
       setHPPosition(newGame.fen());
       setOldFen(newGame.fen());
@@ -948,6 +950,25 @@ function App() {
       // Wait until this player has made their move
       await waitUntil(() => myMoveSubmittedRef.current);
       stopMyClock();
+      setHPSquares(prev => {
+        const newSquareStyles = {
+          ...prev
+        };
+        newSquareStyles[myMoveRef.current.substring(0, 2)] = {
+          backgroundColor: 'rgba(255,0,0,0.2)'
+        };
+        newSquareStyles[myMoveRef.current.substring(2, 4)] = {
+          backgroundColor: 'rgba(255,0,0,0.2)'
+        };
+        return newSquareStyles;
+      });
+
+      setHPArrows(prev => 
+        [...prev, {startSquare: myMoveRef.current.substring(0, 2) as Square,
+          endSquare: myMoveRef.current.substring(2, 4) as Square,
+          color: 'rgba(255,0,0,0.2)',
+        }]
+      )
 
       // Sync my move to Supabase
       const myMoveField = isHost ? "host_move" : "guest_move";
@@ -971,6 +992,7 @@ function App() {
         const opponentMove = isHost ? r.guest_move : r.host_move;
         return !!opponentMove && opponentMove !== "";
       });
+
 
       let myEval = 10000;
       let oppEval = 10000;
@@ -1044,6 +1066,8 @@ function App() {
       console.log("my eval:", myEval, "opponent eval:", oppEval);
 
       let dmg = myEval - oppEval;
+      if(Math.abs(dmg) > 500) dmg = 1000 - calculateAccuracy(Math.min(myEval, oppEval), Math.max(myEval, oppEval));
+      console.log("NEW DMG: " + dmg);
       const winner = dmg > 0 ? "me" : dmg < 0 ? "opp" : "none";
       console.log("dmg before mult: " + dmg);
       if (isHost) {
@@ -1100,10 +1124,28 @@ function App() {
       setMyMult(isHost ? gameRoomRef.current!.host_mult : gameRoomRef.current!.guest_mult);
       setOppMult(isHost ? gameRoomRef.current!.guest_mult : gameRoomRef.current!.host_mult);
 
-      setShowEffex(winner === "me" ? `✅ +${dmg} damage!` : `❌ -${dmg} HP`);
-      stopEffex();
-
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      /*setShowEffex(winner === "me" ? `✅ +${dmg} damage!` : `❌ -${dmg} HP`);
+      stopEffex();*/
+      const oppMove = isHost ? gameRoomRef.current!.guest_move : gameRoomRef.current!.host_move
+      setHPSquares(prev => {
+        const newSquareStyles = {
+          ...prev
+        };
+        newSquareStyles[oppMove.substring(0, 2)] = {
+          backgroundColor: 'rgba(255,0,0,0.2)'
+        };
+        newSquareStyles[oppMove.substring(2, 4)] = {
+          backgroundColor: 'rgba(255,0,0,0.2)'
+        };
+        return newSquareStyles;
+      });
+      setHPArrows(prev => 
+        [...prev, {startSquare: oppMove.substring(0, 2) as Square,
+          endSquare: oppMove.substring(2, 4) as Square,
+          color: 'rgba(255,0,0,0.2)',
+        }]
+      )
+      await new Promise(resolve => setTimeout(resolve, 5000));
 
       // Check if game over
       const latest = gameRoomRef.current;
@@ -1583,6 +1625,57 @@ function App() {
       console.log(started + " | " + reqMove);
     }
   }, [bigChessPosition])
+
+  useEffect(() => {
+    if(isHost && HPGameRoom?.current_fen !== "rnbkqbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBKQBNR w - - 0 1" && HPGameRoom?.current_fen !== null && HPGameRoom?.current_fen !== ""){
+      console.log("POS CHANGE HOST " + HPGameRoom?.current_fen);
+      setNonePV("");
+      setStockEval(undefined);
+      const startIt = async () => {
+        try {
+          console.log("LOOKING FOR LINES " + HPGameRoom?.current_fen);
+          const lines = await workerA.getMultiPV((HPGameRoom?.current_fen || ""), 20, 3);
+          console.log("GOT LINES");
+          const maxMoves = 6;
+          const formatted = lines
+            .filter(line => line)
+            .map(line => {
+              const shortPv = line.pv
+                .split(" ")
+                .slice(0, maxMoves)
+                .join(" ");
+
+              if (line.mate !== null) {
+                return `#${line.mate} ${shortPv}`;
+              }
+              
+              if (line.cp !== null) {
+                if (HPGameRoom?.current_fen.split(" ")[1] === "b" && line.cp !== null) {
+                  line.cp = -line.cp;
+                }
+                return `${line.cp > 0 ? "+" : ""}${(line.cp / 100).toFixed(2)} ${shortPv}`;
+              }
+
+              return null;
+            })
+            .filter(Boolean)
+            .join("\n");
+
+          //const stockMove = lines[0]?.pv?.split(" ")?.[0];
+          setMultiPV(formatted);
+          console.log(formatted);
+        } catch (error) {
+          console.log("EVALERROR");
+        }
+      }
+      if(started > 0 && reqMove === "none") {
+        console.log("STARTING" + started);
+        startIt().then(() => {console.log("EVALDONE")}
+      )}else{
+        console.log(started + " | " + reqMove);
+      }
+    }
+  }, [HPGameRoom?.current_fen])
 
   useEffect(() => {
     beginPositionRef.current = beginPosition;
@@ -2857,6 +2950,37 @@ function App() {
       week:    { rank: rankIn(weekScores),  total: weekScores.length + 1  },
       allTime: { rank: rankIn(allScores),   total: allScores.length + 1   },
     });
+  }
+
+  function calculateAccuracy(ourEvalCP: number, bestEvalCP: number) {
+    //check for mate
+    //if(Math.floor(bestEvalCP) !== bestEvalCP) bestEvalCP = bestEvalCP > 0 ? 1000 : -1000;
+    //fix - make sure adjusting if mate works
+    if(bestEvalCP > 1000){
+      ourEvalCP = ourEvalCP / (bestEvalCP/1000);
+      bestEvalCP = 1000;
+    }
+    // 1. Define the win probability function (sigmoidal curve)
+    // evalCP must be from the perspective of the player making the move
+    const getWinProbability = (v: number) => {
+      if(Math.floor(v) !== v) return (v > 0) ? 1 : 0; //adjusting if mate
+      return 0.5 + 0.5 * (1 - Math.exp(-0.003615 * v));
+    };
+
+    // 2. Convert raw centipawn evaluations to win probabilities
+    const ourWinProb = getWinProbability(ourEvalCP);
+    const bestWinProb = getWinProbability(bestEvalCP);
+
+    // 3. Calculate the drop in win probability
+    // If you played the best move, the drop is 0
+    const probDrop = Math.max(0, bestWinProb - ourWinProb);
+
+    // 4. Map the drop to an accuracy score using an exponential decay
+    // Chess.com curves this so small mistakes don't immediately tank the score
+    let accuracy = 100 * Math.exp(-4.5 * probDrop);
+
+    // 5. Round to 1 decimal place (or Math.round for integers)
+    return Math.round(accuracy * 10);
   }
 
   async function dailyNext(fenBeforeMove: string, playerMove: string, fiveFens: string[], fenIndex: number) {
@@ -5340,7 +5464,7 @@ function App() {
                   <div className="healthBar">{isHost ? HPGameRoom.host_health : HPGameRoom.guest_health}/1000</div>
                   <div className="multBar">{myMult}x</div>
                 </div>
-                <div className="opp">{isHost ? HPGameRoom.guest_username : HPGameRoom.host_username}  
+                <div className="opp">{isHost ? HPGameRoom.guest_username : HPGameRoom.host_username}{(HPGameRoom.round_status === "results") ? " played " + (isHost ? uciToSan(HPGameRoom.guest_move, HPGameRoom.current_fen) : uciToSan(HPGameRoom.host_move, HPGameRoom.current_fen)) : ""}
                   <div className="oppHealthBar">{isHost ? HPGameRoom.guest_health : HPGameRoom.host_health}/1000</div>
                   <div className="oppMBar">{oppMult}x</div>
                 </div>
