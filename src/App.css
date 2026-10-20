@@ -50,6 +50,21 @@
   font-family: "Times New Roman", Times, serif;
 }
 
+.hp-evals-graph {
+  max-width: 480px;
+  padding: 0.4rem 0.7rem;
+  white-space: pre-line;
+  bottom: 0px;
+  left: 500px;
+  background-color: #000;
+  font-size: 2rem;
+  font-family: "Times New Roman", Times, serif;
+  display: flex;
+  align-items: center;
+  position: relative; 
+  justify-content: space-evenly;
+}
+
 .alerts {
   max-width: 280px;
   padding: 0.4rem 0.7rem;

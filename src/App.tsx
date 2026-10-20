@@ -100,6 +100,7 @@ type HPGameRoom = {
   guest_move: string;
   host_eval: number;
   guest_eval: number;
+  multi_pv: string;
 };
 
 
@@ -448,6 +449,11 @@ function App() {
   useEffect(() => {
     stockEvalRef.current = stockEval;
   }, [stockEval]);
+
+  const multiPVRef = useRef(multiPV);
+  useEffect(() => {
+    multiPVRef.current = multiPV;
+  }, [multiPV]);
 
   let isPinkMode = true;
    /*[!cSquare]:{
@@ -920,6 +926,7 @@ function App() {
 
       // Wait for fen to be synced
       await waitUntil(() => !!gameRoomRef.current?.current_fen && gameRoomRef.current?.round_status === "playing");
+      setDisplayEval("");
       const fen = gameRoomRef.current!.current_fen;
 
       const newGame = new Chess(fen);
@@ -1107,6 +1114,10 @@ function App() {
 
       // Only host updates health to avoid race condition
       if (isHost) {
+        await waitUntil(() => {
+          return multiPVRef.current !== "";
+        });
+        setMultiPV("");
         const newHostHealth = Math.max(0, (gameRoomRef.current?.host_health ?? 1000) - Math.floor(Math.abs(hostDamage)));
         const newGuestHealth = Math.max(0, (gameRoomRef.current?.guest_health ?? 1000) - Math.floor(Math.abs(guestDamage)));
         await supabase
@@ -1115,6 +1126,7 @@ function App() {
             host_health: newHostHealth,
             guest_health: newGuestHealth,
             round_status: "results",
+            multi_pv: multiPVRef.current
           })
           .eq("id", currentRoom.id);
       }
@@ -1127,6 +1139,8 @@ function App() {
       /*setShowEffex(winner === "me" ? `✅ +${dmg} damage!` : `❌ -${dmg} HP`);
       stopEffex();*/
       const oppMove = isHost ? gameRoomRef.current!.guest_move : gameRoomRef.current!.host_move
+      console.log("multipv is " + gameRoomRef.current!.multi_pv);
+      setDisplayEval(gameRoomRef.current!.multi_pv);
       setHPSquares(prev => {
         const newSquareStyles = {
           ...prev
@@ -1139,13 +1153,34 @@ function App() {
         };
         return newSquareStyles;
       });
-      setHPArrows(prev => 
-        [...prev, {startSquare: oppMove.substring(0, 2) as Square,
-          endSquare: oppMove.substring(2, 4) as Square,
-          color: 'rgba(255,0,0,0.2)',
-        }]
-      )
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      const bestMove = gameRoomRef.current!.multi_pv.split(" ")[1];
+      console.log("bestmove " + bestMove);
+      if(myMoveRef.current !== bestMove) {
+        setHPArrows(prev => 
+          [...prev, {startSquare: bestMove.substring(0, 2) as Square,
+          endSquare: bestMove.substring(2, 4) as Square,
+          color: 'rgb(0,255,55)',
+          }]
+        )
+        //check whose eval is higher instead of which move equals bestmove
+      }else{ //just bestmove & mymove
+        setHPArrows([
+          {startSquare: myMoveRef.current.substring(0, 2) as Square,
+          endSquare: myMoveRef.current.substring(2, 4) as Square,
+          color: 'rgb(0,255,55)',
+          }
+        ])
+      }
+      if(myMoveRef.current !== oppMove && bestMove !== oppMove){
+        setHPArrows(prev => 
+          [...prev, {startSquare: oppMove.substring(0, 2) as Square,
+            endSquare: oppMove.substring(2, 4) as Square,
+            color: 'rgba(255,0,0,0.2)',
+          }]
+        )
+      }
+
+      await new Promise(resolve => setTimeout(resolve, 10000)); //wait for new round
 
       // Check if game over
       const latest = gameRoomRef.current;
@@ -1629,8 +1664,7 @@ function App() {
   useEffect(() => {
     if(isHost && HPGameRoom?.current_fen !== "rnbkqbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBKQBNR w - - 0 1" && HPGameRoom?.current_fen !== null && HPGameRoom?.current_fen !== ""){
       console.log("POS CHANGE HOST " + HPGameRoom?.current_fen);
-      setNonePV("");
-      setStockEval(undefined);
+      setMultiPV("");
       const startIt = async () => {
         try {
           console.log("LOOKING FOR LINES " + HPGameRoom?.current_fen);
@@ -1663,6 +1697,10 @@ function App() {
 
           //const stockMove = lines[0]?.pv?.split(" ")?.[0];
           setMultiPV(formatted);
+          await supabase
+            .from("hp_game_rooms")
+            .update({ multi_pv: formatted })
+            .eq("id", gameRoomRef.current!.id)
           console.log(formatted);
         } catch (error) {
           console.log("EVALERROR");
@@ -2980,6 +3018,7 @@ function App() {
     let accuracy = 100 * Math.exp(-4.5 * probDrop);
 
     // 5. Round to 1 decimal place (or Math.round for integers)
+    console.log("RETURNING ACCURACY " + Math.round(accuracy * 10));
     return Math.round(accuracy * 10);
   }
 
@@ -4992,6 +5031,10 @@ function App() {
 
   const HPBoardOptions = {
     arrows: HPArrows,
+    /*arrowOptions: {
+      opacity: 1.0,
+      activeOpacity: 0.5,
+    },*/
     onPieceDrop: onPieceDrop,
     onSquareClick: HPOnSquareClick,
     position: HPPosition,
@@ -5486,6 +5529,7 @@ function App() {
                   <p>Opponent time: {opponentClock}s</p>
                 </div>
               </div>
+              <div className={`hp-evals-graph ${DisplayEval !== "" ? "show" : "hide"}`} style={{ display: "flex", justifyContent: "space-between", padding: "1rem" }}>{DisplayEval}</div>
             </div>
           ) : HPGameRoom?.status === "finished" ? (
             <div>
