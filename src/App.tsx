@@ -12,7 +12,7 @@ import pgnData from "./assets/twic1326.pgn?raw";
 import { createClient, User } from "@supabase/supabase-js";
 //import { C } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js';
 //import { asyncWrapProviders } from 'async_hooks';
-//import { motion } from 'motion/react';
+import { motion } from 'motion/react';
 
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
 //aaaaa
@@ -440,6 +440,8 @@ function App() {
   const [oppMult, setOppMult] = useState<number>(1.0);
   const [myName, setMyName] = useState<string>("");
   const [multiPV, setMultiPV] = useState<string>("");
+  const [myWin, setMyWin] = useState<number>(0.0);
+  const [oppWin, setOppWin] = useState<number>(0.0);
   
   const nonePVRef = useRef(nonePV);
   useEffect(() => {
@@ -1071,10 +1073,13 @@ function App() {
           myEval = r.guest_eval;
           return !!oppEval && oppEval !== 10000;
         });
+        console.log("done waiting");
       }
 
       console.log("EVALS DONE");
       console.log("my eval:", myEval, "opponent eval:", oppEval);
+      setMyWin(Math.round(1000 * getWinProbability(myEval)) / 10);
+      setOppWin(Math.round(1000 * getWinProbability(oppEval)) / 10);
 
       let dmg = myEval - oppEval;
       console.log("OLD DMG: " + dmg);
@@ -3070,10 +3075,12 @@ function App() {
     //check for mate
     //if(Math.floor(bestEvalCP) !== bestEvalCP) bestEvalCP = bestEvalCP > 0 ? 1000 : -1000;
     //fix - make sure adjusting if mate works
-    if(bestEvalCP > 1000){
+
+    /*if(bestEvalCP > 1000){
       ourEvalCP = ourEvalCP / (bestEvalCP/1000);
       bestEvalCP = 1000;
-    }
+    }*/
+
     // 1. Define the win probability function (sigmoidal curve)
     // evalCP must be from the perspective of the player making the move
     /*const getWinProbability = (v: number) => {
@@ -5589,11 +5596,20 @@ function App() {
                   <div className="healthBar">{isHost ? HPGameRoom.host_health : HPGameRoom.guest_health}/1000</div>
                   <div className="multBar">{myMult}x</div>
                 </div>
+                
+                <div className={`myeval ${HPGameRoom.round_status == "results" ? "overlay-front" : "overlay-back"}`}>{isHost ? HPGameRoom.host_eval > 0 ? +HPGameRoom.host_eval : HPGameRoom.host_eval : HPGameRoom.guest_eval > 0 ? +HPGameRoom.guest_eval : HPGameRoom.guest_eval}</div>
+                <motion.div initial={{x: 0}} animate={{x: myWin > oppWin ? 100 : 0}} transition={{duration: 0.5, delay: 3.0}} className={`mywin ${HPGameRoom.round_status == "results" ? "overlay-front" : "overlay-back"}`}>{myWin}{`%`}</motion.div>
+                <motion.div initial={{x: 0}} animate={{x: myWin < oppWin ? -100 : 0}} transition={{duration: 0.5, delay: 3.0}} className={`oppwin ${HPGameRoom.round_status == "results" ? "overlay-front" : "overlay-back"}`}>{oppWin}{`%`}</motion.div>
+                <div className={`oppeval ${HPGameRoom.round_status == "results" ? "overlay-front" : "overlay-back"}`}>{isHost ? HPGameRoom.guest_eval > 0 ? +HPGameRoom.guest_eval : HPGameRoom.guest_eval : HPGameRoom.host_eval > 0 ? +HPGameRoom.host_eval : HPGameRoom.host_eval}</div>
+                
                 <div className="opp">{isHost ? HPGameRoom.guest_username : HPGameRoom.host_username}{(HPGameRoom.round_status === "results") ? " played " + (isHost ? uciToSan(HPGameRoom.guest_move, HPGameRoom.current_fen) : uciToSan(HPGameRoom.host_move, HPGameRoom.current_fen)) : ""}
                   <div className="oppHealthBar">{isHost ? HPGameRoom.guest_health : HPGameRoom.host_health}/1000</div>
                   <div className="oppMBar">{oppMult}x</div>
                 </div>
+              
               </div>
+            
+
               <div className="board-layer">    
                 <div className="hpboard">
                   <div id ="board4">
