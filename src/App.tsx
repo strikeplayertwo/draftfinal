@@ -12,6 +12,7 @@ import pgnData from "./assets/twic1326.pgn?raw";
 import { createClient, User } from "@supabase/supabase-js";
 //import { C } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js';
 //import { asyncWrapProviders } from 'async_hooks';
+//import { motion } from 'motion/react';
 
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
 //aaaaa
@@ -997,6 +998,7 @@ function App() {
         const r = gameRoomRef.current;
         if (!r) return false;
         const opponentMove = isHost ? r.guest_move : r.host_move;
+        console.log(opponentMove);
         return !!opponentMove && opponentMove !== "";
       });
 
@@ -1006,21 +1008,23 @@ function App() {
       if(isHost){
         const chessGame = chessGameRef.current;
         chessGame.load(gameRoomRef.current!.current_fen);
-        console.log("chessfen" + chessGame.fen());
+        console.log("chessfen" + chessGame.fen() + " hostmove" + gameRoomRef.current!.host_move + " backupmove " + myMoveRef.current);
+        const usedMove = gameRoomRef.current!.host_move !== "" ? gameRoomRef.current!.host_move : myMoveRef.current;
+        console.log(usedMove);
         try{
           chessGame.move({
-            from: gameRoomRef.current!.host_move.substring(0,2), 
-            to: gameRoomRef.current!.host_move.substring(2,4), 
+            from: usedMove.substring(0,2), 
+            to: usedMove.substring(2,4), 
             promotion: 'q'
           })
         }catch (e){
-          console.log(e);
+          console.error(e);
         }
         console.log("GETTING EVAL" + chessGame.fen());
         try {
           myEval = -1 * await workerD.getEval(chessGame.fen(), 20);
         } catch (e) {
-          console.log(e);
+          console.error(e);
         }
         console.log("SUBMITTING EVAL" + myEval);
         if(gameRoomRef.current!.guest_move == gameRoomRef.current!.host_move){
@@ -1073,10 +1077,16 @@ function App() {
       console.log("my eval:", myEval, "opponent eval:", oppEval);
 
       let dmg = myEval - oppEval;
-      if(Math.abs(dmg) > 500) dmg = 1000 - calculateAccuracy(Math.min(myEval, oppEval), Math.max(myEval, oppEval));
+      console.log("OLD DMG: " + dmg);
+      /*if(Math.abs(dmg) > 500) {
+        dmg = 1000 - (10 * calculateWinProbDiff(Math.min(myEval, oppEval), Math.max(myEval, oppEval)));
+      } else {
+        console.log("dmg is " + dmg + " instead of alternative " + (1000 - (10 * calculateWinProbDiff(Math.min(myEval, oppEval), Math.max(myEval, oppEval)))));
+      }*/
+      if (dmg != 0) dmg = 10 * calculateWinProbDiff(Math.min(myEval, oppEval), Math.max(myEval, oppEval));
       console.log("NEW DMG: " + dmg);
-      const winner = dmg > 0 ? "me" : dmg < 0 ? "opp" : "none";
-      console.log("dmg before mult: " + dmg);
+      const winner = myEval - oppEval > 0 ? "me" : myEval - oppEval < 0 ? "opp" : "none";
+      console.log("dmg before mult: " + dmg + " winner: " + winner);
       if (isHost) {
         if (winner === "me"){
           dmg = dmg * gameRoomRef.current!.host_mult;
@@ -1132,7 +1142,13 @@ function App() {
       }
 
       // Both players wait for health update
-      await waitUntil(() => gameRoomRef.current?.round_status === "results");
+      console.log("trying to wait for results " + gameRoomRef.current);
+      if (isHost) { // no idea what this does, just seeing if this fixes bug
+        await waitUntil(() => gameRoomRef.current!.round_status === "results");
+      } else {
+        await waitUntil(() => gameRoomRef.current?.round_status === "results");
+      }
+      console.log("NOW RESULTS");
       setMyMult(isHost ? gameRoomRef.current!.host_mult : gameRoomRef.current!.guest_mult);
       setOppMult(isHost ? gameRoomRef.current!.guest_mult : gameRoomRef.current!.host_mult);
 
@@ -1155,7 +1171,64 @@ function App() {
       });
       const bestMove = gameRoomRef.current!.multi_pv.split(" ")[1];
       console.log("bestmove " + bestMove);
-      if(myMoveRef.current !== bestMove) {
+      //console.log("my eval " + myEvalRef.current + " opp " + opponentEvalRef.current);
+      if (bestMove === myMoveRef.current || bestMove === oppMove) {
+        if (myEval > oppEval) { //my green arrow, opponent's red arrow
+          setHPArrows([
+            {startSquare: myMoveRef.current.substring(0, 2) as Square,
+            endSquare: myMoveRef.current.substring(2, 4) as Square,
+            color: 'rgb(0,255,55)',
+            },{
+              startSquare: oppMove.substring(0, 2) as Square,
+            endSquare: oppMove.substring(2, 4) as Square,
+            color: 'rgba(255,0,0,0.2)',
+            }
+          ])
+        } else if (myEval < oppEval){ //my red arrow, opponent's green arrow
+          setHPArrows(prev => 
+            [...prev, {startSquare: oppMove.substring(0, 2) as Square,
+            endSquare: oppMove.substring(2, 4) as Square,
+            color: 'rgb(0,255,55)',
+          }]
+        )
+        } else { //one or two green arrows
+          if (myMoveRef.current == oppMove) {
+            setHPArrows([
+              {startSquare: myMoveRef.current.substring(0, 2) as Square,
+              endSquare: myMoveRef.current.substring(2, 4) as Square,
+              color: 'rgb(0,255,55)',
+              }
+            ])
+          } else {
+            setHPArrows([
+              {startSquare: myMoveRef.current.substring(0, 2) as Square,
+              endSquare: myMoveRef.current.substring(2, 4) as Square,
+              color: 'rgb(0,255,55)',
+              },{
+                startSquare: oppMove.substring(0, 2) as Square,
+              endSquare: oppMove.substring(2, 4) as Square,
+              color: 'rgb(0,255,55)',
+              }
+            ])
+          }
+        }
+      } else { //green arrow, one or two red arrows
+        setHPArrows(prev => 
+          [...prev, {startSquare: bestMove.substring(0, 2) as Square,
+          endSquare: bestMove.substring(2, 4) as Square,
+          color: 'rgb(0,255,55)',
+          }]
+        )
+        if (myMoveRef.current != oppMove) {
+          setHPArrows(prev => 
+            [...prev, {startSquare: oppMove.substring(0, 2) as Square,
+            endSquare: oppMove.substring(2, 4) as Square,
+            color: 'rgba(255,0,0,0.2)',
+            }]
+          )
+        }   
+      }
+      /*if(myMoveRef.current !== bestMove) {
         setHPArrows(prev => 
           [...prev, {startSquare: bestMove.substring(0, 2) as Square,
           endSquare: bestMove.substring(2, 4) as Square,
@@ -1178,7 +1251,7 @@ function App() {
             color: 'rgba(255,0,0,0.2)',
           }]
         )
-      }
+      }*/
 
       await new Promise(resolve => setTimeout(resolve, 10000)); //wait for new round
 
@@ -2989,8 +3062,11 @@ function App() {
       allTime: { rank: rankIn(allScores),   total: allScores.length + 1   },
     });
   }
-
-  function calculateAccuracy(ourEvalCP: number, bestEvalCP: number) {
+  function getWinProbability(v: number) {
+    if(Math.floor(v) !== v) return (v > 0) ? 1 : 0; //adjusting if mate
+    return v < 0 ? 1 - (0.5 + 0.5 * (1 - Math.exp(-0.003615 * -v))) : 0.5 + 0.5 * (1 - Math.exp(-0.003615 * v));
+  }
+  function calculateWinProbDiff(ourEvalCP: number, bestEvalCP: number) {
     //check for mate
     //if(Math.floor(bestEvalCP) !== bestEvalCP) bestEvalCP = bestEvalCP > 0 ? 1000 : -1000;
     //fix - make sure adjusting if mate works
@@ -3000,10 +3076,13 @@ function App() {
     }
     // 1. Define the win probability function (sigmoidal curve)
     // evalCP must be from the perspective of the player making the move
-    const getWinProbability = (v: number) => {
+    /*const getWinProbability = (v: number) => {
       if(Math.floor(v) !== v) return (v > 0) ? 1 : 0; //adjusting if mate
-      return 0.5 + 0.5 * (1 - Math.exp(-0.003615 * v));
-    };
+      return v < 0 ? 1 - (0.5 + 0.5 * (1 - Math.exp(-0.003615 * -v))) : 0.5 + 0.5 * (1 - Math.exp(-0.003615 * v));
+    };*/
+    //console.log("-713 " + getWinProbability(-713));
+    //console.log("-39 " + getWinProbability(-39));
+    
 
     // 2. Convert raw centipawn evaluations to win probabilities
     const ourWinProb = getWinProbability(ourEvalCP);
@@ -3011,15 +3090,18 @@ function App() {
 
     // 3. Calculate the drop in win probability
     // If you played the best move, the drop is 0
-    const probDrop = Math.max(0, bestWinProb - ourWinProb);
+    //const probDrop = Math.max(0, bestWinProb - ourWinProb);
+   
 
     // 4. Map the drop to an accuracy score using an exponential decay
     // Chess.com curves this so small mistakes don't immediately tank the score
-    let accuracy = 100 * Math.exp(-4.5 * probDrop);
+    //let accuracy = 100 * Math.exp(-4.5 * probDrop);
 
     // 5. Round to 1 decimal place (or Math.round for integers)
-    console.log("RETURNING ACCURACY " + Math.round(accuracy * 10));
-    return Math.round(accuracy * 10);
+    //console.log("RETURNING ACCURACY " + Math.round(accuracy * 10));
+    //return Math.round(accuracy * 10);
+    console.log("RETURNING WINDIFF " + (100 * (bestWinProb - ourWinProb)));
+    return 100 * (bestWinProb - ourWinProb);
   }
 
   async function dailyNext(fenBeforeMove: string, playerMove: string, fiveFens: string[], fenIndex: number) {
