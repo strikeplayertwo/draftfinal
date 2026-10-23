@@ -130,33 +130,33 @@
 .myeval {
   color: white;
   font-size: 1.5rem;
-  left: 200px;
+  left: 600px;
   top: 200px;
-  width: 100px;
+  position: absolute;
 }
 
 .oppeval {
   color: white;
   font-size: 1.5rem;
-  left: 200px;
-  top: 400px;
-  width: 100px;
+  right: 600px;
+  top: 200px;
+  position: absolute;
 }
 
 .mywin {
   color: white;
   font-size: 1.5rem;
-  left: 200px;
-  bottom: 0px;
-  width: 100px;
+  top: 325px;
+  position: absolute;
+  left: 650px;
 }
 
 .oppwin {
   color: white;
   font-size: 1.5rem;
-  left: 200px;
-  top: 200px;
-  width: 100px;
+  top: 325px;
+  right: 650px;
+  position: absolute;
 }
 
 .opp {

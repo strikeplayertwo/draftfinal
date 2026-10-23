@@ -102,6 +102,9 @@ type HPGameRoom = {
   host_eval: number;
   guest_eval: number;
   multi_pv: string;
+  display_dmg: number;
+  display_dmg_after: number;
+  dmg_taker: string;
 };
 
 
@@ -442,6 +445,9 @@ function App() {
   const [multiPV, setMultiPV] = useState<string>("");
   const [myWin, setMyWin] = useState<number>(0.0);
   const [oppWin, setOppWin] = useState<number>(0.0);
+  const [damg, setDamg] = useState<number>(0.0);
+  const [vis, setVis] = useState<boolean>(true);
+  const [phase2, setPhase2] = useState<boolean>(false);
   
   const nonePVRef = useRef(nonePV);
   useEffect(() => {
@@ -931,6 +937,7 @@ function App() {
       await waitUntil(() => !!gameRoomRef.current?.current_fen && gameRoomRef.current?.round_status === "playing");
       setDisplayEval("");
       const fen = gameRoomRef.current!.current_fen;
+      setPhase2(false);
 
       const newGame = new Chess(fen);
       if (fen.includes('w')) {
@@ -1071,7 +1078,7 @@ function App() {
           const r = gameRoomRef.current;
           if (!r) return false;
           myEval = r.guest_eval;
-          return !!oppEval && oppEval !== 10000;
+          return !!myEval && myEval !== 10000;
         });
         console.log("done waiting");
       }
@@ -1090,20 +1097,21 @@ function App() {
       }*/
       if (dmg != 0) dmg = 10 * calculateWinProbDiff(Math.min(myEval, oppEval), Math.max(myEval, oppEval));
       console.log("NEW DMG: " + dmg);
-      const winner = myEval - oppEval > 0 ? "me" : myEval - oppEval < 0 ? "opp" : "none";
+      const winner = Math.round(myEval - oppEval) > 0 ? "me" : Math.round(myEval - oppEval) < 0 ? "opp" : "none";
       console.log("dmg before mult: " + dmg + " winner: " + winner);
+      const dmgBeforeMult = Math.round(dmg);
       if (isHost) {
         if (winner === "me"){
-          dmg = dmg * gameRoomRef.current!.host_mult;
+          dmg = Math.round(dmg * gameRoomRef.current!.host_mult);
           await supabase
             .from("hp_game_rooms")
-            .update({ host_mult: gameRoomRef.current!.host_mult + 0.5 })
+            .update({ host_mult: gameRoomRef.current!.host_mult + 0.5, display_dmg: dmgBeforeMult, display_dmg_after: dmg, dmg_taker: "guest" })
             .eq("id", currentRoom.id);
         }else if (winner === "opp"){
-          dmg = dmg * gameRoomRef.current!.guest_mult;
+          dmg = Math.round(dmg * gameRoomRef.current!.guest_mult);
           await supabase
             .from("hp_game_rooms")
-            .update({ guest_mult: gameRoomRef.current!.guest_mult + 0.5 })
+            .update({ guest_mult: gameRoomRef.current!.guest_mult + 0.5, display_dmg: dmgBeforeMult, display_dmg_after: dmg, dmg_taker: "host" })
             .eq("id", currentRoom.id);
         }else{
           await supabase
@@ -1111,6 +1119,9 @@ function App() {
             .update({ 
               host_mult: gameRoomRef.current!.host_mult + 0.25,
               guest_mult: gameRoomRef.current!.guest_mult + 0.25,
+              display_dmg: 0,
+              display_dmg_after: 0,
+              dmg_taker: "none"
              })
             .eq("id", currentRoom.id);
         }
@@ -1119,13 +1130,13 @@ function App() {
           dmg = dmg * gameRoomRef.current!.guest_mult;  
         }else if (winner === "opp"){
           dmg = dmg * gameRoomRef.current!.host_mult;
-        }else{
         }
       }
       console.log("dmg after mult: " + dmg);
 
       const hostDamage = isHost ? (winner === "me" ? 0 : dmg) : (winner === "me" ? dmg : 0);
       const guestDamage = isHost ? (winner === "me" ? dmg : 0) : (winner === "me" ? 0 : dmg);
+      setDamg(dmg);
 
       // Only host updates health to avoid race condition
       if (isHost) {
@@ -1133,8 +1144,8 @@ function App() {
           return multiPVRef.current !== "";
         });
         setMultiPV("");
-        const newHostHealth = Math.max(0, (gameRoomRef.current?.host_health ?? 1000) - Math.floor(Math.abs(hostDamage)));
-        const newGuestHealth = Math.max(0, (gameRoomRef.current?.guest_health ?? 1000) - Math.floor(Math.abs(guestDamage)));
+        const newHostHealth = Math.max(0, (gameRoomRef.current?.host_health ?? 1000) - Math.round(Math.abs(hostDamage)));
+        const newGuestHealth = Math.max(0, (gameRoomRef.current?.guest_health ?? 1000) - Math.round(Math.abs(guestDamage)));
         await supabase
           .from("hp_game_rooms")
           .update({
@@ -5594,21 +5605,48 @@ function App() {
               <div style={{ display: "flex", justifyContent: "space-between", padding: "1rem" }}>
                 <div className="me">{isHost ? HPGameRoom.host_username : HPGameRoom.guest_username}
                   <div className="healthBar">{isHost ? HPGameRoom.host_health : HPGameRoom.guest_health}/1000</div>
-                  <div className="multBar">{myMult}x</div>
+                  <motion.span className="multBar"
+                    animate={HPGameRoom.round_status === "results" && phase2 && ((HPGameRoom.dmg_taker == "guest" && isHost) || (!isHost && HPGameRoom.dmg_taker == "host")) ? {rotate: [0, 45, 0]} : {}}
+                    transition={HPGameRoom.round_status === "results" && phase2 && ((HPGameRoom.dmg_taker == "guest" && isHost) || (!isHost && HPGameRoom.dmg_taker == "host")) ? { 
+                      duration: 0.5, 
+                      ease: "easeInOut",
+                      times: [0, 0.5, 1.0] // Dictates the relative timing of each step
+                    } : {}}
+                    onAnimationComplete={() => {{setMyWin(HPGameRoom.display_dmg_after); console.log("ROTATE DONE")}}  }>{myMult}x
+                  </motion.span>
                 </div>
-                
-                <div className={`myeval ${HPGameRoom.round_status == "results" ? "overlay-front" : "overlay-back"}`}>{isHost ? HPGameRoom.host_eval > 0 ? +HPGameRoom.host_eval : HPGameRoom.host_eval : HPGameRoom.guest_eval > 0 ? +HPGameRoom.guest_eval : HPGameRoom.guest_eval}</div>
-                <motion.div initial={{x: 0}} animate={{x: myWin > oppWin ? 100 : 0}} transition={{duration: 0.5, delay: 3.0}} className={`mywin ${HPGameRoom.round_status == "results" ? "overlay-front" : "overlay-back"}`}>{myWin}{`%`}</motion.div>
-                <motion.div initial={{x: 0}} animate={{x: myWin < oppWin ? -100 : 0}} transition={{duration: 0.5, delay: 3.0}} className={`oppwin ${HPGameRoom.round_status == "results" ? "overlay-front" : "overlay-back"}`}>{oppWin}{`%`}</motion.div>
-                <div className={`oppeval ${HPGameRoom.round_status == "results" ? "overlay-front" : "overlay-back"}`}>{isHost ? HPGameRoom.guest_eval > 0 ? +HPGameRoom.guest_eval : HPGameRoom.guest_eval : HPGameRoom.host_eval > 0 ? +HPGameRoom.host_eval : HPGameRoom.host_eval}</div>
-                
+
+                <span className={`myeval ${HPGameRoom.round_status == "results" ? "overlay-front" : "overlay-back"}`}>{isHost ? HPGameRoom.host_eval > 0 ? +HPGameRoom.host_eval : HPGameRoom.host_eval : HPGameRoom.guest_eval > 0 ? +HPGameRoom.guest_eval : HPGameRoom.guest_eval}</span>                
+                <motion.span initial={{x: 0}} animate={HPGameRoom.round_status === "results" ? { x: myWin > oppWin ? 100 : 0 } : { x: 0 } }  
+                  transition={HPGameRoom.round_status === "results" ? { duration: 0.3, delay: 3.0 } : { duration: 0 }}
+                  onAnimationComplete={() => {{setPhase2(true); console.log("DAMG" + damg); setMyWin(HPGameRoom.display_dmg);}}  }
+                  className={`mywin ${HPGameRoom.round_status == "results" ? "overlay-front" : "overlay-back"}`}>
+                  {myWin}{phase2 ? `` : `%`}
+                </motion.span>
+                <motion.span initial={{x: 0}} animate={HPGameRoom.round_status === "results" ? {x: myWin < oppWin ? -100 : 0} : {x: 0} }  
+                  transition={HPGameRoom.round_status === "results" ? { duration: 0.3, delay: 3.0 } : { duration: 0 }} 
+                  style={{opacity: phase2 ? 0 : 1}}
+                  className={`oppwin ${HPGameRoom.round_status == "results" ? "overlay-front" : "overlay-back"}`}>
+                  {oppWin}{phase2 ? `` : `%`} 
+                </motion.span>
+                <span className={`oppeval ${HPGameRoom.round_status == "results" ? "overlay-front" : "overlay-back"}`}>{isHost ? HPGameRoom.guest_eval > 0 ? +HPGameRoom.guest_eval : HPGameRoom.guest_eval : HPGameRoom.host_eval > 0 ? +HPGameRoom.host_eval : HPGameRoom.host_eval}</span>
+              
+
                 <div className="opp">{isHost ? HPGameRoom.guest_username : HPGameRoom.host_username}{(HPGameRoom.round_status === "results") ? " played " + (isHost ? uciToSan(HPGameRoom.guest_move, HPGameRoom.current_fen) : uciToSan(HPGameRoom.host_move, HPGameRoom.current_fen)) : ""}
                   <div className="oppHealthBar">{isHost ? HPGameRoom.guest_health : HPGameRoom.host_health}/1000</div>
-                  <div className="oppMBar">{oppMult}x</div>
+                  <motion.span className="oppMBar"
+                    animate={HPGameRoom.round_status === "results" && phase2 && ((HPGameRoom.dmg_taker == "host" && isHost) || (!isHost && HPGameRoom.dmg_taker == "guest")) ? {rotate: [0, 45, 0]} : {}}
+                    transition={HPGameRoom.round_status === "results" && phase2 && ((HPGameRoom.dmg_taker == "host" && isHost) || (!isHost && HPGameRoom.dmg_taker == "guest")) ? { 
+                      duration: 0.5, 
+                      ease: "easeInOut",
+                      times: [0, 0.5, 1.0] // Dictates the relative timing of each step
+                    } : {}}>{oppMult}x
+                  </motion.span>
                 </div>
               
               </div>
-            
+
+              
 
               <div className="board-layer">    
                 <div className="hpboard">
