@@ -12,7 +12,7 @@ import pgnData from "./assets/twic1326.pgn?raw";
 import { createClient, User } from "@supabase/supabase-js";
 //import { C } from 'vitest/dist/chunks/reporters.d.BFLkQcL6.js';
 //import { asyncWrapProviders } from 'async_hooks';
-import { motion } from 'motion/react';
+import { Color, motion } from 'motion/react';
 
 const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY);
 //aaaaa
@@ -445,7 +445,13 @@ function App() {
   const [multiPV, setMultiPV] = useState<string>("");
   const [myWin, setMyWin] = useState<number>(0.0);
   const [oppWin, setOppWin] = useState<number>(0.0);
-  const [phase2, setPhase2] = useState<boolean>(false);
+  const [resultPhase, setResultPhase] = useState<number>(0);
+  const [myMultColor, setMyMultColor] = useState<number>(1);
+  const [oppMultColor, setOppMultColor] = useState<number>(1);
+
+  const MULT_COLORS: Record<number, string> = {
+    1: 'rgba(50, 0, 200, 1)', 2: 'rgb(147, 0, 200)', 3: 'rgb(197, 0, 200)', 4: 'rgb(200, 110, 0)'
+  };
   
   const nonePVRef = useRef(nonePV);
   useEffect(() => {
@@ -935,7 +941,7 @@ function App() {
       await waitUntil(() => !!gameRoomRef.current?.current_fen && gameRoomRef.current?.round_status === "playing");
       setDisplayEval("");
       const fen = gameRoomRef.current!.current_fen;
-      setPhase2(false);
+      setResultPhase(0);
 
       const newGame = new Chess(fen);
       if (fen.includes('w')) {
@@ -1159,8 +1165,6 @@ function App() {
         await waitUntil(() => gameRoomRef.current?.round_status === "results");
       }
       console.log("NOW RESULTS");
-      setMyMult(isHost ? gameRoomRef.current!.host_mult : gameRoomRef.current!.guest_mult);
-      setOppMult(isHost ? gameRoomRef.current!.guest_mult : gameRoomRef.current!.host_mult);
 
       /*setShowEffex(winner === "me" ? `✅ +${dmg} damage!` : `❌ -${dmg} HP`);
       stopEffex();*/
@@ -5600,41 +5604,65 @@ function App() {
                 <div className="me">{isHost ? HPGameRoom.host_username : HPGameRoom.guest_username}
                   <div className="healthBar">{isHost ? HPGameRoom.host_health : HPGameRoom.guest_health}/1000</div>
                   <motion.span className="multBar"
-                    animate={HPGameRoom.round_status === "results" && phase2 && ((HPGameRoom.dmg_taker == "guest" && isHost) || (!isHost && HPGameRoom.dmg_taker == "host")) ? {rotate: [0, 45, 0]} : {}}
-                    transition={HPGameRoom.round_status === "results" && phase2 && ((HPGameRoom.dmg_taker == "guest" && isHost) || (!isHost && HPGameRoom.dmg_taker == "host")) ? { 
+                    style={{ display: "inline-block",  background: MULT_COLORS[myMultColor] }}
+                    initial={{ rotate: 0 }}
+                    animate={HPGameRoom.round_status === "results" && myMult > 1 && resultPhase === 1 && ((HPGameRoom.dmg_taker == "guest" && isHost) || (!isHost && HPGameRoom.dmg_taker == "host")) ? {rotate: [0, -80, 0.01]} : {rotate: 0}}
+                    transition={{ 
+                      duration: 0.5, 
+                      times: [0, 0.5, 1.0] // Dictates the relative timing of each step
+                    }}
+                    onAnimationComplete={() => {
+                      if (HPGameRoom.round_status === "results" && resultPhase === 1 && ((HPGameRoom.dmg_taker === "guest" && isHost) || (!isHost && HPGameRoom.dmg_taker === "host"))) {
+                        setMyWin(HPGameRoom.display_dmg_after);
+                        console.log("ROTATE DONE ME");
+                        setResultPhase(2);
+                        const meMult = isHost ? gameRoomRef.current!.host_mult : gameRoomRef.current!.guest_mult
+                        const oppoMult = isHost ? gameRoomRef.current!.guest_mult : gameRoomRef.current!.host_mult
+                        setMyMult(meMult);
+                        setOppMult(oppoMult);
+                        if (meMult >= myMultColor + 1) {
+                          setMyMultColor(myMultColor + 1);
+                        }
+                        if (oppoMult >= oppMultColor + 1) {
+                          setOppMultColor(oppMultColor + 1);
+                        }
+                      } else { //fix not quite sure when we get here
+                        console.log("FALSE");
+                      }}
+                    }>{myMult}x
+                  </motion.span>
+                </div>
+
+                <span className={`my-triangle ${resultPhase === 2 && !((HPGameRoom.dmg_taker === "guest" && !isHost) || (isHost && HPGameRoom.dmg_taker === "host")) ? "overlay-front" : "overlay-back"}`}></span>
+                <span className={`opp-triangle ${resultPhase === 2 && !((HPGameRoom.dmg_taker === "host" && !isHost) || (isHost && HPGameRoom.dmg_taker === "guest")) ? "overlay-front" : "overlay-back"}`}></span>    
+              
+                <span className={`myeval ${HPGameRoom.round_status == "results" ? "overlay-front" : "overlay-back"}`}>{isHost ? HPGameRoom.host_eval > 0 ? +HPGameRoom.host_eval : HPGameRoom.host_eval : HPGameRoom.guest_eval > 0 ? +HPGameRoom.guest_eval : HPGameRoom.guest_eval}</span>                
+                <motion.span initial={{x: 0}} animate={HPGameRoom.round_status === "results" ? { x: myWin > oppWin ? 100 : 0 } : { x: 0 } }  
+                  transition={HPGameRoom.round_status === "results" ? { duration: 0.3, delay: 3.0, x: {type: "spring"} } : { duration: 0 }}
+                  onAnimationComplete={() => {{setResultPhase(1); console.log("resultPhase " + HPGameRoom.dmg_taker); setMyWin(HPGameRoom.display_dmg);}}  }
+                  className={`mywin ${HPGameRoom.round_status == "results" ? "overlay-front" : "overlay-back"}`}>
+                  {myWin}{resultPhase === 0 ? `%` : ``}
+                </motion.span>
+                <motion.span initial={{x: 0}} animate={HPGameRoom.round_status === "results" ? {x: myWin < oppWin ? -100 : 0} : {x: 0} }  
+                  transition={HPGameRoom.round_status === "results" ? { duration: 0.3, delay: 3.0 } : { duration: 0 }} 
+                  onAnimationComplete={() => {{setResultPhase(1); console.log("resultPhase " + HPGameRoom.dmg_taker); setMyWin(HPGameRoom.display_dmg);}}  }
+                  style={{opacity: resultPhase === 0 && HPGameRoom.round_status === "results" ? 1 : 0}}
+                  className={`oppwin ${HPGameRoom.round_status == "results" ? "overlay-front" : "overlay-back"}`}>
+                  {oppWin}{resultPhase === 0 ? `%` : ``} 
+                </motion.span>
+                <span className={`oppeval ${HPGameRoom.round_status == "results" ? "overlay-front" : "overlay-back"}`}>{isHost ? HPGameRoom.guest_eval > 0 ? +HPGameRoom.guest_eval : HPGameRoom.guest_eval : HPGameRoom.host_eval > 0 ? +HPGameRoom.host_eval : HPGameRoom.host_eval}</span>
+              
+                <div className="opp">{isHost ? HPGameRoom.guest_username : HPGameRoom.host_username}{(HPGameRoom.round_status === "results") ? " played " + (isHost ? uciToSan(HPGameRoom.guest_move, HPGameRoom.current_fen) : uciToSan(HPGameRoom.host_move, HPGameRoom.current_fen)) : ""}
+                  <div className="oppHealthBar">{isHost ? HPGameRoom.guest_health : HPGameRoom.host_health}/1000</div>
+                  <motion.span className="oppMBar"
+                    animate={HPGameRoom.round_status === "results" && resultPhase === 1 && ((HPGameRoom.dmg_taker == "host" && isHost) || (!isHost && HPGameRoom.dmg_taker == "guest")) ? {rotate: [0, 45, 0]} : {}}
+                    transition={HPGameRoom.round_status === "results" && resultPhase === 1 && ((HPGameRoom.dmg_taker == "host" && isHost) || (!isHost && HPGameRoom.dmg_taker == "guest")) ? { 
                       duration: 0.5, 
                       ease: "easeInOut",
                       times: [0, 0.5, 1.0] // Dictates the relative timing of each step
                     } : {}}
-                    onAnimationComplete={() => {{setMyWin(HPGameRoom.display_dmg_after); console.log("ROTATE DONE")}}  }>{myMult}x
-                  </motion.span>
-                </div>
-
-                <span className={`myeval ${HPGameRoom.round_status == "results" ? "overlay-front" : "overlay-back"}`}>{isHost ? HPGameRoom.host_eval > 0 ? +HPGameRoom.host_eval : HPGameRoom.host_eval : HPGameRoom.guest_eval > 0 ? +HPGameRoom.guest_eval : HPGameRoom.guest_eval}</span>                
-                <motion.span initial={{x: 0}} animate={HPGameRoom.round_status === "results" ? { x: myWin > oppWin ? 100 : 0 } : { x: 0 } }  
-                  transition={HPGameRoom.round_status === "results" ? { duration: 0.3, delay: 3.0 } : { duration: 0 }}
-                  onAnimationComplete={() => {{setPhase2(true); setMyWin(HPGameRoom.display_dmg);}}  }
-                  className={`mywin ${HPGameRoom.round_status == "results" ? "overlay-front" : "overlay-back"}`}>
-                  {myWin}{phase2 ? `` : `%`}
-                </motion.span>
-                <motion.span initial={{x: 0}} animate={HPGameRoom.round_status === "results" ? {x: myWin < oppWin ? -100 : 0} : {x: 0} }  
-                  transition={HPGameRoom.round_status === "results" ? { duration: 0.3, delay: 3.0 } : { duration: 0 }} 
-                  style={{opacity: phase2 ? 0 : 1}}
-                  className={`oppwin ${HPGameRoom.round_status == "results" ? "overlay-front" : "overlay-back"}`}>
-                  {oppWin}{phase2 ? `` : `%`} 
-                </motion.span>
-                <span className={`oppeval ${HPGameRoom.round_status == "results" ? "overlay-front" : "overlay-back"}`}>{isHost ? HPGameRoom.guest_eval > 0 ? +HPGameRoom.guest_eval : HPGameRoom.guest_eval : HPGameRoom.host_eval > 0 ? +HPGameRoom.host_eval : HPGameRoom.host_eval}</span>
-              
-
-                <div className="opp">{isHost ? HPGameRoom.guest_username : HPGameRoom.host_username}{(HPGameRoom.round_status === "results") ? " played " + (isHost ? uciToSan(HPGameRoom.guest_move, HPGameRoom.current_fen) : uciToSan(HPGameRoom.host_move, HPGameRoom.current_fen)) : ""}
-                  <div className="oppHealthBar">{isHost ? HPGameRoom.guest_health : HPGameRoom.host_health}/1000</div>
-                  <motion.span className="oppMBar"
-                    animate={HPGameRoom.round_status === "results" && phase2 && ((HPGameRoom.dmg_taker == "host" && isHost) || (!isHost && HPGameRoom.dmg_taker == "guest")) ? {rotate: [0, 45, 0]} : {}}
-                    transition={HPGameRoom.round_status === "results" && phase2 && ((HPGameRoom.dmg_taker == "host" && isHost) || (!isHost && HPGameRoom.dmg_taker == "guest")) ? { 
-                      duration: 0.5, 
-                      ease: "easeInOut",
-                      times: [0, 0.5, 1.0] // Dictates the relative timing of each step
-                    } : {}}>{oppMult}x
+                    onAnimationComplete={() => {{setMyWin(HPGameRoom.display_dmg_after); console.log("ROTATE DONE OPP " + HPGameRoom.round_status === "results" && resultPhase === 1 && ((HPGameRoom.dmg_taker == "host" && isHost) || (!isHost && HPGameRoom.dmg_taker == "guest")))}}  }
+                    >{oppMult}x
                   </motion.span>
                 </div>
               
