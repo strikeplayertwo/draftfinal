@@ -816,101 +816,63 @@ function App() {
   // Presence channel for syncing clocks
   const presenceChannelRef = useRef<any>(null);
 
-  function pauseMyClock() {
+  function stopMyClock() {
     if (clockIntervalRef.current) clearInterval(clockIntervalRef.current);
   }
 
-  function resumeMyClock() {
+  function startMyClock() {
+    clockRef.current = 300;
+    setMyClock(300);
+    stopMyClock();
+
     clockIntervalRef.current = setInterval(async () => {
       clockRef.current -= 1;
       setMyClock(clockRef.current);
+
+      // Broadcast clock to opponent
       presenceChannelRef.current?.track({ clock: clockRef.current });
+
       if (clockRef.current <= 0) {
-        pauseMyClock();
-        // handle time out
+        stopMyClock();
+        // Handle time out here
       }
     }, 1000);
   }
-
-  function pauseOpponentClock() {
-    if (opponentClockIntervalRef.current) clearInterval(opponentClockIntervalRef.current);
-  }
-
-  function resumeOpponentClock() {
-    opponentClockIntervalRef.current = setInterval(() => {
-      opponentClockRef.current -= 1;
-      setOpponentClock(Math.max(0, opponentClockRef.current));
-      if (opponentClockRef.current <= 0) {
-        pauseOpponentClock();
-      }
-    }, 1000);
-  }
-
-  // Track opponent clock locally and decrement it ourselves
-  const opponentClockIntervalRef = { current: null as ReturnType<typeof setInterval> | null };
 
   function setupPresence(roomId: string) {
-    if (presenceChannelRef.current) {
-      supabase.removeChannel(presenceChannelRef.current);
-    }
-
     const channel = supabase.channel(`presence:${roomId}`, {
       config: { presence: { key: user!.id } }
     });
 
+    // Track opponent clock locally and decrement it ourselves
+    const opponentClockIntervalRef = { current: null as ReturnType<typeof setInterval> | null };
+
     channel
       .on("presence", { event: "sync" }, () => {
         const state = channel.presenceState();
-        const opponentId = isHost
-          ? gameRoomRef.current?.guest_id
-          : gameRoomRef.current?.host_id;
-
+        const opponentId = isHost ? gameRoomRef.current?.guest_id : gameRoomRef.current?.host_id;
         if (!opponentId || !state[opponentId]) return;
-
+        
         const opponentState = state[opponentId][0] as any;
+        const opponentClock = opponentState.clock ?? 300;
+        
+        // Update opponent clock and restart local decrement
+        setOpponentClock(opponentClock);
+        opponentClockRef.current = opponentClock;
 
-        // Sync opponent clock — only correct if significantly off to avoid jitter
-        const serverClock = opponentState.clock ?? 0;
-        if (Math.abs(opponentClockRef.current - serverClock) > 2) {
-          opponentClockRef.current = serverClock;
-          setOpponentClock(serverClock);
+        // Clear existing interval and start a new one
+        if (opponentClockIntervalRef.current) {
+          clearInterval(opponentClockIntervalRef.current);
         }
-
-        // Sync opponent submitted state
-        if (opponentState.submitted === true) {
-          opponentMoveRef.current = opponentState.move ?? "";
-        }
+        opponentClockIntervalRef.current = setInterval(() => {
+          opponentClockRef.current -= 1;
+          setOpponentClock(prev => Math.max(0, prev - 1));
+          if (opponentClockRef.current <= 0) {
+            clearInterval(opponentClockIntervalRef.current!);
+          }
+        }, 1000);
       })
-      .on("presence", { event: "join" }, ({ newPresences }) => {
-        // Opponent joined — start their clock interpolation
-        const opponentId = isHost
-          ? gameRoomRef.current?.guest_id
-          : gameRoomRef.current?.host_id;
-        const opponentPresence = newPresences.find((p: any) => p.key === opponentId);
-        if (opponentPresence) {
-          console.log("Opponent joined presence:", opponentPresence);
-        }
-      })
-      .on("presence", { event: "leave" }, ({ leftPresences }) => {
-        const opponentId = isHost
-          ? gameRoomRef.current?.guest_id
-          : gameRoomRef.current?.host_id;
-        const opponentLeft = leftPresences.find((p: any) => p.key === opponentId);
-        if (opponentLeft) {
-          console.log("Opponent left presence");
-          pauseOpponentClock();
-        }
-      })
-      .subscribe(async (status) => {
-        if (status === "SUBSCRIBED") {
-          // Start broadcasting your own state
-          await channel.track({
-            clock: clockRef.current,
-            submitted: false,
-            move: ""
-          });
-        }
-      });
+      .subscribe();
 
     presenceChannelRef.current = channel;
   }
@@ -974,15 +936,9 @@ function App() {
           .eq("id", gameRoomRef.current!.id)
       }
       console.log("done");
-      
 
       // Wait for fen to be synced
       await waitUntil(() => !!gameRoomRef.current?.current_fen && gameRoomRef.current?.round_status === "playing");
-      await presenceChannelRef.current?.track({
-        clock: clockRef.current,
-        submitted: false,
-        move: ""
-      });
       setDisplayEval("");
       const fen = gameRoomRef.current!.current_fen;
       setResultPhase(0);
@@ -1010,20 +966,11 @@ function App() {
 
       // Wait 5 seconds before starting clock
       await new Promise(resolve => setTimeout(resolve, 5000));
-      //startMyClock();
-      resumeMyClock();
-      resumeOpponentClock();
+      startMyClock();
 
       // Wait until this player has made their move
       await waitUntil(() => myMoveSubmittedRef.current);
-      pauseMyClock();
-      //stopMyClock();
-      await presenceChannelRef.current?.track({
-        clock: clockRef.current,
-        submitted: true,
-        move: myMoveRef.current
-      });
-
+      stopMyClock();
       setHPSquares(prev => {
         const newSquareStyles = {
           ...prev
@@ -1051,18 +998,22 @@ function App() {
         .update({ [myMoveField]: myMoveRef.current })
         .eq("id", currentRoom.id);
 
+
+      /*await waitUntil(() => myEvalSubmittedRef.current);
+      const myEvalField = isHost ? "host_eval" : "guest_eval";
+      await supabase
+        .from("hp_game_rooms")
+        .update({ [myEvalField]: myEvalRef.current })
+        .eq("id", currentRoom.id);*/
+
       // Wait for opponent's move to appear in Supabase
       await waitUntil(() => {
         const r = gameRoomRef.current;
-        if (!r) {
-          console.log("gameRoomRef is null");
-          return false;
-        }
+        if (!r) return false;
         const opponentMove = isHost ? r.guest_move : r.host_move;
         console.log(opponentMove);
         return !!opponentMove && opponentMove !== "";
       });
-      pauseOpponentClock();
 
 
       let myEval = 10000;
@@ -1346,13 +1297,13 @@ function App() {
     setupPresence(HPGameRoom.id);
     startGameLoop();
 
-    /*return () => {
+    return () => {
       stopMyClock();
       gameLoopRef.current = false;
       if (presenceChannelRef.current) {
         supabase.removeChannel(presenceChannelRef.current);
       }
-    };*/
+    };
   }, [roomStatus]);
 
   async function joinHPRoom(code: string) {
@@ -1423,7 +1374,6 @@ function App() {
           console.log("Room updated:", payload.new); // ← add this to verify it fires
           const updated = payload.new as HPGameRoom;
           setHPGameRoom(updated);
-          gameRoomRef.current = updated;
           setRoomStatus(updated.status);
           if(updated.status === "active"){
             console.log("ACTIVE");
